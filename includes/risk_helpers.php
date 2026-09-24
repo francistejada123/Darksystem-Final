@@ -451,37 +451,56 @@ function getAtRiskSubjectRecords($student_id, $school_year_id) {
  * @return array<int,array{item_id:int,name:string,category:string,category_label:string,
  *                         kind:string,kind_label:string,mode:string,topic:string,deadline:?string}>
  */
-function gh_riskMissingItemDetails($teacher_id, $subject_code, $section_id, $sy_id, $term, $student_id) {
+/**
+ * One class's items, every student's scores and the items' online delivery,
+ * read ONCE per request and shared by every student of the class (AI Analytics
+ * checks many students of the same classes).
+ * @return array{items:array, scores:array<int,array<int,float>>, online:array<int,array>}
+ */
+function gh_riskClassData($teacher_id, $subject_code, $section_id, $sy_id, $term) {
+    static $cache = [];
+    $key = (int) $teacher_id . '|' . $subject_code . '|' . (int) $section_id . '|' . (int) $sy_id . '|' . $term;
+    if (isset($cache[$key])) {
+        return $cache[$key];
+    }
     $items = getRecords(
         "SELECT * FROM assessment_items
          WHERE teacher_id = ? AND subject_code = ? AND section_id = ? AND school_year_id = ? AND term = ? AND is_active = 1
          ORDER BY FIELD(category, 'WW', 'PT', 'QA'), item_order, item_id",
         [(int) $teacher_id, $subject_code, (int) $section_id, (int) $sy_id, $term]
     );
+    $data = ['items' => $items, 'scores' => [], 'online' => []];
+    if (!empty($items)) {
+        $ids = array_map('intval', array_column($items, 'item_id'));
+        $ph = implode(',', array_fill(0, count($ids), '?'));
+        foreach (getRecords("SELECT item_id, student_id, raw_score FROM assessment_scores WHERE raw_score IS NOT NULL AND item_id IN ($ph)", $ids) as $r) {
+            $data['scores'][(int) $r['student_id']][(int) $r['item_id']] = (float) $r['raw_score'];
+        }
+        // Online delivery of an item: its Learning Material task and/or Classwork.
+        foreach (gh_riskSafeRows("SELECT item_id, topic, end_at FROM learning_material_tasks WHERE item_id IN ($ph)", $ids) as $t) {
+            $data['online'][(int) $t['item_id']] = ['topic' => (string) $t['topic'], 'end' => $t['end_at']];
+        }
+        foreach (gh_riskSafeRows("SELECT assessment_item_id AS item_id, due_date FROM classwork_assignments WHERE assessment_item_id IN ($ph)", $ids) as $c) {
+            $iid = (int) $c['item_id'];
+            $end = $c['due_date'];
+            if (!isset($data['online'][$iid])) {
+                $data['online'][$iid] = ['topic' => '', 'end' => $end];
+            } elseif ($end !== null && ($data['online'][$iid]['end'] === null || $end > $data['online'][$iid]['end'])) {
+                $data['online'][$iid]['end'] = $end;
+            }
+        }
+    }
+    return $cache[$key] = $data;
+}
+
+function gh_riskMissingItemDetails($teacher_id, $subject_code, $section_id, $sy_id, $term, $student_id) {
+    $class = gh_riskClassData($teacher_id, $subject_code, $section_id, $sy_id, $term);
+    $items = $class['items'];
     if (empty($items)) {
         return [];
     }
-    $ids = array_map('intval', array_column($items, 'item_id'));
-    $ph = implode(',', array_fill(0, count($ids), '?'));
-    $scored = array_flip(array_map('intval', array_column(getRecords(
-        "SELECT item_id FROM assessment_scores WHERE student_id = ? AND raw_score IS NOT NULL AND item_id IN ($ph)",
-        array_merge([(int) $student_id], $ids)
-    ), 'item_id')));
-
-    // Online delivery of an item: its Learning Material task and/or Classwork.
-    $online = [];
-    foreach (gh_riskSafeRows("SELECT item_id, topic, end_at FROM learning_material_tasks WHERE item_id IN ($ph)", $ids) as $t) {
-        $online[(int) $t['item_id']] = ['topic' => (string) $t['topic'], 'end' => $t['end_at']];
-    }
-    foreach (gh_riskSafeRows("SELECT assessment_item_id AS item_id, due_date FROM classwork_assignments WHERE assessment_item_id IN ($ph)", $ids) as $c) {
-        $iid = (int) $c['item_id'];
-        $end = $c['due_date'];
-        if (!isset($online[$iid])) {
-            $online[$iid] = ['topic' => '', 'end' => $end];
-        } elseif ($end !== null && ($online[$iid]['end'] === null || $end > $online[$iid]['end'])) {
-            $online[$iid]['end'] = $end;
-        }
-    }
+    $scored = $class['scores'][(int) $student_id] ?? [];
+    $online = $class['online'];
     $now = date('Y-m-d H:i:s');
 
     if (!function_exists('aim_assessmentKind')) {
@@ -518,13 +537,15 @@ function gh_riskMissingItemDetails($teacher_id, $subject_code, $section_id, $sy_
  * passing percentage of their HPS. Returns [{category, label, count, topics}].
  */
 function gh_riskLowScoreCategories($teacher_id, $subject_code, $section_id, $sy_id, $term, $student_id, $pass_mark) {
-    $rows = getRecords(
-        "SELECT i.item_id, i.item_name, i.item_type, i.category, i.highest_score, i.topic, s.raw_score
-         FROM assessment_items i
-         JOIN assessment_scores s ON s.item_id = i.item_id AND s.student_id = ? AND s.raw_score IS NOT NULL
-         WHERE i.teacher_id = ? AND i.subject_code = ? AND i.section_id = ? AND i.school_year_id = ? AND i.term = ? AND i.is_active = 1",
-        [(int) $student_id, (int) $teacher_id, $subject_code, (int) $section_id, (int) $sy_id, $term]
-    );
+    $class = gh_riskClassData($teacher_id, $subject_code, $section_id, $sy_id, $term);
+    $mine = $class['scores'][(int) $student_id] ?? [];
+    $rows = [];
+    foreach ($class['items'] as $it) {
+        $iid = (int) $it['item_id'];
+        if (isset($mine[$iid])) {
+            $rows[] = $it + ['raw_score' => $mine[$iid]];
+        }
+    }
     $cat_labels = ['WW' => 'Written Works', 'PT' => 'Performance Task', 'QA' => 'Examination'];
     $by = [];
     foreach ($rows as $r) {
@@ -535,8 +556,7 @@ function gh_riskLowScoreCategories($teacher_id, $subject_code, $section_id, $sy_
             $by[$c]['count'] = ($by[$c]['count'] ?? 0) + 1;
             $t = trim((string) ($r['topic'] ?? ''));
             if ($t === '') {
-                $task = gh_riskSafeRows("SELECT topic FROM learning_material_tasks WHERE item_id = ?", [(int) $r['item_id']]);
-                $t = trim((string) ($task[0]['topic'] ?? ''));
+                $t = trim((string) ($class['online'][(int) $r['item_id']]['topic'] ?? ''));
             }
             if ($t !== '') $by[$c]['topics'][$t] = true;
             $by[$c]['items'][] = [
