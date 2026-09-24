@@ -108,6 +108,30 @@ if ($exam_mode === 'standard') {
     $required_subtypes = ['TE'];
 }
 
+/**
+ * A message when adding exam $subtype would be a duplicate while another required
+ * exam of the same component is still missing; '' when it is fine. Several items
+ * of the same exam are allowed once every required exam exists.
+ */
+function itemsDuplicateExamMessage($teacher_id, $subject_code, $section_id, $sy_id, $term, $subtype, $component, array $required, array $subtypes, $exclude_item_id = 0)
+{
+    if (!in_array($subtype, $required, true)) return '';
+    $rows = getRecords(
+        "SELECT assessment_subtype FROM assessment_items
+         WHERE teacher_id = ? AND subject_code = ? AND section_id = ? AND school_year_id = ? AND term = ?
+           AND category = 'QA' AND is_active = 1 AND item_id <> ? AND (component <=> ?)",
+        [$teacher_id, $subject_code, $section_id, $sy_id, $term, (int) $exclude_item_id, $component]
+    );
+    $have = array_count_values(array_filter(array_column($rows, 'assessment_subtype')));
+    if (empty($have[$subtype])) return '';
+    $missing = array_values(array_filter($required, function ($st) use ($have) { return empty($have[$st]); }));
+    if (empty($missing)) return '';
+    $label = function ($st) use ($subtypes) { return preg_replace('/^\w+\s*[–-]\s*/', '', $subtypes[$st]['label'] ?? $st); };
+    return $label($subtype) . ' already exists' . ($component ? ' for ' . $component : '') . ', but '
+        . implode(' and ', array_map($label, $missing)) . ' ' . (count($missing) === 1 ? 'is' : 'are') . ' still missing. '
+        . 'Did you mean ' . $label($missing[0]) . '? (A second ' . $label($subtype) . ' can be added once every required examination exists.)';
+}
+
 // ============================================================
 // HANDLE ADD / EDIT / DELETE ITEM
 // ============================================================
@@ -164,6 +188,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } elseif (($name_hint = gh_activityNameHint($category, $item_name)) && $name_hint['type'] === 'attendance') {
                 // Attendance is never a grading component (DO 015, s. 2026).
                 $_SESSION['error_message'] = 'Not added. ' . $name_hint['message'];
+            } elseif ($category === 'QA' && $subtype !== null
+                      && ($dup_msg = itemsDuplicateExamMessage($teacher_id, $subject_code, $section_id, $active_sy['sy_id'], $term, $subtype, $component, $required_subtypes, $subtypes))) {
+                // The same exam twice while another required exam is still missing is almost
+                // always a wrong pick (e.g. two "Summative Test 1" and no "Summative Test 2").
+                $_SESSION['error_message'] = 'Not added. ' . $dup_msg;
             } else {
                 $order = getRecord("SELECT COALESCE(MAX(item_order), 0) as m FROM assessment_items WHERE teacher_id = ? AND subject_code = ? AND section_id = ? AND school_year_id = ? AND term = ? AND category = ?",
                     [$teacher_id, $subject_code, $section_id, $active_sy['sy_id'], $term, $category]);
@@ -236,6 +265,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($item_name === '' || $highest_score <= 0) {
                 $_SESSION['error_message'] = 'Please provide a valid item name and highest possible score (HPS must be greater than zero).';
+            } elseif ($existing_item && $subtype !== null
+                      && ($subtype !== ($existing_item['assessment_subtype'] ?? null) || $component !== ($existing_item['component'] ?? null))
+                      && ($dup_msg = itemsDuplicateExamMessage($teacher_id, $subject_code, $section_id, $active_sy['sy_id'], $term, $subtype, $component, $required_subtypes, $subtypes, $item_id))) {
+                $_SESSION['error_message'] = 'Not saved. ' . $dup_msg;
             } elseif ($existing_item && $existing_item['item_name'] !== $item_name
                       && ($edit_hint = gh_activityNameHint($existing_item['category'], $item_name)) && $edit_hint['type'] === 'attendance') {
                 // Renaming to an attendance item is refused; an already-saved item is left as it is.
