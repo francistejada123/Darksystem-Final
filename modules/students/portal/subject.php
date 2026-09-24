@@ -856,7 +856,14 @@ $page_title = $class['subject_name'];
                                 <?php endif; ?>
                             </aside>
 
-                            <?php $mc_list = $message_comments[$mid] ?? []; ?>
+                            <?php
+                                // Comments on the Word copy (its own message) show here too.
+                                $mc_list = $message_comments[$mid] ?? [];
+                                foreach ($m['extra_files'] ?? [] as $xf) {
+                                    $mc_list = array_merge($mc_list, $message_comments[(int) $xf['message_id']] ?? []);
+                                }
+                                usort($mc_list, function ($a, $b) { return strcmp((string) $a['created_at'], (string) $b['created_at']); });
+                            ?>
                             <div class="msg-comments">
                                 <?php foreach ($mc_list as $mc): ?>
                                     <div class="msg-comment <?php echo $mc['author_role'] === 'Teacher' ? 'teacher' : 'student'; ?>">

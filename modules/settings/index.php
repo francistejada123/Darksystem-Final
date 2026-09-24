@@ -313,6 +313,13 @@ include '../../includes/header.php';
                                 min="60" max="100">
                             <div class="form-text">DepEd default is 75.</div>
                         </div>
+                        <div class="col-md-4">
+                            <label class="form-label">At-Risk Make-up Credit (%)</label>
+                            <input type="number" name="setting_makeup_credit_percent" class="form-control"
+                                value="<?php echo htmlspecialchars($grouped_settings['grading']['makeup_credit_percent'] ?? 50); ?>"
+                                min="1" max="100" step="1">
+                            <div class="form-text">Part of the points a make-up of a missing assessment earns (AI Analytics catch-up quiz / make-up activity). 50 = half points.</div>
+                        </div>
                     </div>
 
                     <div class="d-flex justify-content-end mt-4">
