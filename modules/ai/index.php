@@ -369,8 +369,9 @@ foreach ($risk_students as $sid_g => $rg) {
                 'student_id' => (int) $stu_g['student_id'],
                 'can_send' => $mine_g,
                 'send_subject' => $mine_g ? $ar_g['subject_code'] : '',
-                'status' => $ar_g['remarks'] === 'Incomplete' ? 'Incomplete' : number_format((float) $ar_g['final_grade'], 1) . '%',
-                'status_type' => $ar_g['remarks'] === 'Incomplete' ? 'incomplete' : 'grade',
+                'status' => $ar_g['remarks'] === 'Incomplete' ? 'Incomplete'
+                    : (!empty($ar_g['in_progress']) && (float) $ar_g['final_grade'] <= 0 ? 'In progress' : number_format((float) $ar_g['final_grade'], 1) . '%' . (!empty($ar_g['in_progress']) ? ' · in progress' : '')),
+                'status_type' => $ar_g['remarks'] === 'Incomplete' || (!empty($ar_g['in_progress']) && (float) $ar_g['final_grade'] <= 0) ? 'incomplete' : 'grade',
                 'reasons' => array_column($ar_g['risk_reasons'], 'label'),
                 'other_missing' => [],
                 'subjects' => [],
@@ -819,7 +820,7 @@ include '../../includes/header.php';
                                                     <div class="arg-missing-head">Missing Assessments<?php if ($has_panel): ?> <small>— click one to prepare its make-up</small><?php endif; ?></div>
                                                     <ul>
                                                     <?php foreach ($g_missing as $md):
-                                                        $md_line = $md['name'] . ' — ' . $md['category_label'] . ' — ' . $md['mode'] . ($md['topic'] !== '' ? ' — Topic: ' . $md['topic'] : '');
+                                                        $md_line = $md['name'] . (!empty($md['component']) ? ' (' . $md['component'] . ')' : '') . ' — ' . $md['category_label'] . ' — ' . $md['mode'] . ($md['topic'] !== '' ? ' — Topic: ' . $md['topic'] : '');
                                                         $md_icon = in_array($md['kind'], ['quiz', 'exam'], true) ? 'fa-list-check' : ($md['kind'] === 'performance_task' ? 'fa-person-chalkboard' : 'fa-file-lines');
                                                     ?>
                                                         <li>
@@ -884,7 +885,7 @@ include '../../includes/header.php';
                                                     <div class="arg-member-sub">
                                                         <span class="text-muted"><?php echo htmlspecialchars($ms['lrn']); ?></span>
                                                         <?php if ($mem_g['status_type'] === 'incomplete'): ?>
-                                                            <span class="badge bg-secondary">Incomplete</span>
+                                                            <span class="badge bg-secondary"><?php echo htmlspecialchars($mem_g['status']); ?></span>
                                                         <?php elseif ($mem_g['status_type'] === 'grade'): ?>
                                                             <span class="badge arg-badge-grade"><?php echo htmlspecialchars($mem_g['status']); ?></span>
                                                         <?php else: ?>
@@ -1490,7 +1491,7 @@ document.addEventListener('DOMContentLoaded', function () {
             html += '<div class="argm-items"><div class="argm-why-head">Prepare a make-up — pick the missing assessment</div>' +
                 missing.map(function (m) {
                     return '<button type="button" class="argm-item" data-item-id="' + m.item_id + '">' +
-                        '<b>' + esc(m.name) + '</b><span>' + esc(m.category_label + ' · ' + m.mode + (m.topic ? ' · ' + m.topic : '')) + '</span>' +
+                        '<b>' + esc(m.name + (m.component ? ' (' + m.component + ')' : '')) + '</b><span>' + esc(m.category_label + ' · ' + m.mode + (m.topic ? ' · ' + m.topic : '')) + '</span>' +
                         '<em>' + esc(REMEDY_TEXT[remedyKindOf(m)]) + '</em></button>';
                 }).join('') + '</div>';
         }
@@ -1981,6 +1982,7 @@ document.addEventListener('DOMContentLoaded', function () {
             fd.append('subject_code', d.subjectCode || '');
             fd.append('term', d.term || '');
             fd.append('item', state.item && state.gen.record && state.gen.record.label ? state.gen.record.label : (d.item || ''));
+            if (state.item && state.gen.record && state.gen.record.item_id) fd.append('item_id', state.gen.record.item_id);
             fd.append('student_ids', JSON.stringify(checks.map(function (c) { return parseInt(c.value, 10); })));
             fd.append('title', state.gen.title || '');
             fd.append('message', message);

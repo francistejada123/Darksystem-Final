@@ -439,6 +439,13 @@ function getAtRiskSubjectRecords($student_id, $school_year_id) {
                 . (!empty($missing) ? ' — missing: ' . implode(', ', $missing) . '.' : '.'),
         ];
     }
+
+    // The ongoing term, before it is finalized (skips a subject-term that already has a grade row).
+    $skip = [];
+    foreach ($rows as $row) { $skip[$row['subject_code'] . '|' . $row['term']] = true; }
+    foreach (gh_riskInProgressRecords($student_id, $school_year_id, $skip, $pass_mark) as $live) {
+        $at_risk[] = $live;
+    }
     return $at_risk;
 }
 
@@ -493,7 +500,7 @@ function gh_riskClassData($teacher_id, $subject_code, $section_id, $sy_id, $term
     return $cache[$key] = $data;
 }
 
-function gh_riskMissingItemDetails($teacher_id, $subject_code, $section_id, $sy_id, $term, $student_id) {
+function gh_riskMissingItemDetails($teacher_id, $subject_code, $section_id, $sy_id, $term, $student_id, $in_progress = false) {
     $class = gh_riskClassData($teacher_id, $subject_code, $section_id, $sy_id, $term);
     $items = $class['items'];
     if (empty($items)) {
@@ -513,6 +520,7 @@ function gh_riskMissingItemDetails($teacher_id, $subject_code, $section_id, $sy_
         if (isset($scored[$iid])) continue;
         $on = $online[$iid] ?? null;
         if ($on && !empty($on['end']) && $on['end'] > $now) continue; // still open -- not missing yet
+        if ($in_progress && !$on && !gh_riskItemHasAnyScore($class, $iid)) continue; // ongoing term: not recorded for anyone yet
         $kind = aim_assessmentKind($item);
         $meta = aim_kindMeta($kind);
         $topic = trim((string) ($item['topic'] ?? ''));
@@ -524,6 +532,7 @@ function gh_riskMissingItemDetails($teacher_id, $subject_code, $section_id, $sy_
             'category_label' => $cat_labels[$item['category']] ?? $item['category'],
             'kind' => $kind,
             'kind_label' => $meta['label'],
+            'component' => (string) ($item['component'] ?? ''),
             'mode' => $on ? 'Online' : 'Manual',
             'topic' => $topic,
             'deadline' => $on && !empty($on['end']) ? $on['end'] : null,
@@ -575,6 +584,116 @@ function gh_riskLowScoreCategories($teacher_id, $subject_code, $section_id, $sy_
             $out[] = ['category' => $c, 'label' => $cat_labels[$c], 'count' => $by[$c]['count'],
                       'topics' => array_keys($by[$c]['topics'] ?? []), 'items' => $by[$c]['items'] ?? []];
         }
+    }
+    return $out;
+}
+
+/** Has the teacher recorded a score for this item for ANY student of the class? */
+function gh_riskItemHasAnyScore(array $class, $item_id) {
+    foreach ($class['scores'] as $by_item) {
+        if (isset($by_item[(int) $item_id])) return true;
+    }
+    return false;
+}
+
+/**
+ * At-Risk records for the ONGOING (not yet finalized) term of the student's
+ * classes, computed live from Manage Assessment Items with the existing grade
+ * computation (a preview -- nothing is saved). Same rules as finalized terms:
+ *   - Current Grade below passing (only once the student has 2+ scores),
+ *   - 2+ missing assessments (a manual item counts only once the teacher has
+ *     recorded it for someone; an online one once its deadline has passed),
+ *   - 2+ low scores in the same component.
+ * Every reason is labeled "(in progress)".
+ */
+function gh_riskInProgressRecords($student_id, $school_year_id, array $skip_keys, $pass_mark) {
+    $sy = getRecord("SELECT * FROM school_years WHERE sy_id = ?", [(int) $school_year_id]);
+    if (!$sy) return [];
+    $enr = getRecord(
+        "SELECT section_id FROM enrollments WHERE student_id = ? AND school_year_id = ? AND enrollment_status = 'Approved' AND section_id IS NOT NULL
+         ORDER BY enrollment_id DESC LIMIT 1",
+        [(int) $student_id, (int) $school_year_id]
+    );
+    if (!$enr) return [];
+    $section_id = (int) $enr['section_id'];
+
+    // The section's current term = the first term not Completed yet.
+    $done = array_column(gh_riskSafeRows("SELECT term FROM section_term_status WHERE section_id = ? AND school_year_id = ?", [$section_id, (int) $school_year_id]), 'term');
+    $term = null;
+    foreach (gh_threeTerms() as $t) { if (!in_array($t, $done, true)) { $term = $t; break; } }
+    if ($term === null) return [];
+
+    $out = [];
+    $classes = getRecords(
+        "SELECT ts.teacher_id, ts.subject_code, sub.subject_name
+         FROM teacher_subjects ts JOIN subjects sub ON sub.subject_code = ts.subject_code
+         WHERE ts.section_id = ? AND ts.school_year_id = ?",
+        [$section_id, (int) $school_year_id]
+    );
+    foreach ($classes as $c) {
+        if (isset($skip_keys[$c['subject_code'] . '|' . $term])) continue; // already finalized -> handled above
+        $class = gh_riskClassData((int) $c['teacher_id'], $c['subject_code'], $section_id, (int) $school_year_id, $term);
+        if (empty($class['items'])) continue;
+
+        $mine = $class['scores'][(int) $student_id] ?? [];
+        $details = gh_riskMissingItemDetails((int) $c['teacher_id'], $c['subject_code'], $section_id, (int) $school_year_id, $term, $student_id, true);
+        $low = gh_riskLowScoreCategories((int) $c['teacher_id'], $c['subject_code'], $section_id, (int) $school_year_id, $term, $student_id, $pass_mark);
+
+        // Live Term Grade preview with the existing computation.
+        $grade = null;
+        if (count($mine) >= 2) {
+            $by_cat = ['WW' => [], 'PT' => [], 'QA' => []];
+            foreach ($class['items'] as $it) { $by_cat[$it['category']][] = $it; }
+            $map = [];
+            foreach ($class['scores'] as $sid_s => $by_item) { foreach ($by_item as $iid => $raw) { $map[$iid][$sid_s] = $raw; } }
+            $weights = getSubjectWeightsForStudent($c['subject_code'], (int) $student_id, $sy);
+            if (empty($weights['blocked'])) {
+                $weights['uses_domains'] = false;
+                $components = gh_subjectComponents($c['subject_code'], $weights['category'] ?? null);
+                if (count($components) > 1) {
+                    $mc = computeMultiComponentTermGrade($weights, $components, $by_cat, $map, (int) $student_id, $sy);
+                    $grade = $mc['transmuted_grade'];
+                } else {
+                    $tg = computeTermGrade($weights, [
+                        'ww' => computeCategoryPercent($by_cat['WW'], $map, (int) $student_id),
+                        'pt' => computeCategoryPercent($by_cat['PT'], $map, (int) $student_id),
+                        'ex' => ($weights['exam_mode'] ?? 'none') === 'none' ? null : computeExamPercent($by_cat['QA'], $map, (int) $student_id, $weights['exam_mode'])['percent'],
+                    ], $sy);
+                    $grade = $tg['transmuted_grade'];
+                }
+            }
+        }
+
+        $below = $grade !== null && $grade < $pass_mark;
+        if (!$below && count($details) < 2 && empty($low)) continue;
+
+        $reasons = [];
+        if ($below) $reasons[] = ['type' => 'grade', 'label' => 'Current Grade: ' . rtrim(rtrim(number_format((float) $grade, 2), '0'), '.') . '% (in progress)'];
+        if (count($details) >= 2) $reasons[] = ['type' => 'missing', 'label' => count($details) . ' Missing Assessments (in progress)'];
+        foreach ($low as $lc) $reasons[] = ['type' => 'low', 'label' => 'Low ' . $lc['label'] . ' Scores (in progress)', 'category' => $lc['category']];
+
+        $weak = [];
+        foreach ($details as $d) { if ($d['topic'] !== '') $weak[$d['topic']] = true; }
+        foreach ($low as $lc) { foreach ($lc['topics'] as $t) $weak[$t] = true; }
+        $missing = array_map(function ($d) { return $d['name'] . ' (' . $d['category_label'] . ')'; }, $details);
+
+        $out[] = [
+            'subject_code' => $c['subject_code'],
+            'subject_name' => $c['subject_name'],
+            'term' => $term,
+            'final_grade' => $grade !== null ? (float) $grade : 0.0,
+            'remarks' => 'In progress',
+            'in_progress' => true,
+            'teacher_id' => (int) $c['teacher_id'],
+            'section_id' => $section_id,
+            'missing_assessments' => $missing,
+            'missing_details' => $details,
+            'low_categories' => $low,
+            'low_items' => $low ? array_merge(...array_column($low, 'items')) : [],
+            'risk_reasons' => $reasons,
+            'weak_topics' => array_keys($weak),
+            'reason' => implode(' · ', array_column($reasons, 'label')) . (!empty($missing) ? ' — missing: ' . implode(', ', $missing) . '.' : '.'),
+        ];
     }
     return $out;
 }

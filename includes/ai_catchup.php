@@ -67,7 +67,7 @@ function aiCatchupParseItemLabel($label)
  *               ok?:array<int,array{section_id:int,item:array}>,
  *               skipped?:array<int,string>,subject_name?:string,grade_level?:string,hps?:float}
  */
-function aiCatchupResolveGroup($teacherId, $subjectCode, $term, $itemLabel, array $studentIds)
+function aiCatchupResolveGroup($teacherId, $subjectCode, $term, $itemLabel, array $studentIds, $itemId = 0)
 {
     $fail = function ($msg) { return ['success' => false, 'error' => $msg]; };
     $teacherId = (int) $teacherId;
@@ -119,15 +119,30 @@ function aiCatchupResolveGroup($teacherId, $subjectCode, $term, $itemLabel, arra
         );
         $sectionId = (int) ($g['section_id'] ?? 0);
         if ($sectionId <= 0) {
+            // Ongoing term (not finalized yet): the class comes from the approved enrollment.
+            $e = getRecord(
+                "SELECT section_id FROM enrollments WHERE student_id = ? AND school_year_id = ? AND enrollment_status = 'Approved' AND section_id IS NOT NULL ORDER BY enrollment_id DESC LIMIT 1",
+                [$sid, $syId]
+            );
+            $sectionId = (int) ($e['section_id'] ?? 0);
+        }
+        if ($sectionId <= 0) {
             $skipped[$sid] = 'Could not find this student\'s class.';
             continue;
         }
         $items = getRecords(
             "SELECT * FROM assessment_items
              WHERE teacher_id = ? AND subject_code = ? AND section_id = ? AND school_year_id = ? AND term = ?
-               AND category = ? AND item_name = ? AND is_active = 1",
+               AND category = ? AND item_name = ? AND is_active = 1"
+             . ((int) $itemId > 0 ? ' AND item_id = ' . (int) $itemId : ''),   // an exact item (AI Analytics make-up)
             [$teacherId, $subjectCode, $sectionId, $syId, $term, $parsed['category'], $parsed['name']]
         );
+        if (count($items) > 1) {
+            // Same name in several components (e.g. MAPEH "PETA"): the one this student has no score for.
+            $items = array_values(array_filter($items, function ($it) use ($sid) {
+                return !getRecord("SELECT 1 FROM assessment_scores WHERE item_id = ? AND student_id = ? AND raw_score IS NOT NULL", [(int) $it['item_id'], $sid]);
+            }));
+        }
         if (count($items) !== 1) {
             $skipped[$sid] = count($items) === 0
                 ? '"' . $parsed['name'] . '" is no longer an item in Manage Assessment Items.'
@@ -311,7 +326,7 @@ function aiCatchupSend($teacherId, array $req)
         $total += (int) $q['points'];
     }
 
-    $resolved = aiCatchupResolveGroup($teacherId, $req['subject_code'] ?? '', $req['term'] ?? '', $req['item'] ?? '', is_array($req['student_ids'] ?? null) ? $req['student_ids'] : []);
+    $resolved = aiCatchupResolveGroup($teacherId, $req['subject_code'] ?? '', $req['term'] ?? '', $req['item'] ?? '', is_array($req['student_ids'] ?? null) ? $req['student_ids'] : [], (int) ($req['item_id'] ?? 0));
     if (empty($resolved['success'])) {
         return $fail($resolved['error']);
     }

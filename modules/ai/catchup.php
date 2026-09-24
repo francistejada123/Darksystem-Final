@@ -92,6 +92,7 @@ switch ($action) {
             'title'        => $_POST['title'] ?? '',
             'message'      => $_POST['message'] ?? '',
             'questions'    => is_array($questions) ? $questions : [],
+            'item_id'      => (int) ($_POST['item_id'] ?? 0),
         ]);
         if (empty($result['success'])) {
             http_response_code(422);
