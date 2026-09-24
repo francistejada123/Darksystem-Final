@@ -252,6 +252,26 @@ function syncSectionEnrollmentCounts($schoolYearId = null) {
          WHERE sec.current_enrollment <> COALESCE(live.cnt, 0)",
         [$schoolYearId]
     );
+
+    // One source of truth for a student's section: the approved enrollment of
+    // the active school year. Keep students.section_id (read by some pages)
+    // in step with it, e.g. after a transfer to another section.
+    $active = getRecord("SELECT sy_id FROM school_years WHERE is_active = 1");
+    if ($active && (int) $active['sy_id'] === $schoolYearId) {
+        executeQuery(
+            "UPDATE students s
+             JOIN (
+                 SELECT student_id, MAX(section_id) AS section_id
+                 FROM enrollments
+                 WHERE school_year_id = ? AND enrollment_status = 'Approved' AND section_id IS NOT NULL
+                 GROUP BY student_id
+                 HAVING COUNT(DISTINCT section_id) = 1
+             ) e ON e.student_id = s.student_id
+             SET s.section_id = e.section_id
+             WHERE NOT (s.section_id <=> e.section_id)",
+            [$schoolYearId]
+        );
+    }
 }
 
 function logActivity($userId, $module, $action, $details = null, $ipAddress = null) {
