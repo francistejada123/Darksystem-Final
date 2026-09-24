@@ -2969,7 +2969,7 @@ include '../../includes/header.php';
                             <div class="gm-foot-note">
                                 <i class="fas fa-circle-check gm-foot-ic"></i>
                                 <div>
-                                    <div class="gm-foot-main">Scores are saved when you click <strong><?php echo $encode_mode === 'single' ? 'Save Scores' : (($is_finalized ? 'Re-finalize ' : 'Finalize ') . htmlspecialchars($term)); ?></strong>.</div>
+                                    <div class="gm-foot-main">Scores are <strong>saved automatically as a draft</strong>. Students see grades only after <?php echo $is_finalized ? 'Re-finalize' : 'Finalize'; ?>.</div>
                                     <?php if ($encode_mode === 'all'): ?><div class="gm-foot-sub"><?php echo $is_finalized ? 'Re-finalize after changing scores to recompute the grades.' : 'Finalize once every item and score is complete.'; ?></div><?php endif; ?>
                                     <div class="ss-status" id="ssStatus"></div>
                                 </div>
@@ -2982,7 +2982,7 @@ include '../../includes/header.php';
                         </a>
                         <?php if ($encode_mode === 'single' && !$term_readonly): ?>
                             <!-- One learner: Finalize is whole-class only, so this view saves its scores directly. -->
-                            <button type="submit" name="save_grades" value="sheet" class="btn ss-save"><i class="fas fa-floppy-disk"></i>Save Scores</button>
+                            <button type="submit" name="save_grades" value="sheet" class="btn ss-save"><i class="fas fa-floppy-disk"></i>Save now</button>
                         <?php endif; ?>
                         <?php if ($encode_mode === 'all' && !$term_readonly): ?>
                             <?php

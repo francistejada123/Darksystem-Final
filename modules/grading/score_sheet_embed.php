@@ -106,7 +106,7 @@ $ss_has_exam = $weights['exam_mode'] !== 'none';
         <i class="fas fa-circle-info"></i>
         <div>Type scores right in the sheet. Use the <strong>arrow keys</strong>, <strong>Enter</strong> (down) or <strong>Tab</strong> to move, and <strong>paste</strong> a block copied from Excel starting at any cell.
             Each score must be from 0 up to that item's HPS. A <strong>blank</strong> cell means <em>No Score</em>; <strong>0</strong> is a recorded score.
-            Scores are saved when you click <strong>Finalize</strong>, which also computes the grades.</div>
+            Scores are <strong>saved automatically as a draft</strong> while you type; students do not see them until you click <strong>Finalize</strong>, which also computes the grades.</div>
     </div>
 <?php endif; ?>
 
@@ -240,16 +240,75 @@ $ss_has_exam = $weights['exam_mode'] !== 'none';
         el.classList.toggle('dirty', v !== o && !(v !== '' && o !== '' && parseFloat(v) === parseFloat(o)));
         return !msg;
     }
+    // ---- Auto-save (draft): changed, valid cells go to autosave_scores.php ----
+    var AS = <?php echo json_encode([
+        'url' => 'autosave_scores.php', 'csrf' => $csrf_token,
+        'section' => (int) $selected_section, 'subject' => (string) $selected_subject, 'term' => (string) $term,
+    ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+    var saveTimer = null, saving = false, again = false, lastSaved = '', saveError = '';
+    function cellKey(el) { var m = /^items\[(\d+)\]\[(\d+)\]$/.exec(el.name || ''); return m ? { item: m[1], student: m[2] } : null; }
+    function scheduleSave(delay) {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(saveNow, delay);
+    }
+    function saveNow() {
+        if (saving) { again = true; return; }
+        var batch = {}, sent = [];
+        cells.forEach(function (el) {
+            if (!el.classList.contains('dirty') || el.classList.contains('bad')) return;
+            var k = cellKey(el);
+            if (!k) return;
+            (batch[k.item] = batch[k.item] || {})[k.student] = el.value.trim();
+            sent.push([el, el.value.trim()]);
+        });
+        if (!sent.length) { refresh(); return; }
+        saving = true; saveError = '';
+        refresh();
+        var fd = new FormData();
+        fd.append('csrf_token', AS.csrf);
+        fd.append('section_id', AS.section);
+        fd.append('subject_code', AS.subject);
+        fd.append('term', AS.term);
+        fd.append('scores', JSON.stringify(batch));
+        fetch(AS.url, { method: 'POST', body: fd, credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                if (!res || !res.success) throw new Error((res && res.error) || 'Could not save.');
+                var failed = {};
+                (res.errors || []).forEach(function (x) { failed[x.item_id + '|' + x.student_id] = x.error; });
+                sent.forEach(function (p) {
+                    var el = p[0], k = cellKey(el), err = failed[k.item + '|' + k.student];
+                    if (err) { el.classList.add('bad'); el.title = err; return; }
+                    if (el.value.trim() === p[1]) el.dataset.orig = p[1];   // unchanged since it was sent
+                    check(el);
+                });
+                lastSaved = res.saved_at || '';
+            })
+            .catch(function (err) { saveError = err.message || 'Could not save.'; })
+            .then(function () {
+                saving = false;
+                refresh();
+                if (again) { again = false; saveNow(); }
+                else if (saveError) scheduleSave(8000);            // retry quietly
+            });
+    }
     function refresh() {
         var bad = 0, dirty = 0;
         cells.forEach(function (el) { if (el.classList.contains('bad')) bad++; if (el.classList.contains('dirty')) dirty++; });
         var st = document.getElementById('ssStatus');
-        if (st) st.innerHTML = bad ? '<b class="bad">' + bad + ' invalid score' + (bad === 1 ? '' : 's') + '</b> — fix the red cells before saving.'
-            : (dirty ? dirty + ' changed cell' + (dirty === 1 ? '' : 's') + ' not saved yet.' : '');
+        if (!st) return;
+        if (bad) st.innerHTML = '<b class="bad">' + bad + ' invalid score' + (bad === 1 ? '' : 's') + '</b> — fix the red cells; they are not saved.';
+        else if (saving) st.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving draft…';
+        else if (saveError) st.innerHTML = '<b class="bad">Not saved yet:</b> ' + esc(saveError) + ' Retrying…';
+        else if (dirty) st.innerHTML = dirty + ' change' + (dirty === 1 ? '' : 's') + ' waiting to save…';
+        else if (lastSaved) st.innerHTML = '<i class="fas fa-cloud me-1"></i>All changes saved as draft · ' + esc(lastSaved);
+        else st.innerHTML = '';
     }
+    function esc(v) { var d = document.createElement('div'); d.textContent = v == null ? '' : String(v); return d.innerHTML; }
     function changed(el) {
         check(el);
         if (typeof calculateGrade === 'function') calculateGrade(el.dataset.student);
+        scheduleSave(1200);
     }
     function move(el, dr, dc) {
         var n = grid[(+el.dataset.r + dr) + ':' + (+el.dataset.c + dc)];
@@ -258,6 +317,7 @@ $ss_has_exam = $weights['exam_mode'] !== 'none';
 
     table.addEventListener('input', function (e) { if (e.target.classList.contains('ss-cell')) { changed(e.target); refresh(); } });
     table.addEventListener('focusin', function (e) { if (e.target.classList.contains('ss-cell')) e.target.select(); });
+    table.addEventListener('focusout', function (e) { if (e.target.classList.contains('ss-cell') && e.target.classList.contains('dirty')) scheduleSave(150); });
     table.addEventListener('keydown', function (e) {
         var el = e.target;
         if (!el.classList.contains('ss-cell')) return;
@@ -306,7 +366,8 @@ $ss_has_exam = $weights['exam_mode'] !== 'none';
         submitting = true;
     }, true);
     window.addEventListener('beforeunload', function (e) {
-        if (submitting || !table.querySelector('.ss-cell.dirty')) return;
+        if (submitting || (!saving && !table.querySelector('.ss-cell.dirty:not(.bad)'))) return;
+        saveNow();
         e.preventDefault(); e.returnValue = '';
     });
     cells.forEach(check);
