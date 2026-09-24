@@ -17,6 +17,7 @@ function mc_ensureTable()
     static $done = false;
     if ($done) return;
     $done = true;
+    if (schemaIsReady('message_comments_v1')) return;
     executeQuery(
         "CREATE TABLE IF NOT EXISTS student_message_comments (
             comment_id INT(11) NOT NULL AUTO_INCREMENT,
@@ -29,6 +30,7 @@ function mc_ensureTable()
             KEY idx_smc_message (message_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
     );
+    schemaMarkReady('message_comments_v1');
 }
 
 /** Comments for many messages at once: message_id => list (oldest first), with author names. */

@@ -55,6 +55,9 @@ function attQrEnsureSchema()
     if ($ready !== null) {
         return $ready;
     }
+    if (schemaIsReady('attendance_qr_v1')) {
+        return $ready = true;
+    }
 
     $hasColumn = function ($table, $column) {
         $r = getRecord(
@@ -97,7 +100,11 @@ function attQrEnsureSchema()
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
     $ready = $hasColumn('attendance', 'time_in') && $hasColumn('attendance', 'marked_via');
-    return $ready;
+    $__schema_ok = ($ready);
+    if ($__schema_ok) {
+        schemaMarkReady('attendance_qr_v1');
+    }
+    return $__schema_ok;
 }
 
 // ============================================================

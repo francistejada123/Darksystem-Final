@@ -61,6 +61,7 @@ function classworkEnsureSchema()
     static $done = false;
     if ($done) return;
     $done = true;
+    if (schemaIsReady('classwork_v1')) return;
     $cols = function ($table) {
         return array_column(getRecords(
             "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?",
@@ -112,6 +113,7 @@ function classworkEnsureSchema()
             KEY idx_csf (assignment_id, student_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
     );
+    schemaMarkReady('classwork_v1');
 }
 
 /** Save one student upload under classwork_submissions (same validation as every classroom upload). */

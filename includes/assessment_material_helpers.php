@@ -34,6 +34,7 @@ function aim_ensureTable()
     static $done = false;
     if ($done) return;
     $done = true;
+    if (schemaIsReady('aim_tables_v1')) return;
     executeQuery(
         "CREATE TABLE IF NOT EXISTS assessment_item_materials (
             material_id INT(11) NOT NULL AUTO_INCREMENT,
@@ -99,6 +100,7 @@ function aim_ensureTable()
             KEY idx_lmts_student (student_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
     );
+    schemaMarkReady('aim_tables_v1');
 }
 
 /**
@@ -819,6 +821,9 @@ function aim_ensureDraftLinkColumn()
     if ($ready !== null) {
         return $ready;
     }
+    if (schemaIsReady('aim_draft_link_v1')) {
+        return $ready = true;
+    }
     $table = getRecord("SELECT COUNT(*) AS n FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'teacher_ai_resources'");
     if (!$table || (int) $table['n'] === 0) {
         return $ready = false;
@@ -828,7 +833,11 @@ function aim_ensureDraftLinkColumn()
         executeQuery("ALTER TABLE teacher_ai_resources ADD COLUMN assessment_item_id INT(11) DEFAULT NULL COMMENT 'assessment_items.item_id this draft was generated for (Send to <item> AI).'");
         $col = getRecord("SELECT COUNT(*) AS n FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'teacher_ai_resources' AND COLUMN_NAME = 'assessment_item_id'");
     }
-    return $ready = ($col && (int) $col['n'] > 0);
+    $__schema_ok = ($ready = ($col && (int) $col['n'] > 0));
+    if ($__schema_ok) {
+        schemaMarkReady('aim_draft_link_v1');
+    }
+    return $__schema_ok;
 }
 
 function aim_linkDraftToItem($resource_id, $item_id)

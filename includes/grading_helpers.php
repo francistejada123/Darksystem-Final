@@ -1515,6 +1515,9 @@ function gh_ensureAssessmentItemsClarity() {
     if ($ready !== null) {
         return $ready;
     }
+    if (schemaIsReady('assessment_items_clarity_v1')) {
+        return $ready = true;
+    }
 
     $hasColumn = getRecord(
         "SELECT COUNT(*) AS n FROM information_schema.COLUMNS
@@ -1528,7 +1531,11 @@ function gh_ensureAssessmentItemsClarity() {
     }
 
     $ready = true;
-    return $ready;
+    $__schema_ok = ($ready);
+    if ($__schema_ok) {
+        schemaMarkReady('assessment_items_clarity_v1');
+    }
+    return $__schema_ok;
 }
 
 /**
@@ -2657,6 +2664,7 @@ function gh_ensureTermFinalizationsTable() {
     static $done = false;
     if ($done) return;
     $done = true;
+    if (schemaIsReady('term_finalizations_v1')) return;
     executeQuery(
         "CREATE TABLE IF NOT EXISTS term_finalizations (
             finalization_id INT(11) NOT NULL AUTO_INCREMENT,
@@ -2691,6 +2699,7 @@ function gh_ensureTermFinalizationsTable() {
             executeQuery("ALTER TABLE term_finalizations $ddl");
         }
     }
+    schemaMarkReady('term_finalizations_v1');
 }
 
 /**
@@ -2769,6 +2778,7 @@ function gh_ensureTermWindowsTable() {
     static $done = false;
     if ($done) return;
     $done = true;
+    if (schemaIsReady('term_windows_v1')) return;
     executeQuery(
         "CREATE TABLE IF NOT EXISTS term_windows (
             window_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -2781,6 +2791,7 @@ function gh_ensureTermWindowsTable() {
             UNIQUE KEY uniq_term_window (school_year_id, term)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
     );
+    schemaMarkReady('term_windows_v1');
 }
 
 /**
@@ -2925,6 +2936,7 @@ function gh_ensureSectionTermStatusTable() {
     static $done = false;
     if ($done) return;
     $done = true;
+    if (schemaIsReady('section_term_status_v1')) return;
     executeQuery(
         "CREATE TABLE IF NOT EXISTS section_term_status (
             status_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -2937,6 +2949,7 @@ function gh_ensureSectionTermStatusTable() {
             UNIQUE KEY uniq_section_term (section_id, school_year_id, term)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
     );
+    schemaMarkReady('section_term_status_v1');
 }
 
 /**
@@ -3196,6 +3209,7 @@ function gh_ensureStudentYearStatusTable() {
     static $done = false;
     if ($done) return;
     $done = true;
+    if (schemaIsReady('student_year_status_v1')) return;
     executeQuery(
         "CREATE TABLE IF NOT EXISTS student_year_status (
             status_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -3215,6 +3229,7 @@ function gh_ensureStudentYearStatusTable() {
             KEY idx_year_status_sy (school_year_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
     );
+    schemaMarkReady('student_year_status_v1');
 }
 
 /**

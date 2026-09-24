@@ -131,6 +131,9 @@ function teacherAiEnsureSchema()
     if ($ok !== null) {
         return $ok;
     }
+    if (schemaIsReady('teacher_ai_resources_v1')) {
+        return $ok = true;
+    }
     $ok = true;
 
     $tables = [
@@ -236,7 +239,11 @@ function teacherAiEnsureSchema()
         );
         teacherAiStudentResourceFormats(true);
     }
-    return $ok;
+    $__schema_ok = ($ok);
+    if ($__schema_ok) {
+        schemaMarkReady('teacher_ai_resources_v1');
+    }
+    return $__schema_ok;
 }
 
 /** Whether teacher_ai_resources.subject_code exists (so subject tagging is skipped, never fatal, if it could not be added). */

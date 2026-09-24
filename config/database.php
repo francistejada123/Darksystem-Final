@@ -228,6 +228,35 @@ function generateCSRFToken() {
  * to be +1/-1 by hand on every approve / reject / move / delete and drifted.
  * One UPDATE for all sections; runs at most once per request.
  */
+/**
+ * Self-migrating schema checks (the *EnsureSchema / *ensureTable helpers) run
+ * their CREATE/ALTER/information_schema checks only until they succeed once;
+ * after that a "schema_ok_<key>" row in system_settings lets every later page
+ * skip them. All flags are read with ONE query per request.
+ * When a helper gains a new column/table, bump its key (e.g. _v1 -> _v2) so it runs again.
+ */
+function schemaIsReady($key) {
+    static $flags = null;
+    if ($flags === null) {
+        $flags = [];
+        foreach (getRecords("SELECT setting_key FROM system_settings WHERE setting_key LIKE 'schema\\_ok\\_%'") as $r) {
+            $flags[$r['setting_key']] = true;
+        }
+        $GLOBALS['__schema_flags'] = &$flags;
+    }
+    return isset($flags['schema_ok_' . $key]);
+}
+function schemaMarkReady($key) {
+    executeQuery(
+        "INSERT INTO system_settings (setting_key, setting_value, setting_group) VALUES (?, '1', 'system')
+         ON DUPLICATE KEY UPDATE setting_value = '1'",
+        ['schema_ok_' . $key]
+    );
+    if (isset($GLOBALS['__schema_flags'])) {
+        $GLOBALS['__schema_flags']['schema_ok_' . $key] = true;
+    }
+}
+
 function syncSectionEnrollmentCounts($schoolYearId = null) {
     static $done = [];
     if ($schoolYearId === null) {

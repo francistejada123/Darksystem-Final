@@ -96,6 +96,9 @@ function aiResourceEnsureSchema()
     if ($ready !== null) {
         return $ready;
     }
+    if (schemaIsReady('ai_resource_submissions_v1')) {
+        return $ready = true;
+    }
     $has = function () {
         $r = getRecord(
             "SELECT COUNT(*) AS n FROM information_schema.COLUMNS
@@ -107,7 +110,11 @@ function aiResourceEnsureSchema()
         executeQuery("ALTER TABLE `ai_resource_submissions` ADD COLUMN `retake_allowed` tinyint(1) NOT NULL DEFAULT 0");
     }
     $ready = $has();
-    return $ready;
+    $__schema_ok = ($ready);
+    if ($__schema_ok) {
+        schemaMarkReady('ai_resource_submissions_v1');
+    }
+    return $__schema_ok;
 }
 
 /**
