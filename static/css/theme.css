@@ -1,0 +1,660 @@
+/* ============================================================
+   EGRADEPRO — DARK MODE / LIGHT MODE THEME SYSTEM
+   Single shared stylesheet, linked from every page that also links
+   static/css/style.css (the Admin/Teacher/Registrar app + Student
+   Portal), plus the standalone Online Enrollment wizard and the
+   pre-auth login pages.
+
+   How it works:
+   - Light mode is the existing default — nothing below changes it.
+   - Dark mode activates when <html data-theme="dark"> is set (by the
+     early inline script in <head>, or by static/js/theme.js on
+     toggle). Toggling only ever sets/removes that one attribute.
+   - static/css/style.css already exposes a stable set of CSS custom
+     properties (--ink, --bg, --surface, --primary, --success, ...);
+     redefining those same names under [data-theme="dark"] re-themes
+     every page/component that already reads them, with zero markup
+     changes. The handful of spots that read var(--ink) etc. as a
+     literal component background (the navy sidebar, the confirm-modal
+     header) are patched back to a fixed dark navy further down so
+     they don't flip to a light color along with headings/body text.
+   - Bootstrap's own components (modal, dropdown, table, form
+     controls, pagination, alerts) don't consume those variables, so
+     they get their own explicit dark rules below.
+   - Only background-color / color / border-color / box-shadow /
+     fill / stroke are ever transitioned — never `transition: all`.
+   ============================================================ */
+
+/* ============================================================
+   1) THEME TOGGLE BUTTON — shared markup/classes across every
+      surface (admin topbar, student portal topbar, enrollment nav,
+      login pages): <button class="theme-toggle-btn" ...><i class="…
+      theme-toggle-icon-sun"></i><i class="… theme-toggle-icon-moon">
+      </i></button>
+   ============================================================ */
+.theme-toggle-btn {
+    position: relative;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    border: 1px solid var(--border, #DCE3EC);
+    background: transparent;
+    color: var(--ink, #14213D);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 15px;
+    padding: 0;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+.theme-toggle-btn:hover { background: var(--bg, #F1F4F8); }
+.theme-toggle-btn:active { transform: scale(0.92); }
+.theme-toggle-btn:focus-visible { outline: 2px solid var(--primary, #5B5FEF); outline-offset: 2px; }
+.theme-toggle-btn:disabled { cursor: default; opacity: 0.6; }
+
+.theme-toggle-icon-sun,
+.theme-toggle-icon-moon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+.theme-toggle-icon-sun { color: #B7791F; }
+.theme-toggle-icon-moon { color: #8B93FF; display: none; }
+[data-theme="dark"] .theme-toggle-icon-sun { display: none; }
+[data-theme="dark"] .theme-toggle-icon-moon { display: inline-block; }
+
+/* Brief rotate/scale/fade flourish on the icon that becomes visible
+   right after a toggle click — never a continuous/looping animation,
+   just a one-shot "pop" (see static/js/theme.js: adds this class for
+   ~500ms, then removes it). */
+.theme-toggle-btn.theme-toggle-flip .theme-toggle-icon-sun,
+.theme-toggle-btn.theme-toggle-flip .theme-toggle-icon-moon {
+    animation: themeIconPop 420ms ease;
+}
+@keyframes themeIconPop {
+    0%   { transform: translate(-50%, -50%) rotate(-90deg) scale(0.3); opacity: 0; }
+    60%  { transform: translate(-50%, -50%) rotate(12deg) scale(1.15); opacity: 1; }
+    100% { transform: translate(-50%, -50%) rotate(0deg) scale(1); opacity: 1; }
+}
+
+/* Variant used on the dark hero/nav strips (Online Enrollment top nav,
+   login pages) where a transparent circle with the default light
+   border/ink color would be invisible against the colored/photo
+   background. */
+.theme-toggle-btn.theme-toggle-btn-onbrand {
+    border-color: rgba(255,255,255,0.45);
+    color: #ffffff;
+}
+.theme-toggle-btn.theme-toggle-btn-onbrand:hover { background: rgba(255,255,255,0.16); }
+.theme-toggle-btn.theme-toggle-btn-onbrand .theme-toggle-icon-sun { color: #FFD873; }
+.theme-toggle-btn.theme-toggle-btn-onbrand .theme-toggle-icon-moon { color: #C7CCFF; }
+
+@media (prefers-reduced-motion: reduce) {
+    .theme-toggle-btn.theme-toggle-flip .theme-toggle-icon-sun,
+    .theme-toggle-btn.theme-toggle-flip .theme-toggle-icon-moon {
+        animation: none !important;
+    }
+}
+
+/* ============================================================
+   2) TRANSITION REVEAL OVERLAY (fallback for browsers without the
+      View Transitions API) — a color wash that expands from the
+      toggle button. pointer-events: none the whole time so it never
+      blocks a click; always removed by JS once its animation ends;
+      absolutely positioned to the viewport so page scroll position
+      never affects it.
+   ============================================================ */
+.theme-transition-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    pointer-events: none;
+    clip-path: circle(0px at var(--theme-reveal-x, 50%) var(--theme-reveal-y, 50%));
+    opacity: 1;
+}
+.theme-transition-overlay.theme-transition-growing {
+    animation: themeRevealGrow 480ms cubic-bezier(.22,.61,.36,1) forwards;
+}
+@keyframes themeRevealGrow {
+    0%   { clip-path: circle(0px at var(--theme-reveal-x, 50%) var(--theme-reveal-y, 50%)); opacity: 1; }
+    80%  { clip-path: circle(var(--theme-reveal-r, 150%) at var(--theme-reveal-x, 50%) var(--theme-reveal-y, 50%)); opacity: 1; }
+    100% { clip-path: circle(var(--theme-reveal-r, 150%) at var(--theme-reveal-x, 50%) var(--theme-reveal-y, 50%)); opacity: 0; }
+}
+
+/* View Transitions API path (Chromium/Edge): let our own clip-path
+   animation (driven from theme.js) show through instead of the
+   browser's default cross-fade, which would otherwise fight it. */
+::view-transition-old(root),
+::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .theme-transition-overlay,
+    .theme-transition-overlay.theme-transition-growing {
+        animation: none !important;
+        display: none !important;
+    }
+}
+
+/* ============================================================
+   3) SCOPED COLOR TRANSITIONS
+      Applied narrowly (never `transition: all`) so the theme swap
+      itself feels smooth without turning every hover/layout change
+      in the app into a slow-motion fade.
+   ============================================================ */
+body,
+.sidebar, .sidebar .nav-link, .sidebar .logo,
+.app-topbar, .app-topbar-bell, .app-topbar-avatar, .app-topbar-dropdown, .app-topbar-dropdown a,
+.card, .app-card, .card-header, .table-container, .app-table-container,
+.stats-card, .app-stat-card, .stats-icon,
+.form-control, .form-select, .form-check-input,
+.table, .table thead th, .table tbody td,
+.modal-content, .dropdown-menu, .dropdown-item,
+.btn, .badge, .status-pill, .app-status-badge, .chip,
+.alert, .flash-alert, .app-toast,
+.topbar, .topbar-avatar-placeholder, .card-portal, .card-portal-header, .stat-card,
+.page-link, .empty-state .empty-state-icon,
+.profile-avatar, .profile-role-badge {
+    transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* ============================================================
+   4) DARK MODE — CSS VARIABLE REDEFINITIONS
+      Comfortable dark navy/slate (never pure black), keeping the
+      EGRADEPRO blue brand identity. Same variable names as the
+      light :root in static/css/style.css and the Student Portal's
+      per-page --portal-* block, so the whole design system re-themes
+      through variable inheritance alone.
+   ============================================================ */
+html[data-theme="dark"] {
+    color-scheme: dark;
+
+    /* Admin / Teacher / Registrar app (static/css/style.css) */
+    --ink: #E9EEF7;            /* now used for headings/strong text, NOT backgrounds — see section 5 */
+    --ink-soft: #C7D2E6;
+    --success: #34C48D;   --success-tint: rgba(52,196,141,0.16);
+    --danger:  #E2726F;   --danger-tint:  rgba(226,114,111,0.16);
+    --warning: #E0A83D;   --warning-tint: rgba(224,168,61,0.16);
+    --info:    #6FA8DC;   --info-tint:    rgba(111,168,220,0.16);
+
+    --bg: #0B1220;
+    --surface: #121B2E;
+    --surface-muted: #16223A;
+    --surface-hover: #1B2A44;
+    --text: #DCE3EF;
+    --text-muted: #93A0B8;
+    --text-muted-2: #6E7B96;
+    --border: #263352;
+    --border-soft: #1E2A44;
+
+    --primary: #838AFF;
+    --primary-soft: #212244;
+
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.35);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.45);
+
+    /* Bootstrap's own root variables — redefined so bare utility
+       classes (.border, .border-top, etc.) that reference them
+       directly pick up the dark palette too, without having to
+       enumerate every page that uses the utility instead of a
+       design-system class. */
+    --bs-border-color: #263352;
+    --bs-border-color-translucent: rgba(255,255,255,0.12);
+    /* .text-muted, .text-secondary, .text-body-secondary all read these —
+       Bootstrap only redefines them under its own [data-bs-theme="dark"]
+       attribute (which this app doesn't set), so without this override
+       every .text-muted label in the app stays near-black-on-dark. */
+    --bs-secondary-color: var(--text-muted);
+    --bs-tertiary-color: var(--text-muted-2);
+    /* Bootstrap's own .card sets `color: var(--bs-body-color)` directly
+       (our style.css .card rule only overrides the background, not the
+       text color), and every other Bootstrap component that doesn't set
+       its own text color ultimately falls back to this too. Left at
+       Bootstrap's light-mode default (#212529, near-black) it stays
+       almost invisible against our dark card/surface backgrounds — this
+       is what was hiding plain "<div class='fw-bold'>123</div>"-style
+       numbers inside stat cards that don't use a page's own custom
+       stat-value class. */
+    --bs-body-color: var(--ink);
+    --bs-body-color-rgb: 233, 238, 247;
+    --bs-body-bg: var(--bg);
+    --bs-emphasis-color: var(--ink);
+    --bs-emphasis-color-rgb: 233, 238, 247;
+
+    /* Student Portal (inline :root duplicated per-page) */
+    --portal-bg: #0B1220;
+    --portal-primary: #E9EEF7;
+    --portal-card: #121B2E;
+    --portal-border: #263352;
+    --portal-green: #34C48D;
+    --portal-red: #E2726F;
+    --portal-yellow: #E0A83D;
+    --portal-gray: #93A0B8;
+}
+
+/* ============================================================
+   5) FIXUPS — the small set of spots that use var(--ink) /
+      var(--portal-primary) as a literal BACKGROUND (sidebar, confirm
+      modal header, the dark "chip-open" pill, the profile edit
+      button). Since --ink/--portal-primary are redefined above to a
+      light color for text purposes, these are pinned back to a fixed
+      dark navy so they don't flip to a pale sidebar. All were already
+      dark-on-purpose in light mode, so nothing about them looks new —
+      they just stay put.
+   ============================================================ */
+html[data-theme="dark"] .sidebar,
+html[data-theme="dark"] #appConfirmModal .modal-header,
+html[data-theme="dark"] #appConfirmModal .btn-app-ok,
+html[data-theme="dark"] .section-toggle-btn.chip-open,
+html[data-theme="dark"] .profile-btn-edit {
+    background: #0A1220 !important;
+    border-color: #0A1220 !important;
+}
+html[data-theme="dark"] #appConfirmModal.confirm-danger .btn-app-ok { background: var(--danger) !important; border-color: var(--danger) !important; }
+
+/* ============================================================
+   6) HARD-CODED-COLOR SPOTS in style.css that don't read a variable
+      at all, patched individually.
+   ============================================================ */
+html[data-theme="dark"] .app-topbar { background: #0E1728; }
+html[data-theme="dark"] .app-topbar-avatar { background: #1B2A44; }
+html[data-theme="dark"] .btn-primary:hover, html[data-theme="dark"] .btn-primary:focus,
+html[data-theme="dark"] .app-primary-btn:hover { background: #9CA1FF; border-color: #9CA1FF; color: #0B1220; }
+
+/* Bootstrap's .btn-outline-dark/-secondary set their own local
+   --bs-btn-* custom properties to fixed light-mode colors (near-black
+   border+text for "dark"), which nearly disappear against a dark
+   surface — e.g. the "Bulk Import" / "Clear" buttons. Redefine those
+   custom properties per dark-mode variant instead of fighting them. */
+html[data-theme="dark"] .btn-outline-dark {
+    --bs-btn-color: var(--ink);
+    --bs-btn-border-color: var(--border);
+    --bs-btn-hover-color: var(--bg);
+    --bs-btn-hover-bg: var(--ink);
+    --bs-btn-hover-border-color: var(--ink);
+    --bs-btn-active-color: var(--bg);
+    --bs-btn-active-bg: var(--ink);
+    --bs-btn-active-border-color: var(--ink);
+    --bs-btn-disabled-color: var(--text-muted-2);
+    --bs-btn-disabled-border-color: var(--border);
+}
+html[data-theme="dark"] .btn-outline-secondary {
+    --bs-btn-color: var(--text-muted);
+    --bs-btn-border-color: var(--border);
+    --bs-btn-hover-color: var(--bg);
+    --bs-btn-hover-bg: var(--text-muted);
+    --bs-btn-hover-border-color: var(--text-muted);
+    --bs-btn-active-color: var(--bg);
+    --bs-btn-active-bg: var(--text-muted);
+    --bs-btn-active-border-color: var(--text-muted);
+    --bs-btn-disabled-color: var(--text-muted-2);
+    --bs-btn-disabled-border-color: var(--border);
+}
+html[data-theme="dark"] .stats-icon.icon-navy { background: rgba(233,238,247,0.10); }
+html[data-theme="dark"] .stats-icon.icon-muted { background: #1B2A44; }
+html[data-theme="dark"] .chip { background: #1B2A44; color: #C4CEE0; border-color: #263352; }
+html[data-theme="dark"] .chip-more:hover { background: var(--bg); }
+html[data-theme="dark"] .status-pill.status-muted, html[data-theme="dark"] .app-status-badge.status-muted { background: #1B2A44; }
+html[data-theme="dark"] .empty-state .empty-state-icon, html[data-theme="dark"] .app-empty-state .empty-state-icon { background: #1B2A44; }
+html[data-theme="dark"] .profile-avatar { background: #16223A; }
+html[data-theme="dark"] .profile-role-badge, html[data-theme="dark"] .rec-icon { background: rgba(233,238,247,0.10); }
+html[data-theme="dark"] .profile-back-btn:hover, html[data-theme="dark"] .profile-btn-cancel:hover,
+html[data-theme="dark"] .btn-portal-logout:hover { background: #1B2A44; }
+html[data-theme="dark"] .profile-form-input { background: #0E1728; color: var(--text); border-color: var(--border); }
+html[data-theme="dark"] .app-toast { background: #16223A; color: var(--text); box-shadow: var(--shadow-md); }
+html[data-theme="dark"] .topbar-avatar-placeholder { background: #16223A; }
+
+/* Grade Level accent tints (Grade 7–12 cards) — the light pastel
+   --accent-soft fills would look like bright cutouts on a dark
+   surface, so each becomes a low-alpha tint of the same accent hue
+   instead. The --accent hue itself (icons, borders) is left as-is —
+   it already reads fine on a dark card. */
+html[data-theme="dark"] .grade-7  { --accent-soft: rgba(46,125,103,0.22); }
+html[data-theme="dark"] .grade-8  { --accent-soft: rgba(53,110,168,0.22); }
+html[data-theme="dark"] .grade-9  { --accent-soft: rgba(160,106,27,0.22); }
+html[data-theme="dark"] .grade-10 { --accent-soft: rgba(91,94,166,0.22); }
+html[data-theme="dark"] .grade-11 { --accent-soft: rgba(153,76,82,0.22); }
+html[data-theme="dark"] .grade-12 { --accent-soft: rgba(40,122,120,0.22); }
+
+/* Online Applications inbox — hard-coded status pill pairs */
+html[data-theme="dark"] .enroll-page .status-pending, html[data-theme="dark"] .app-inbox .status-pending { background: rgba(224,168,61,0.18); color: #F0C673; }
+html[data-theme="dark"] .enroll-page .status-review, html[data-theme="dark"] .app-inbox .status-review,
+html[data-theme="dark"] .enroll-page .status-transferred, html[data-theme="dark"] .app-inbox .status-transferred { background: rgba(111,168,220,0.18); color: #A9CFEE; }
+html[data-theme="dark"] .enroll-page .status-approved, html[data-theme="dark"] .app-inbox .status-approved { background: rgba(52,196,141,0.18); color: #8FE3C3; }
+html[data-theme="dark"] .enroll-page .status-rejected, html[data-theme="dark"] .app-inbox .status-rejected { background: rgba(226,114,111,0.18); color: #F3B3B1; }
+
+/* Flash toasts + inline flash banners — hard-coded readable-on-light text colors */
+html[data-theme="dark"] .flash-alert.alert-success { color: #B9F0DC; border-color: rgba(52,196,141,0.35); }
+html[data-theme="dark"] .flash-alert.alert-danger { color: #F8D1CF; border-color: rgba(226,114,111,0.35); }
+html[data-theme="dark"] .profile-edit-notice { background: rgba(224,168,61,0.12); color: #F0C673; }
+html[data-theme="dark"] .profile-alert.success { background: rgba(52,196,141,0.10); }
+html[data-theme="dark"] .profile-alert.danger { background: rgba(226,114,111,0.10); }
+
+/* ============================================================
+   7) BOOTSTRAP COMPONENTS — these render with Bootstrap's own light
+      defaults regardless of our custom properties, so they need
+      explicit dark rules. Covers every CRUD/add/edit modal in the
+      system, not just the shared confirm dialog.
+   ============================================================ */
+html[data-theme="dark"] .modal-content { background: var(--surface); color: var(--text); border-color: var(--border); }
+html[data-theme="dark"] .modal-header, html[data-theme="dark"] .modal-footer { border-color: var(--border); }
+html[data-theme="dark"] .modal-title { color: var(--text); }
+html[data-theme="dark"] .btn-close { filter: invert(1) grayscale(1) brightness(1.8); }
+/* appConfirmModal's header keeps a white close icon deliberately (dark
+   navy header background in both themes) — don't apply the generic
+   invert there. */
+html[data-theme="dark"] #appConfirmModal .btn-close { filter: none; }
+
+html[data-theme="dark"] .dropdown-menu { background: var(--surface); border-color: var(--border); box-shadow: var(--shadow-md); }
+html[data-theme="dark"] .dropdown-item { color: var(--text); }
+html[data-theme="dark"] .dropdown-item:hover, html[data-theme="dark"] .dropdown-item:focus { background: var(--surface-hover); color: var(--text); }
+html[data-theme="dark"] .dropdown-divider { border-color: var(--border); }
+
+html[data-theme="dark"] .table { color: var(--text); }
+html[data-theme="dark"] .table > :not(caption) > * > * { background-color: transparent; color: var(--text); border-color: var(--border-soft); }
+html[data-theme="dark"] .table-hover > tbody > tr:hover > * { background-color: var(--surface-hover); }
+html[data-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) > * { background-color: var(--surface-muted); }
+
+html[data-theme="dark"] .form-control, html[data-theme="dark"] .form-select {
+    background-color: var(--surface);
+    color: var(--text);
+    border-color: var(--border);
+}
+html[data-theme="dark"] .form-control::placeholder { color: var(--text-muted-2); opacity: 1; }
+html[data-theme="dark"] .form-control:disabled, html[data-theme="dark"] .form-select:disabled,
+html[data-theme="dark"] .form-control[readonly] {
+    background-color: var(--surface-muted);
+    color: var(--text-muted);
+}
+html[data-theme="dark"] .form-control:focus, html[data-theme="dark"] .form-select:focus {
+    background-color: var(--surface);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(131,138,255,0.22);
+}
+/* Bootstrap paints its own select chevron as a fixed dark-gray SVG —
+   invisible on a dark field, so it gets a light-colored one here. */
+html[data-theme="dark"] .form-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%2393A0B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+}
+html[data-theme="dark"] .input-group-text { background: var(--surface-muted); border-color: var(--border); color: var(--text); }
+html[data-theme="dark"] .form-check-input { background-color: var(--surface-muted); border-color: var(--border); }
+html[data-theme="dark"] .form-check-input:checked { background-color: var(--primary); border-color: var(--primary); }
+html[data-theme="dark"] .form-check-label { color: var(--text); }
+html[data-theme="dark"] .form-text, html[data-theme="dark"] .form-help { color: var(--text-muted); }
+
+html[data-theme="dark"] .page-link { background-color: var(--surface); border-color: var(--border); color: var(--text); }
+html[data-theme="dark"] .page-link:hover { background-color: var(--surface-hover); color: var(--text); }
+html[data-theme="dark"] .page-item.active .page-link { background-color: var(--primary); border-color: var(--primary); color: #0B1220; }
+html[data-theme="dark"] .page-item.disabled .page-link { background-color: var(--surface-muted); color: var(--text-muted-2); }
+
+html[data-theme="dark"] .alert-success { background-color: var(--success-tint); color: #BFF3DE; border-color: rgba(52,196,141,0.35); }
+html[data-theme="dark"] .alert-danger  { background-color: var(--danger-tint);  color: #F8D2D0; border-color: rgba(226,114,111,0.35); }
+html[data-theme="dark"] .alert-warning { background-color: var(--warning-tint); color: #F5DDA8; border-color: rgba(224,168,61,0.35); }
+html[data-theme="dark"] .alert-info    { background-color: var(--info-tint);   color: #C7E0F5; border-color: rgba(111,168,220,0.35); }
+html[data-theme="dark"] .alert-light   { background-color: var(--surface-hover); color: var(--text); border-color: var(--border); }
+
+html[data-theme="dark"] .list-group-item { background-color: var(--surface); color: var(--text); border-color: var(--border); }
+
+html[data-theme="dark"] .nav-tabs { border-color: var(--border); }
+html[data-theme="dark"] .nav-tabs .nav-link { color: var(--text-muted); }
+html[data-theme="dark"] .nav-tabs .nav-link:hover { border-color: var(--border-soft); }
+html[data-theme="dark"] .nav-tabs .nav-link.active { background-color: var(--surface); color: var(--text); border-color: var(--border) var(--border) var(--surface); }
+
+/* Bootstrap tooltips are already dark-on-light-text by default in
+   both themes, so no change needed there. */
+
+/* Bootstrap's .bg-white utility ships with !important, which beats
+   the design system's .card-header { background: var(--surface); }
+   rule — several pages pair the two (e.g. modules/ai/index.php's
+   summary-card headers), so without this override those headers
+   stay stuck white in dark mode. */
+html[data-theme="dark"] .bg-white { background-color: var(--surface) !important; }
+
+/* Bootstrap's .text-dark forces near-black text via !important — safe
+   to leave alone where it sits on an intentionally-solid light chip
+   (e.g. .badge.bg-warning.text-dark), but the "unselected section
+   name" idiom (students/teachers section pickers) puts it directly on
+   the page's own now-dark background, so that specific combo needs
+   scoping rather than a blanket .text-dark override. */
+html[data-theme="dark"] .section-name.text-dark { color: var(--text) !important; }
+html[data-theme="dark"] .badge.bg-light.text-dark { background-color: var(--surface-hover) !important; color: var(--text) !important; border-color: var(--border) !important; }
+
+/* Bootstrap contextual .table-* row variants set their own local
+   --bs-table-* custom properties (equal specificity to a bare
+   .table-success etc.), so a compound dark-mode selector overrides
+   them cleanly without !important. Used e.g. for At-Risk/Top-
+   Performer rows in the AI Analytics dashboard and several other
+   admin tables. */
+html[data-theme="dark"] .table-primary   { --bs-table-bg: var(--primary-soft); --bs-table-color: var(--text); --bs-table-border-color: var(--border); --bs-table-striped-bg: rgba(131,138,255,0.22); --bs-table-hover-bg: rgba(131,138,255,0.22); }
+html[data-theme="dark"] .table-secondary { --bs-table-bg: rgba(255,255,255,0.06); --bs-table-color: var(--text); --bs-table-border-color: var(--border); --bs-table-striped-bg: rgba(255,255,255,0.09); --bs-table-hover-bg: rgba(255,255,255,0.09); }
+html[data-theme="dark"] .table-success   { --bs-table-bg: var(--success-tint); --bs-table-color: var(--text); --bs-table-border-color: rgba(52,196,141,0.35); --bs-table-striped-bg: rgba(52,196,141,0.22); --bs-table-hover-bg: rgba(52,196,141,0.22); }
+html[data-theme="dark"] .table-danger    { --bs-table-bg: var(--danger-tint); --bs-table-color: var(--text); --bs-table-border-color: rgba(226,114,111,0.35); --bs-table-striped-bg: rgba(226,114,111,0.22); --bs-table-hover-bg: rgba(226,114,111,0.22); }
+html[data-theme="dark"] .table-warning   { --bs-table-bg: var(--warning-tint); --bs-table-color: var(--text); --bs-table-border-color: rgba(224,168,61,0.35); --bs-table-striped-bg: rgba(224,168,61,0.22); --bs-table-hover-bg: rgba(224,168,61,0.22); }
+html[data-theme="dark"] .table-info      { --bs-table-bg: var(--info-tint); --bs-table-color: var(--text); --bs-table-border-color: rgba(111,168,220,0.35); --bs-table-striped-bg: rgba(111,168,220,0.22); --bs-table-hover-bg: rgba(111,168,220,0.22); }
+html[data-theme="dark"] .table-light     { --bs-table-bg: var(--surface-hover); --bs-table-color: var(--text); --bs-table-border-color: var(--border); --bs-table-striped-bg: var(--border-soft); --bs-table-hover-bg: var(--border-soft); }
+
+/* modules/ai/index.php's "Ask AI" chat widget — its own local
+   light-card palette (subject bar, message pane, chat bubbles,
+   suggestion chips) sits inside an otherwise-themed Bootstrap
+   modal, so it needs the same treatment as the other page-local
+   mini design systems. */
+html[data-theme="dark"] .ai-subject-bar { background: var(--surface-muted); border-bottom-color: var(--border); }
+html[data-theme="dark"] .ai-subject-label { color: var(--text-muted); }
+html[data-theme="dark"] .ai-subject-chip { background: var(--surface); border-color: var(--border); color: var(--text); }
+html[data-theme="dark"] .ai-subject-chip:hover { border-color: var(--primary); color: var(--primary); }
+html[data-theme="dark"] #aiChatMessages { background: var(--surface-muted); }
+html[data-theme="dark"] .ai-chat-bubble.bot { background: var(--surface); color: var(--text); border-color: var(--border); }
+html[data-theme="dark"] .ai-chat-starters { border-top-color: var(--border); }
+html[data-theme="dark"] .ai-suggestion-chip { background: var(--primary-soft); color: #B9BEFF; border-color: rgba(131,138,255,0.35); }
+html[data-theme="dark"] .ai-suggestion-chip:hover { background: rgba(131,138,255,0.28); }
+html[data-theme="dark"] .ai-typing-dots span { background: var(--text-muted-2); }
+html[data-theme="dark"] .ai-send-to-student-btn:disabled { color: var(--text-muted-2); }
+
+/* ============================================================
+   8) NATIVE FORM CONTROLS — color-scheme: dark (set on <html> above)
+      already flips checkbox/radio/date-picker/scrollbar UA styling.
+      Optional scrollbar polish to match the surface palette:
+   ============================================================ */
+html[data-theme="dark"] ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.16); }
+html[data-theme="dark"] ::-webkit-scrollbar-track { background: transparent; }
+html[data-theme="dark"] { scrollbar-color: rgba(255,255,255,0.22) transparent; }
+
+/* ============================================================
+   9) PAGE-LOCAL STATUS TINTS
+      Many modules (Dashboard, Reports, Grading, Teachers, Students,
+      Notifications, Tutorial, Analytics, Enrollment review screens,
+      Attendance...) each define their own small badge/icon-chip CSS
+      in a page-local <style> block, or set the chip color with an
+      inline style="" — rather than the shared status-pill classes in
+      style.css. They all repeat the exact same small palette of
+      light tint colors though, so every one of them is covered here
+      by matching either the literal inline-style value or the known
+      page-local class name. Same rule as everywhere else: only
+      background/color, `!important` only where needed to beat an
+      inline style or an unscoped page rule.
+   ============================================================ */
+
+/* Inline style="background:#XXXXXX" chips — covers Reports (Live
+   Reports pill, CSV tag), Grading (risk/failed-subject chips),
+   Analytics (stat-icon circles, AI-Generated tag), Tutorial info
+   boxes, Teachers success/error flash rows, and more — one rule per
+   tint hue reaches every page that uses it, present or future. */
+html[data-theme="dark"] [style*="EAF7F1" i] { background: rgba(52,196,141,0.18) !important; color: #8FE3C3 !important; }
+html[data-theme="dark"] [style*="FDEEEE" i] { background: rgba(226,114,111,0.18) !important; color: #F3B3B1 !important; }
+html[data-theme="dark"] [style*="FFF7E6" i] { background: rgba(224,168,61,0.18) !important; color: #F0C673 !important; }
+html[data-theme="dark"] [style*="EDF4FB" i] { background: rgba(111,168,220,0.18) !important; color: #BFD9F5 !important; }
+html[data-theme="dark"] [style*="F2F4F7" i],
+html[data-theme="dark"] [style*="F0F1F4" i] { background: rgba(255,255,255,0.08) !important; color: #C7D2E3 !important; }
+html[data-theme="dark"] [style*="fef2f2" i] { background: rgba(226,114,111,0.18) !important; color: #F3B3B1 !important; }
+/* Second wave of the same idiom found in a later sweep (Students'
+   quick-action tiles/overview stat-icons, the Student avatar
+   placeholder, Tutorial's "View Only" pill) — distinct hex values,
+   same five hue buckets. */
+html[data-theme="dark"] [style*="E9F7EF" i] { background: rgba(52,196,141,0.18) !important; color: #8FE3C3 !important; }
+html[data-theme="dark"] [style*="FDECEF" i] { background: rgba(226,114,111,0.18) !important; color: #F3B3B1 !important; }
+html[data-theme="dark"] [style*="FFF6E5" i] { background: rgba(224,168,61,0.18) !important; color: #F0C673 !important; }
+html[data-theme="dark"] [style*="EAF1FE" i],
+html[data-theme="dark"] [style*="F1EBFE" i],
+html[data-theme="dark"] [style*="e3f2fd" i],
+html[data-theme="dark"] [style*="eef4fb" i] { background: rgba(111,168,220,0.18) !important; color: #BFD9F5 !important; }
+/* A few of the above wrap an icon rather than text (Analytics'
+   circular stat-icons, Notifications' icon-success/.../icon-info) —
+   readable icon color still needs the same override, just via `i`/
+   `svg` inside rather than the chip's own text. */
+html[data-theme="dark"] [style*="EAF7F1" i] i,
+html[data-theme="dark"] [style*="EAF7F1" i] svg { color: #8FE3C3 !important; }
+html[data-theme="dark"] [style*="FDEEEE" i] i,
+html[data-theme="dark"] [style*="FDEEEE" i] svg { color: #F3B3B1 !important; }
+html[data-theme="dark"] [style*="FFF7E6" i] i,
+html[data-theme="dark"] [style*="FFF7E6" i] svg { color: #F0C673 !important; }
+html[data-theme="dark"] [style*="EDF4FB" i] i,
+html[data-theme="dark"] [style*="EDF4FB" i] svg { color: #BFD9F5 !important; }
+/* Activity-log row icons carry an inline color from a fixed accent
+   palette (e.g. modules/logs/index.php's default "info" icon); the
+   near-black navy default is unreadable on a dark row, so repin it. */
+html[data-theme="dark"] i[style*="14213D" i],
+html[data-theme="dark"] svg[style*="14213D" i] { color: var(--ink) !important; }
+
+/* Page-local classes using the same palette by name instead of
+   inline style — same treatment, keyed by their actual selectors. */
+html[data-theme="dark"] .dash-badge-success,
+html[data-theme="dark"] .tprofile .status-active,
+html[data-theme="dark"] .tprofile .qs-qualified,
+html[data-theme="dark"] .enroll-view .status-approved,
+html[data-theme="dark"] .app-review .status-approved,
+html[data-theme="dark"] .notif-item .icon-success, html[data-theme="dark"] .icon-success,
+html[data-theme="dark"] .grading-page .breadcrumb-nav .step-breadcrumb.done,
+html[data-theme="dark"] .grading-page .badge-status.enrolled,
+html[data-theme="dark"] .grading-page .badge-status.passed,
+html[data-theme="dark"] .tm-page .adviser-bar .current-name.has,
+html[data-theme="dark"] .del-action-restore,
+html[data-theme="dark"] .teacher-badge,
+html[data-theme="dark"] .row-valid,
+html[data-theme="dark"] .students-page .sp-qa-green {
+    background: rgba(52,196,141,0.18) !important;
+    color: #8FE3C3 !important;
+}
+html[data-theme="dark"] .dash-badge-danger,
+html[data-theme="dark"] .tprofile .status-inactive,
+html[data-theme="dark"] .tprofile .qs-not-qualified,
+html[data-theme="dark"] .enroll-view .status-rejected,
+html[data-theme="dark"] .app-review .status-rejected,
+html[data-theme="dark"] .notif-item .icon-error, html[data-theme="dark"] .icon-error,
+html[data-theme="dark"] .grading-page .badge-status.failed,
+html[data-theme="dark"] #permanentDeleteModal .del-icon-circle,
+html[data-theme="dark"] .del-action-forever,
+html[data-theme="dark"] .support-center .draft-error,
+html[data-theme="dark"] .students-page .sp-qa-red,
+html[data-theme="dark"] .row-invalid,
+html[data-theme="dark"] .tform-page .error-alert,
+html[data-theme="dark"] .tm-page .btn-action-icon.danger:hover,
+html[data-theme="dark"] .subj-page .sp-action-icon.danger:hover,
+html[data-theme="dark"] .enroll-view .btn-reject:hover,
+html[data-theme="dark"] .app-review .btn-reject:hover {
+    background: rgba(226,114,111,0.18) !important;
+    color: #F3B3B1 !important;
+}
+html[data-theme="dark"] .dash-badge-warning,
+html[data-theme="dark"] .notif-item .icon-warning, html[data-theme="dark"] .icon-warning,
+html[data-theme="dark"] .teacher-badge.no-teacher,
+html[data-theme="dark"] #deleteModal .del-icon-circle,
+html[data-theme="dark"] #chooseDeleteModal .del-icon-circle {
+    background: rgba(224,168,61,0.18) !important;
+    color: #F0C673 !important;
+}
+html[data-theme="dark"] .dash-badge-pending,
+html[data-theme="dark"] .enroll-view .status-pending,
+html[data-theme="dark"] .app-review .status-pending,
+html[data-theme="dark"] .notif-item.unread,
+html[data-theme="dark"] .notif-item .icon-info, html[data-theme="dark"] .icon-info,
+html[data-theme="dark"] .view-only-badge,
+html[data-theme="dark"] .app-review .status-review,
+html[data-theme="dark"] .enroll-view .status-transferred,
+html[data-theme="dark"] .students-page .sp-qa-blue,
+html[data-theme="dark"] .students-page .sp-qa-purple,
+html[data-theme="dark"] .subj-page .sp-action-icon.view:hover {
+    background: rgba(111,168,220,0.18) !important;
+    color: #BFD9F5 !important;
+}
+html[data-theme="dark"] .dash-badge-gray,
+html[data-theme="dark"] .tprofile .grade-level-tag,
+html[data-theme="dark"] .profile-strand, html[data-theme="dark"] .badge-strand,
+html[data-theme="dark"] .att-progress .dot.pending,
+html[data-theme="dark"] .tm-page .active-tag.inactive,
+html[data-theme="dark"] .subj-page .sp-page-btn:hover,
+html[data-theme="dark"] .subj-page .sp-action-icon:hover,
+html[data-theme="dark"] .tm-page .tm-page-btn:hover,
+html[data-theme="dark"] .tm-page .spec-tag,
+html[data-theme="dark"] .risk-chip {
+    background: rgba(255,255,255,0.08) !important;
+    color: #C7D2E3 !important;
+}
+
+/* Never invert real content: photos, logos, avatars, document
+   previews. Explicitly exempted from any filter this stylesheet
+   applies (belt-and-braces — nothing above targets these anyway). */
+html[data-theme="dark"] img,
+html[data-theme="dark"] .sidebar-logo-img,
+html[data-theme="dark"] .app-topbar-avatar img,
+html[data-theme="dark"] .profile-avatar img,
+html[data-theme="dark"] .preview-modal-img,
+html[data-theme="dark"] .doc-file-icon img {
+    filter: none !important;
+}
+
+/* ============================================================
+   SIDEBAR BACKGROUND — school building photo (all portals)
+   Replaces the flat navy sidebar fill with the school photo
+   (static/images/school bldg bg.png — the same file the dashboard /
+   classroom banners already use) under a navy wash so the white nav
+   labels stay readable. Covers the Admin / Registrar / Teacher sidebar
+   (style.css `.sidebar`) and the Student Portal sidebar (whose own
+   rule lives in student-portal-classroom-ui.css), hence the `body`
+   prefix + !important to out-rank the page-local `.sidebar` fills.
+   ============================================================ */
+body .sidebar,
+body:has(#mainSidebar .logo small) .sidebar {
+    background-color: #0F2748 !important;
+    background-image:
+        linear-gradient(180deg, rgba(8, 24, 52, 0.78) 0%, rgba(8, 24, 52, 0.62) 42%, rgba(8, 24, 52, 0.82) 100%),
+        url('../images/school%20bldg%20bg.png') !important;
+    background-size: cover !important;
+    background-position: 30% center !important;
+    background-repeat: no-repeat !important;
+}
+/* Text sits directly on the photo now — make every label solid white, a touch
+   bolder, with a dark halo so it stays crisp over the bright parts of the picture. */
+body .sidebar .logo span,
+body .sidebar .logo small,
+body .sidebar .nav-section-label,
+body .sidebar .nav-link,
+body:has(#mainSidebar .logo small) .sidebar .nav-link {
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85), 0 0 8px rgba(0, 0, 0, 0.55);
+}
+body .sidebar .logo span { color: #fff; }
+body .sidebar .logo small { color: rgba(255, 255, 255, 0.92); font-weight: 600; }
+body .sidebar .nav-section-label { color: rgba(255, 255, 255, 0.95); font-weight: 700; }
+body .sidebar .nav-link:not(.text-danger),
+body:has(#mainSidebar .logo small) .sidebar .nav-link:not(.text-danger) { color: #fff !important; font-weight: 600; }
+body .sidebar .nav-link i { opacity: 1; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7)); }
+/* Logout link: the dim red disappeared into the photo — use a lighter red. */
+body .sidebar .nav-link.text-danger,
+body:has(#mainSidebar .logo small) .sidebar .nav-link.text-danger { color: #FF9C98 !important; font-weight: 600; }
+
+/* Dark mode keeps the photo, with a heavier wash (section 5 above pins the
+   sidebar to solid #0A1220; these out-rank that pin and the student-portal rule). */
+html[data-theme="dark"] body .sidebar,
+html[data-theme="dark"] body:has(#mainSidebar .logo small) .sidebar {
+    background-color: #0A1220 !important;
+    background-image:
+        linear-gradient(180deg, rgba(5, 11, 22, 0.88) 0%, rgba(5, 11, 22, 0.80) 42%, rgba(5, 11, 22, 0.90) 100%),
+        url('../images/school%20bldg%20bg.png') !important;
+    background-size: cover !important;
+    background-position: 30% center !important;
+    background-repeat: no-repeat !important;
+}

@@ -1,0 +1,15 @@
+# Local history only (no remote). Student/teacher uploads, dumps with real
+# data, logs and installed dependencies are NOT tracked.
+static/uploads/*
+!static/uploads/.htaccess
+vendor/
+node_modules/
+/egradepro.sql
+*.log
+write_test.txt
+.env
+
+# Secrets (API keys / passwords) stay on this machine only
+config/gemini_config.php
+config/google_config.php
+config/email.php

@@ -1,0 +1,224 @@
+/* Shared Classroom-style visual language for every Student Portal page. */
+body:has(#mainSidebar .logo small) {
+    background: #f4f8fd !important;
+}
+
+body:has(#mainSidebar .logo small) .sidebar {
+    background-color: #0f2748 !important;
+    background-image:
+        linear-gradient(180deg, rgba(8, 24, 52, 0.78) 0%, rgba(8, 24, 52, 0.62) 42%, rgba(8, 24, 52, 0.82) 100%),
+        url('../images/school%20bldg%20bg.png') !important;
+    background-size: cover !important;
+    background-position: 30% center !important;
+    background-repeat: no-repeat !important;
+    width: 76px !important;
+    flex: 0 0 76px !important;
+    max-width: 76px !important;
+    min-height: 100vh;
+    box-shadow: 6px 0 22px rgba(15, 39, 72, 0.08);
+}
+
+body:has(#mainSidebar .logo small) .sidebar .logo {
+    min-height: 72px;
+    justify-content: center;
+    padding: 16px 10px !important;
+    border-bottom-color: rgba(255,255,255,0.1) !important;
+}
+
+body:has(#mainSidebar .logo small) .sidebar .nav-link {
+    justify-content: center;
+    width: 100%;
+    margin: 0 0 7px;
+    padding: 14px 0 !important;
+    font-size: 0 !important;
+    gap: 0;
+    position: relative;
+    border-left: 0 !important;
+    border-radius: 8px;
+    color: rgba(255,255,255,0.95) !important;
+}
+
+body:has(#mainSidebar .logo small) .sidebar .nav-link:hover,
+body:has(#mainSidebar .logo small) .sidebar .nav-link.active {
+    color: #fff !important;
+    background: #1268dc !important;
+}
+
+body:has(#mainSidebar .logo small) .sidebar .nav-link i {
+    width: 20px;
+    font-size: 16px !important;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+body:has(#mainSidebar .logo small) .main-content {
+    width: calc(100% - 76px) !important;
+    max-width: calc(100% - 76px) !important;
+    margin-left: 76px !important;
+    padding: 24px 26px !important;
+}
+
+body:has(#mainSidebar .logo small) .sidebar .logo span {
+    opacity: 0;
+    max-width: 0;
+    overflow: hidden;
+}
+
+body:has(#mainSidebar .logo small) .sidebar .nav-link {
+    white-space: nowrap;
+}
+
+body.sidebar-collapsed.sidebar-peeking:has(#mainSidebar .logo small) .sidebar {
+    width: 188px !important;
+    flex-basis: 188px !important;
+    max-width: 188px !important;
+}
+
+body.sidebar-collapsed.sidebar-peeking:has(#mainSidebar .logo small) .main-content {
+    width: calc(100% - 188px) !important;
+    max-width: calc(100% - 188px) !important;
+    margin-left: 188px !important;
+}
+
+body.sidebar-collapsed.sidebar-peeking:has(#mainSidebar .logo small) .sidebar .logo {
+    justify-content: flex-start;
+    padding-left: 18px !important;
+    padding-right: 18px !important;
+}
+
+body.sidebar-collapsed.sidebar-peeking:has(#mainSidebar .logo small) .sidebar .logo span {
+    opacity: 1;
+    max-width: 220px;
+}
+
+body.sidebar-collapsed.sidebar-peeking:has(#mainSidebar .logo small) .sidebar .nav-link {
+    justify-content: flex-start;
+    width: auto;
+    margin: 3px 10px;
+    padding: 11px 12px !important;
+    font-size: 14px !important;
+    gap: 10px;
+}
+
+body.sidebar-collapsed.sidebar-peeking:has(#mainSidebar .logo small) .sidebar .nav-link i {
+    position: static;
+    transform: none;
+}
+
+body:has(#mainSidebar .logo small) .topbar {
+    min-height: 48px;
+    margin-bottom: 22px !important;
+}
+
+body:has(#mainSidebar .logo small) .topbar h4 {
+    color: #13233f !important;
+    letter-spacing: -0.02em;
+}
+
+body:has(#mainSidebar .logo small) .card-portal,
+body:has(#mainSidebar .logo small) .stat-card,
+body:has(#mainSidebar .logo small) .class-card,
+body:has(#mainSidebar .logo small) .msg-card {
+    border: 1px solid #dbe6f2 !important;
+    border-radius: 10px !important;
+    box-shadow: 0 5px 18px rgba(31, 70, 112, 0.06);
+}
+
+body:has(#mainSidebar .logo small) .section-heading,
+body:has(#mainSidebar .logo small) .card-portal-header {
+    color: #14213d !important;
+}
+
+body:has(#mainSidebar .logo small) .subject-banner,
+body:has(#mainSidebar .logo small) .class-card-head {
+    background-image: linear-gradient(110deg, rgba(8,31,61,0.9), rgba(18,59,109,0.68)), url('../images/school%20bldg%20bg.png') !important;
+    background-size: cover;
+    background-position: center 42%;
+}
+
+body:has(#mainSidebar .logo small) .subject-banner {
+    min-height: 224px;
+    padding: 46px 28px 78px !important;
+    border-radius: 12px !important;
+}
+
+body:has(#mainSidebar .logo small) .subject-banner h2,
+body:has(#mainSidebar .logo small) .subject-banner-meta {
+    margin-left: 78px;
+}
+
+body:has(#mainSidebar .logo small) .subject-banner h2 { font-size: 25px !important; }
+
+body:has(#mainSidebar .logo small) .subject-banner-icon {
+    position: absolute;
+    left: 24px;
+    top: 50%;
+    width: 58px;
+    height: 58px;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid rgba(255,255,255,0.45);
+    border-radius: 14px;
+    background: #087cf0;
+    font-size: 23px;
+}
+
+body:has(#mainSidebar .logo small) .subject-banner-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 10px;
+    border: 1px solid rgba(255,255,255,0.45);
+    border-radius: 6px;
+    background: rgba(15,39,72,0.42);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+body:has(#mainSidebar .logo small) .subject-banner-chip.active { background: #10a84b; }
+
+body:has(#mainSidebar .logo small) .subject-banner-stats {
+    position: absolute;
+    right: 22px;
+    bottom: 18px;
+    display: flex;
+    gap: 10px;
+}
+
+body:has(#mainSidebar .logo small) .subject-banner-stats > div {
+    min-width: 108px;
+    padding: 8px 14px;
+    border: 1px solid rgba(255,255,255,0.55);
+    border-radius: 10px;
+    background: rgba(10,31,61,0.58);
+    color: #fff;
+    text-align: center;
+}
+
+body:has(#mainSidebar .logo small) .subject-banner-stats strong,
+body:has(#mainSidebar .logo small) .subject-banner-stats span { display: block; }
+body:has(#mainSidebar .logo small) .subject-banner-stats strong { font-size: 18px; line-height: 1.1; }
+body:has(#mainSidebar .logo small) .subject-banner-stats span { font-size: 11px; opacity: 0.9; }
+
+@media (max-width: 768px) {
+    body:has(#mainSidebar .logo small) .sidebar {
+        width: 240px !important;
+        max-width: 240px !important;
+    }
+    body:has(#mainSidebar .logo small) .main-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-left: 0 !important;
+        padding: 16px !important;
+    }
+    body:has(#mainSidebar .logo small) .subject-banner { padding: 28px 18px 86px !important; }
+    body:has(#mainSidebar .logo small) .subject-banner h2,
+    body:has(#mainSidebar .logo small) .subject-banner-meta { margin-left: 0; }
+    body:has(#mainSidebar .logo small) .subject-banner-icon { left: 18px; top: 28px; transform: none; }
+    body:has(#mainSidebar .logo small) .subject-banner h2 { padding-top: 74px; }
+    body:has(#mainSidebar .logo small) .subject-banner-stats { left: 18px; right: 18px; bottom: 16px; }
+    body:has(#mainSidebar .logo small) .subject-banner-stats > div { flex: 1; min-width: 0; }
+}

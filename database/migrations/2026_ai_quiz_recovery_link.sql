@@ -1,0 +1,42 @@
+-- ============================================================
+-- 2026_ai_quiz_recovery_link.sql
+-- SAFE, ADDITIVE migration on top of 2026_ai_quiz_gform.sql,
+-- 2026_ai_quiz_one_attempt.sql and 2026_ai_quiz_assessment_link.sql
+-- (run those first).
+--
+-- WHY: the first version of the AI-quiz-to-grade link
+-- (2026_ai_quiz_assessment_link.sql) always created a BRAND NEW
+-- assessment_items row for every AI-generated quiz. That is wrong for the
+-- actual use case: an AI quiz sent to an At-Risk student is a MAKE-UP /
+-- RECOVERY assessment for something the student already missed (e.g.
+-- Quiz 3 of 5) — not a brand-new, sixth item that only this one student
+-- has a score for. This migration adds nothing that changes existing data;
+-- it only adds a column so a NEWLY created assessment item can optionally
+-- record what kind of item it is (item_type), matching the DepEd-aligned
+-- vocabulary the app now offers when adding items by hand in Manage
+-- Assessment Items.
+--
+-- The actual "link to an EXISTING item instead of creating a new one"
+-- behavior needs no schema change at all — ai_generated_resources.
+-- link_item_id (added by 2026_ai_quiz_assessment_link.sql) already just
+-- stores an assessment_items.item_id; this migration only adds the
+-- item_type label column on assessment_items itself.
+--
+--   - item_type: which of the DepEd-aligned item types this is (Short
+--     Quiz, Written Exercise/Activity, Essay, ... for Written Works;
+--     Project, Demonstration, ... for Performance Tasks). Free text so a
+--     teacher can also type a custom label ("Other"); NULL for
+--     Examinations items (ST1/ST2/TE already fully describe those via the
+--     existing assessment_subtype column) and for any item added before
+--     this migration existed.
+--
+-- Safe to run on the live database at any time; safe to re-run (uses
+-- ADD COLUMN IF NOT EXISTS, matching this project's other migrations).
+--
+-- Run against the `egradepro` database, e.g.:
+--   mysql -u root egradepro < database/migrations/2026_ai_quiz_recovery_link.sql
+-- or import via phpMyAdmin.
+-- ============================================================
+
+ALTER TABLE `assessment_items`
+  ADD COLUMN IF NOT EXISTS `item_type` varchar(60) DEFAULT NULL COMMENT 'DepEd-aligned item type (Short Quiz, Essay, Project, Demonstration, etc.) or a teacher-typed custom label. NULL for Examinations items (see assessment_subtype) and for items added before this column existed.' AFTER `item_name`;

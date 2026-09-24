@@ -1,0 +1,32 @@
+# Defense-in-depth: this directory only ever holds uploaded images/documents.
+# Even if a malicious file somehow got saved here, this stops the server
+# from ever executing it as PHP (or any other script). Uploaded files
+# should only ever be served as static content (images, PDFs) — never run.
+
+# Apache 2.4+
+<IfModule mod_authz_core.c>
+    <FilesMatch "\.(php|phtml|php3|php4|php5|php7|phar|pl|py|cgi|asp|aspx|sh|exe)$">
+        Require all denied
+    </FilesMatch>
+</IfModule>
+
+# Apache 2.2 fallback
+<IfModule !mod_authz_core.c>
+    <FilesMatch "\.(php|phtml|php3|php4|php5|php7|phar|pl|py|cgi|asp|aspx|sh|exe)$">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+</IfModule>
+
+# Belt-and-suspenders: also tell PHP itself not to execute anything here,
+# in case the server is configured to run PHP via a handler that ignores
+# the FilesMatch block above.
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php8.c>
+    php_flag engine off
+</IfModule>

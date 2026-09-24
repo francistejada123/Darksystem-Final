@@ -1,0 +1,49 @@
+# Raise PHP's upload limits for the site.
+#
+# The online enrollment form (online_enrollment.php) tells applicants each
+# document can be up to 5 MB, and Grade 11/12 applicants upload 5-6 required
+# files in one submission. PHP's stock defaults (upload_max_filesize=2M,
+# post_max_size=8M) are well below what the form itself promises, so a
+# normal phone photo of a report card or PSA birth certificate — routinely
+# 2-5 MB — gets silently rejected, and once the combined upload passes 8 MB
+# PHP drops the whole submission ($_POST and $_FILES both come back empty)
+# before online_enrollment.php ever runs. That is the "Submit Application"
+# button appearing to do nothing / showing a false "session expired" error.
+#
+# Only takes effect when PHP runs as an Apache module (mod_php) — the
+# IfModule guards make this a safe no-op everywhere else (e.g. PHP-FPM/CGI
+# hosting), matching the pattern already used in static/uploads/.htaccess.
+<IfModule mod_php.c>
+    php_value upload_max_filesize 8M
+    php_value post_max_size 40M
+    php_value max_file_uploads 20
+    php_value max_execution_time 120
+</IfModule>
+<IfModule mod_php7.c>
+    php_value upload_max_filesize 8M
+    php_value post_max_size 40M
+    php_value max_file_uploads 20
+    php_value max_execution_time 120
+</IfModule>
+<IfModule mod_php8.c>
+    php_value upload_max_filesize 8M
+    php_value post_max_size 40M
+    php_value max_file_uploads 20
+    php_value max_execution_time 120
+</IfModule>
+
+# Security: never serve database dumps, backups, archives, logs or env files,
+# and never print PHP errors on a page (they go to the PHP error log instead).
+<FilesMatch "\.(sql|bak|zip|log|env|ini|sh|lock)$|^(composer\.json|package\.json|AGENTS\.md|README\.md|write_test\.txt)$">
+    Require all denied
+</FilesMatch>
+RedirectMatch 404 /\.git(/|$)
+RedirectMatch 404 ^/watdahel/(tests|database|vendor|src|node_modules)(/|$)
+<IfModule mod_php.c>
+    php_flag display_errors Off
+    php_flag log_errors On
+</IfModule>
+<IfModule mod_php8.c>
+    php_flag display_errors Off
+    php_flag log_errors On
+</IfModule>

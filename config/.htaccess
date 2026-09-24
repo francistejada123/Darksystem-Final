@@ -1,0 +1,11 @@
+# Block direct browser access to everything in config/ — this is where the
+# Gemini API key (config/gemini_config.php) and the DB credentials
+# (config/database.php) live. Works on Apache 2.4 (Require) and falls back
+# to the older 2.2 syntax (Deny) so it applies either way.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order deny,allow
+    Deny from all
+</IfModule>

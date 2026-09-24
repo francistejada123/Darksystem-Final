@@ -1,0 +1,29 @@
+{
+    "require": {
+        "phpmailer/phpmailer": "^7.1",
+        "dompdf/dompdf": "^3.1"
+    },
+    "repositories": {
+        "packagist.org": false,
+        "sabberworm-css": {
+            "type": "vcs",
+            "url": "https://github.com/sabberworm/PHP-CSS-Parser.git"
+        },
+        "masterminds-html5": {
+            "type": "vcs",
+            "url": "https://github.com/Masterminds/html5-php.git"
+        },
+        "phenx-svg-lib": {
+            "type": "vcs",
+            "url": "https://github.com/PhenX/php-svg-lib.git"
+        },
+        "phenx-font-lib": {
+            "type": "vcs",
+            "url": "https://github.com/phenx/php-font-lib.git"
+        },
+        "dompdf-dompdf": {
+            "type": "vcs",
+            "url": "https://github.com/dompdf/dompdf.git"
+        }
+    }
+}

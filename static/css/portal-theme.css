@@ -1,0 +1,46 @@
+/* ============================================================
+   STUDENT PORTAL — DARK MODE PATCHES
+   Loaded alongside static/css/theme.css (which already redefines the
+   shared --portal-* variables under [data-theme="dark"]). This file
+   only covers the portal's own literal, non-variable colors that
+   theme.css can't reach through a variable redefinition alone —
+   mostly the #374151 body-text / #f1f5f9 soft-background pairs each
+   of the 6 portal pages repeats locally, plus a few page-local button
+   classes (.btn-edit, .btn-cancel, .btn-portal-back, ...).
+   ============================================================ */
+
+html[data-theme="dark"] .grade-table td,
+html[data-theme="dark"] .info-value,
+html[data-theme="dark"] .msg-text,
+html[data-theme="dark"] .rec-text,
+html[data-theme="dark"] .progress-label,
+html[data-theme="dark"] .form-input-custom {
+    color: var(--text);
+}
+html[data-theme="dark"] .grade-table td { border-bottom-color: var(--portal-border); }
+html[data-theme="dark"] [style*="374151"] { color: var(--text) !important; }
+
+html[data-theme="dark"] .term-tab .tab-count,
+html[data-theme="dark"] .enrollment-status.not-enrolled,
+html[data-theme="dark"] .progress-bar-portal,
+html[data-theme="dark"] .video-progress-bar {
+    background: #1B2A44;
+}
+html[data-theme="dark"] [style*="f1f5f9"] { background: #1B2A44 !important; }
+
+html[data-theme="dark"] .btn-portal-back:hover,
+html[data-theme="dark"] .btn-cancel:hover {
+    background: #1B2A44;
+}
+html[data-theme="dark"] .mobile-menu-btn,
+html[data-theme="dark"] .btn-cancel,
+html[data-theme="dark"] .btn-edit-outline,
+html[data-theme="dark"] .form-input-custom {
+    background: #0E1728;
+    border-color: var(--portal-border);
+}
+html[data-theme="dark"] .btn-portal-primary:hover { background: #24365C; }
+
+/* Sidebar nav-link translucent-white states are already theme-neutral
+   (the portal sidebar itself stays dark navy in both themes), so no
+   change needed there. */
