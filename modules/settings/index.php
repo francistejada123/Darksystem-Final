@@ -254,6 +254,11 @@ include '../../includes/header.php';
             <i class="fas fa-database me-1"></i> Backup &amp; Restore
         </a>
     </li>
+    <li class="nav-item" role="presentation">
+        <a class="nav-link" href="<?php echo BASE_URL; ?>modules/settings/email.php">
+            <i class="fas fa-envelope me-1"></i> Email Settings
+        </a>
+    </li>
 </ul>
 
 <div class="tab-content pt-4" id="settingsTabContent">
