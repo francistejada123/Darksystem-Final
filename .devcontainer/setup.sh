@@ -8,8 +8,8 @@ APP_DIR="$(pwd)"
 echo "== EGradePro: installing PHP libraries (composer)"
 composer install --no-interaction --no-progress --prefer-dist || echo "!! composer install failed - PDF/email libraries may be missing"
 
-echo "== EGradePro: serving the app at /watdahel/"
-ln -sfn "$APP_DIR" /var/www/html/watdahel
+echo "== EGradePro: the app is served at /watdahel/ (Apache Alias, see start.sh)"
+true
 
 echo "== EGradePro: upload folders writable by the web server"
 mkdir -p static/uploads

@@ -4,6 +4,21 @@
 cd "$(dirname "$0")/.."
 
 service mariadb start >/dev/null 2>&1 || true
+
+# Serve the app at /watdahel/ (BASE_URL) with index.php as the folder page; / goes there too.
+APP_DIR="$(pwd)"
+rm -f /var/www/html/watdahel 2>/dev/null || true
+cat > /etc/apache2/conf-available/egradepro-app.conf <<CONF
+Alias /watdahel "${APP_DIR}"
+<Directory "${APP_DIR}">
+    Options FollowSymLinks
+    AllowOverride All
+    Require all granted
+    DirectoryIndex index.php index.html
+</Directory>
+RedirectMatch 302 ^/$ /watdahel/
+CONF
+a2enconf egradepro-app >/dev/null 2>&1 || true
 apache2ctl start >/dev/null 2>&1 || apache2ctl restart >/dev/null 2>&1 || true
 
 if [ -n "$CODESPACE_NAME" ]; then
