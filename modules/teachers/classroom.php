@@ -152,7 +152,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             logActivity($teacher_id, 'Classroom', 'Posted announcement', "Post #$post_id, subject $post_subject_code, section #$post_section_id");
-            $_SESSION['success_message'] = 'Announcement posted.';
+            // Email every student of this section (once per student per post).
+            require_once __DIR__ . '/../../includes/student_email_notify.php';
+            $ann_roster = classroomSectionStudents($post_section_id, $post_sy_id);
+            $ann_files = array_column(getRecords("SELECT original_filename FROM class_stream_attachments WHERE post_id = ?", [(int) $post_id]), 'original_filename');
+            $ann_note = '';
+            if ($ann_roster) {
+                senNotifyStudents(array_column($ann_roster, 'student_id'), [
+                    'key' => 'announce:' . (int) $post_id,
+                    'subject_code' => $post_subject_code, 'teacher_id' => $teacher_id,
+                    'title' => 'Announcement', 'kind' => 'Announcement',
+                    'announcement' => $body !== '' ? $body : ($ann_files ? 'Your teacher shared ' . count($ann_files) . ' file(s)/link(s).' : ''),
+                    'attachments' => $ann_files,
+                    'link' => 'modules/students/portal/subject.php?subject=' . rawurlencode($post_subject_code),
+                    'send_now' => true,
+                ]);
+                $ann = senLastResult();
+                $ann_bad = (int) $ann['failed'] + (int) $ann['no_email'];
+                $ann_note = !empty($ann['switched_off'])
+                    ? ' Email notifications are switched off in Settings › Email Settings.'
+                    : ' Email sent to ' . (int) $ann['sent'] . ' of ' . count($ann_roster) . ' student(s).'
+                        . ($ann_bad > 0 ? ' ' . $ann_bad . ' failed' . ($ann['reason'] !== '' ? ': ' . $ann['reason'] : ((int) $ann['no_email'] > 0 ? ' (no registered email).' : '.')) : '');
+            }
+            $_SESSION['success_message'] = 'Announcement posted.' . $ann_note;
+            if ($ann_roster && (int) ($ann['sent'] ?? 0) === 0 && $ann_bad > 0) {
+                $_SESSION['error_message'] = 'The announcement was posted, but no email was sent:' . ($ann['reason'] !== '' ? ' ' . $ann['reason'] : ' the students have no registered email.');
+            }
         } else {
             $_SESSION['error_message'] = 'Could not post the announcement. Please try again.';
         }

@@ -193,7 +193,7 @@ include '../../includes/header.php';
                     <label class="form-check" style="display:flex;gap:8px;align-items:flex-start;">
                         <input type="checkbox" class="form-check-input mt-1" name="email_task_notifications" value="1" <?php echo ($email_settings['email_task_notifications'] ?? '1') !== '0' ? 'checked' : ''; ?>>
                         <span><strong>Email students about new work</strong><br>
-                            <small class="text-muted">When a teacher publishes a quiz, activity, assignment or learning material task, each student gets an email at the address from their enrollment (subject, teacher, title, deadline).</small></span>
+                            <small class="text-muted">When a teacher posts anything for the class (announcement, quiz, activity, assignment, performance task or learning material), each student gets an email at the address from their enrollment (subject, teacher, title, deadline).</small></span>
                     </label>
                 </div>
             </div>

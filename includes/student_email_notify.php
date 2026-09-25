@@ -83,7 +83,10 @@ function senEnabled()
  *                    instruction(optional short text), link(optional app path for the button),
  *                    grading (optional WW / PT / QA -- "New Written Work Posted - English 7"),
  *                    topic (optional), posted_at (optional, default now),
- *                    send_now (optional: send right away and report sent / failed, instead of after the reply)
+ *                    send_now (optional: send right away and report sent / failed, instead of after the reply),
+ *                    announcement (optional: the full text of a Stream announcement -- the email is then
+ *                    "New Announcement - English 7" with the message instead of an assessment summary),
+ *                    attachments (optional: names of attached files / links, shown in the email)
  * @return int emails queued now
  */
 function senNotifyStudents(array $studentIds, array $info)
@@ -127,7 +130,7 @@ function senNotifyStudents(array $studentIds, array $info)
                 $noEmail++;
                 executeQuery(
                     "INSERT IGNORE INTO student_email_notifications (student_id, notify_key, email, subject, body, status, error) VALUES (?, ?, ?, ?, '', 'Failed', ?)",
-                    [(int) $s['student_id'], $key, mb_substr($to, 0, 255), mb_substr("New {$postedAs} Posted - {$subjectName}", 0, 250),
+                    [(int) $s['student_id'], $key, mb_substr($to, 0, 255), mb_substr(isset($info['announcement']) ? "New Announcement - {$subjectName}" : "New {$postedAs} Posted - {$subjectName}", 0, 250),
                      $to === '' ? 'Missing student email (no email saved in the enrollment / student record)' : 'Invalid recipient email: ' . mb_substr($to, 0, 200)]
                 );
                 continue;
@@ -158,6 +161,22 @@ function senNotifyStudents(array $studentIds, array $info)
                 . '<p style="font-size:12px;color:#64748b;">If the button does not work, copy this link: ' . $e($link) . '<br>Sign in with your LRN, then open ' . $e($subjectName) . ' &rsaquo; Classwork to view/download the activity and submit your work.</p>'
                 . '<p style="color:#64748b;font-size:12px;">This is an automatic message from ' . $e($school) . ' EGradePro. Please do not reply.</p>'
                 . '</div>';
+            if (isset($info['announcement'])) {
+                // A Stream announcement: the teacher's message itself, not an assessment summary.
+                $annText = trim(html_entity_decode((string) $info['announcement'], ENT_QUOTES, 'UTF-8'));
+                $files = array_values(array_filter(array_map('strval', (array) ($info['attachments'] ?? []))));
+                $mailSubject = mb_substr("New Announcement - {$subjectName}", 0, 250);
+                $body = '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1f2937;max-width:560px;">'
+                    . '<p>Hi ' . $e(trim((string) $s['first_name'])) . ',</p>'
+                    . '<p>Your teacher <strong>' . $e($teacherName) . '</strong> posted a new announcement in <strong>' . $e($subjectName) . '</strong>:</p>'
+                    . ($annText !== '' ? '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #2563eb;border-radius:8px;padding:12px 14px;white-space:normal;">' . nl2br($e(mb_strimwidth($annText, 0, 3000, '…'))) . '</div>' : '')
+                    . ($files ? '<p style="margin-top:12px;"><strong>Attached:</strong><br>' . implode('<br>', array_map(function ($f) use ($e) { return '&bull; ' . $e($f); }, array_slice($files, 0, 10))) . '</p>' : '')
+                    . '<p style="color:#64748b;font-size:12px;">Posted ' . $e($posted) . '</p>'
+                    . '<p style="margin:18px 0;"><a href="' . $e($link) . '" style="background:#2563eb;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:6px;display:inline-block;font-weight:bold;">Log in to EGradePro to view</a></p>'
+                    . '<p style="font-size:12px;color:#64748b;">If the button does not work, copy this link: ' . $e($link) . '<br>Sign in with your LRN, then open ' . $e($subjectName) . ' &rsaquo; Stream.</p>'
+                    . '<p style="color:#64748b;font-size:12px;">This is an automatic message from ' . $e($school) . ' EGradePro. Please do not reply.</p>'
+                    . '</div>';
+            }
             $stmt = executeQuery(
                 "INSERT IGNORE INTO student_email_notifications (student_id, notify_key, email, subject, body) VALUES (?, ?, ?, ?, ?)",
                 [(int) $s['student_id'], $key, $to, $mailSubject, $body]
