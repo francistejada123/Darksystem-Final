@@ -760,6 +760,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
         .doc-card-error.show{display:block}
         .doc-card-invalid{border-color:var(--danger) !important;background:var(--danger-soft) !important}
         .doc-card-invalid .doc-empty-state{border-color:var(--danger)}
+        .doc-card-invalid .doc-slot.is-optional .doc-empty-state{border-color:var(--border,#cbd5e1)}
 
         @media (max-width:480px){
             .doc-file-actions{width:100%}
@@ -1387,7 +1388,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                                                 : ['' => ['label' => '', 'required' => (bool) $doc['required']]];
                                         ?>
                                         <?php foreach ($doc_slots as $slot_suffix => $slot): $sfid = $fid . $slot_suffix; ?>
-                                        <div class="doc-slot<?php echo $slot['label'] !== '' ? ' is-page' : ''; ?>">
+                                        <div class="doc-slot<?php echo $slot['label'] !== '' ? ' is-page' : ''; ?><?php echo !$slot['required'] ? ' is-optional' : ''; ?>">
                                             <?php if ($slot['label'] !== ''): ?>
                                                 <div class="doc-slot-label"><?php echo htmlspecialchars($slot['label']); ?>
                                                     <span class="<?php echo $slot['required'] ? 'badge-req' : 'badge-opt'; ?>"><?php echo $slot['required'] ? 'Required' : 'Optional'; ?></span>
@@ -2698,10 +2699,10 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                 s.status = (now.length === 12 && now === s.detected) ? (s.card ? 'verified' : 'incomplete') : 'mismatch';
                 if (s.status !== 'verified') s.message = RC_MSG[s.status] || s.message;
             }
+            clearDocError(card);   // the status line below carries the result (no stale "please wait")
             if (s.status === 'verified') {
                 setCardLrnStatus(card, 'verified', '✓ LRN Verified');
                 setCardRead(card, s.card);
-                clearDocError(card);
             } else {
                 setCardLrnStatus(card, 'bad', '<i class="fas fa-circle-xmark me-1"></i>' + esc(s.message || RC_MSG.unreadable));
                 setCardRead(card, null);

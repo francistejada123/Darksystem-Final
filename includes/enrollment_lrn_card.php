@@ -96,14 +96,16 @@ function oeReportCardAnalyze(array $paths)
     foreach ($paths as $p) {
         $mime = oeReportCardMime($p);
         if ($mime === null) continue;
+        $h = sha1_file($p);
+        if (in_array($h, $hashes, true)) continue;   // the same photo in two page slots is read once
         $parts[] = ['type' => $mime === 'application/pdf' ? 'document' : 'image', 'data' => base64_encode(file_get_contents($p)), 'mime_type' => $mime];
-        $hashes[] = sha1_file($p);
+        $hashes[] = $h;
     }
     $empty = ['name' => '', 'lrn' => '', 'grade_level' => '', 'subjects' => [], 'general_average' => null, 'remarks' => ''];
     if (!$parts) {
         return ['ok' => true, 'data' => $empty];
     }
-    $key = sha1(implode('|', $hashes));
+    $key = 'v2:' . sha1(implode('|', $hashes)); // v2: stronger second read -- older cached results are read again
     if (isset($_SESSION['oe_card_read'][$key])) {
         return ['ok' => true, 'data' => $_SESSION['oe_card_read'][$key]];
     }
@@ -124,30 +126,53 @@ function oeReportCardAnalyze(array $paths)
         ],
         'required' => ['student_name', 'lrn', 'lrn_clearly_readable', 'grade_level', 'subjects', 'general_average', 'general_average_clearly_readable', 'remarks'],
     ];
-    $system = 'You read the pages of ONE Philippine DepEd learner Report Card (Form 138 / SF9). The pages are given together; '
-        . 'the front usually has the name and LRN, the back/other page the grades. Read ALL pages as one document and report: '
-        . 'student_name; lrn = the 12-digit Learner Reference Number exactly as printed (never guess, complete or invent digits); '
-        . 'lrn_clearly_readable = false if there is no LRN or any digit is unclear; grade_level (e.g. "Grade 6"); '
+    $system = 'You read the pages of ONE Philippine DepEd learner Report Card (Form 138 / SF9). The pages are given together and may be '
+        . 'phone photos (tilted, rotated, shadowed) or scans; one photo may show both the front and the back side by side. '
+        . 'The front usually has the name and LRN, the inside/back the grades. Read ALL pages as one document and report: '
+        . 'student_name; lrn = the 12-digit Learner Reference Number (printed, typed or HANDWRITTEN, often in 12 small boxes or after "LRN:"), '
+        . 'copied digit by digit -- never guess, complete or invent a digit; '
+        . 'lrn_clearly_readable = true when you can read all 12 digits with confidence, false if there is no LRN or a digit is truly unreadable; '
+        . 'grade_level (e.g. "Grade 10"); '
         . 'subjects = each learning area with its FINAL rating for the year; general_average = the General Average exactly as printed '
         . '(0 if not shown); general_average_clearly_readable = false if it is missing or unclear; remarks = promotion remarks such as '
         . '"Promoted" (empty if none). Ignore school ID, dates, phone numbers and attendance. Reply with ONLY the JSON object.';
 
     $first = array_shift($parts);
     $first['extra'] = $parts;   // every other page in the SAME request
+    $format = ['type' => 'text', 'mime_type' => 'application/json', 'schema' => $schema];
+    $input = 'Read this Report Card (' . (count($parts) + 1) . ' image/file(s)).';
     $hadSession = session_status() === PHP_SESSION_ACTIVE;
     if ($hadSession) session_write_close();
-    $api = callGeminiAPI($system, 'Read this Report Card (' . (count($parts) + 1) . ' page(s)).',
-        ['type' => 'text', 'mime_type' => 'application/json', 'schema' => $schema], 75, $first);
-    if ($hadSession) @session_start();
-
-    if (empty($api['success'])) {
-        return ['ok' => false, 'error' => (string) ($api['error'] ?? 'The reader is unavailable.')];
+    $d = null;
+    $lastError = 'The reader is unavailable.';
+    foreach ([null, 'gemini-2.5-flash'] as $model) {
+        $api = callGeminiAPI($system, $input, $format, 90, $first, $model);
+        if (empty($api['success'])) { $lastError = (string) ($api['error'] ?? $lastError); continue; }
+        $text = extractGeminiRawText($api['response'] ?? null);
+        $text = trim(preg_replace('/\s*```$/', '', preg_replace('/^```(?:json)?\s*/i', '', trim((string) $text))));
+        $try = json_decode($text, true);
+        if (!is_array($try)) continue;
+        $tryLrn = !empty($try['lrn_clearly_readable']) && oeNormalizeLrn($try['lrn'] ?? '') !== '';
+        $tryGa = !empty($try['general_average_clearly_readable']) && is_numeric($try['general_average'] ?? null) && $try['general_average'] >= 60;
+        if ($d === null) {
+            $d = $try;
+        } else {
+            // Keep what each read found: the LRN from one, the grades from the other.
+            if ($tryLrn) { $d['lrn'] = $try['lrn']; $d['lrn_clearly_readable'] = true; if (trim((string) ($try['student_name'] ?? '')) !== '') $d['student_name'] = $try['student_name']; }
+            if ($tryGa) {
+                foreach (['general_average', 'general_average_clearly_readable', 'subjects', 'remarks', 'grade_level'] as $k) { if (isset($try[$k])) $d[$k] = $try[$k]; }
+            }
+        }
+        $gotLrn = !empty($d['lrn_clearly_readable']) && oeNormalizeLrn($d['lrn'] ?? '') !== '';
+        $gotGa = !empty($d['general_average_clearly_readable']) && is_numeric($d['general_average'] ?? null) && $d['general_average'] >= 60;
+        if ($gotLrn && $gotGa) break;
+        // diagnostic only (no image, no name): what was missing on this read
+        error_log('Report Card read (' . ($model ?: 'default model') . '): lrn ' . ($gotLrn ? 'ok' : 'NOT read (' . strlen(preg_replace('/\D/', '', (string) ($try['lrn'] ?? ''))) . ' digits)')
+            . ', general average ' . ($gotGa ? 'ok' : 'NOT read') . ', pages ' . (count($parts) + 1));
     }
-    $text = extractGeminiRawText($api['response'] ?? null);
-    $text = trim(preg_replace('/\s*```$/', '', preg_replace('/^```(?:json)?\s*/i', '', trim((string) $text))));
-    $d = json_decode($text, true);
+    if ($hadSession) @session_start();
     if (!is_array($d)) {
-        return ['ok' => false, 'error' => 'The Report Card could not be read.'];
+        return ['ok' => false, 'error' => $lastError];
     }
     $ga = (!empty($d['general_average_clearly_readable']) && is_numeric($d['general_average'] ?? null)) ? round((float) $d['general_average'], 2) : null;
     if ($ga !== null && ($ga < 60 || $ga > 100)) $ga = null;
