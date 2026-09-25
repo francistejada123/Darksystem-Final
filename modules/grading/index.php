@@ -2500,6 +2500,14 @@ include '../../includes/header.php';
                     <?php $gm_notice_tail(); ?>
                 </div>
             <?php endif; ?>
+            <?php if (!$term_readonly && (!$term_window || empty($term_window['end_date']))): ?>
+                <div class="alert d-flex align-items-start gap-2" style="border-radius:10px;font-size:13.5px;background:#FEF3E6;color:#8A4B00;border:1px solid #F5D3A6;">
+                    <i class="fas fa-calendar-xmark mt-1"></i>
+                    <div><strong><?php echo htmlspecialchars($term); ?> has no End Date yet.</strong>
+                        The class moves to the next term only after the End Date set by the administrator, so ask them to set it in Teacher Management &rsaquo; Term Dates.
+                        You can still encode and finalize.</div>
+                </div>
+            <?php endif; ?>
             <?php if (!$term_readonly && $encode_mode === 'all'): ?>
                 <div id="gmNeeded" <?php echo $gm_show_needed ? 'hidden' : ''; ?>><?php gradingTermTransitionPanel($section_term_state, $term, $term_readonly, $selected_grade, $selected_section); ?></div>
             <?php endif; ?>

@@ -1013,6 +1013,18 @@ function dw_widget_close() {
 <!-- ADMIN / REGISTRAR DASHBOARD -->
 <!-- ============================================================ -->
 
+<?php $dash_terms_no_end = $active_sy ? gh_termsWithoutEndDate((int) $active_sy['sy_id']) : []; ?>
+<?php if (!empty($dash_terms_no_end)): ?>
+    <div class="alert alert-warning d-flex align-items-start gap-2" style="border-radius:10px;font-size:14px;">
+        <i class="fas fa-calendar-xmark mt-1"></i>
+        <div>
+            <strong><?php echo htmlspecialchars(implode(', ', $dash_terms_no_end)); ?> <?php echo count($dash_terms_no_end) === 1 ? 'has' : 'have'; ?> no End Date yet.</strong>
+            A class moves to the next term only after its term's End Date, so without one the term never ends.
+            Set it in <a href="<?php echo BASE_URL; ?>modules/teachers/index.php">Teacher Management &rsaquo; Term Dates</a>.
+        </div>
+    </div>
+<?php endif; ?>
+
 <!-- Meta bar + Customize Dashboard (Administrator only) -->
 <div class="mb-3 dash-header-row">
     <div class="section-label mb-0">School Year: <?php echo $active_sy ? htmlspecialchars($active_sy['sy_name']) : 'N/A'; ?></div>

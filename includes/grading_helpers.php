@@ -2774,6 +2774,21 @@ function gh_getTermWindow($sy_id, $term) {
  * idempotent (CREATE TABLE IF NOT EXISTS) -- an existing table and its rows
  * are never touched. Runs at most once per request.
  */
+/**
+ * Terms of the school year that have no End Date yet. A class moves to the
+ * next term only after its term's End Date (gh_syncSectionTerms), so these
+ * are shown as a warning to the administrator and the teachers.
+ * @return string[]
+ */
+function gh_termsWithoutEndDate($sy_id) {
+    $out = [];
+    foreach (gh_threeTerms() as $t) {
+        $w = gh_getTermWindow($sy_id, $t);
+        if (!$w || empty($w['end_date'])) $out[] = $t;
+    }
+    return $out;
+}
+
 function gh_ensureTermWindowsTable() {
     static $done = false;
     if ($done) return;
