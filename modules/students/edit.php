@@ -4,6 +4,8 @@
 
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../../includes/student_records_helpers.php'; // portal access + correction requests
+srEnsureSchema();
 
 if (!defined('BASE_URL')) {
     define('BASE_URL', '/watdahel/');
@@ -38,6 +40,24 @@ $success = false;
 // Get sections with strand info
 $sections = getRecords("SELECT section_id, section_name, grade_level, strand, is_senior_high FROM sections WHERE is_active = 1 ORDER BY grade_level, section_name");
 
+$edit_back = 'edit.php?id=' . $student_id . ($is_embedded ? '&embed=1' : '');
+// A correction request for view-only personal / guardian information.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'request_correction') {
+    if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
+        $_SESSION['error_message'] = 'Invalid security token.';
+    } else {
+        $r = srRequestCorrection($student_id, (string) ($_POST['field_name'] ?? ''), (string) ($_POST['new_value'] ?? ''),
+            (string) ($_POST['reason'] ?? ''), (string) ($_SESSION['role'] ?? 'Staff'), (int) $_SESSION['user_id']);
+        if ($r['success']) {
+            $_SESSION['success_message'] = 'Correction request sent to the Registrar for approval.';
+        } else {
+            $_SESSION['error_message'] = $r['error'];
+        }
+    }
+    header('Location: ' . $edit_back . '#corrections');
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
         $errors[] = 'Invalid security token.';
@@ -59,6 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $strand = sanitize($_POST['strand'] ?? '');
         $section_id = !empty($_POST['section_id']) ? intval($_POST['section_id']) : null;
         $enrollment_status = sanitize($_POST['enrollment_status'] ?? '');
+        $portal_access = !empty($_POST['portal_access']) ? 1 : 0;
         
         // Validation (only the editable Academic Information)
         if (empty($grade_level)) $errors[] = 'Grade level is required.';
@@ -78,10 +99,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Only Academic Information is saved; personal and guardian
             // information are not touched.
             $sql = "UPDATE students SET 
-                    grade_level = ?, strand = ?, section_id = ?, enrollment_status = ? 
+                    grade_level = ?, strand = ?, section_id = ?, enrollment_status = ?, portal_access = ?
                     WHERE student_id = ?";
             
-            $params = [$grade_level, $strand, $section_id, $enrollment_status, $student_id];
+            $params = [$grade_level, $strand, $section_id, $enrollment_status, $portal_access, $student_id];
             
             $result = executeQuery($sql, $params);
             
@@ -105,6 +126,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 logActivity($_SESSION['user_id'], 'Updated student', 'students', "Updated student: $last_name, $first_name (ID: $student_id)");
+                if ((int) ($student['portal_access'] ?? 0) !== $portal_access) {
+                    logActivity($_SESSION['user_id'], 'students', $portal_access ? 'Portal access granted' : 'Portal access removed',
+                        "Student Portal without Online Enrollment for $last_name, $first_name (ID: $student_id)");
+                }
                 $_SESSION['success_message'] = 'Student updated successfully!';
                 header('Location: index.php?success=1');
                 exit;
@@ -207,7 +232,7 @@ if ($is_embedded) {
             
             <!-- Personal Information -->
             <h5 class="mb-3 text-primary"><i class="fas fa-user me-2"></i>Personal Information <span class="view-only-tag"><i class="fas fa-eye me-1"></i>View only</span></h5>
-            <p class="view-only-note">Personal and guardian information come from the student's enrollment and can only be viewed here. Only the Academic Information below can be changed.</p>
+            <p class="view-only-note">Personal and guardian information come from the student's enrollment and can only be viewed here. Only the Academic Information below can be changed. To fix a mistake, use <a href="#corrections">Request a correction</a> below &mdash; the Registrar approves it.</p>
             <div class="row g-3 mb-4">
                 <div class="col-md-3">
                     <label class="form-label">LRN</label>
@@ -314,6 +339,13 @@ if ($is_embedded) {
                         <option value="Graduated" <?php echo ($student['enrollment_status'] ?? '') == 'Graduated' ? 'selected' : ''; ?>>Graduated</option>
                     </select>
                 </div>
+                <div class="col-12">
+                    <label class="form-check" style="display:flex;gap:8px;align-items:flex-start;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:10px 12px;">
+                        <input type="checkbox" class="form-check-input mt-1" name="portal_access" value="1" <?php echo !empty($student['portal_access']) ? 'checked' : ''; ?>>
+                        <span><strong>Allow Student Portal login without Online Enrollment</strong><br>
+                            <small class="text-muted">For walk-in or older records with no approved online application. The student signs in with their LRN (<?php echo htmlspecialchars($student['lrn']); ?>).</small></span>
+                    </label>
+                </div>
             </div>
             
             <div class="edit-form-actions d-flex justify-content-end gap-2">
@@ -325,6 +357,69 @@ if ($is_embedded) {
                 </button>
             </div>
         </form>
+
+        <!-- Correction requests: personal / guardian information changes only after Registrar approval -->
+        <?php
+            $sr_fields = srCorrectionFields();
+            $sr_requests = srStudentRequests($student_id);
+            $sr_flash_ok = $_SESSION['success_message'] ?? null;
+            $sr_flash_err = $_SESSION['error_message'] ?? null;
+            if ($is_embedded) { unset($_SESSION['success_message'], $_SESSION['error_message']); }
+        ?>
+        <div id="corrections" class="mt-4 pt-3" style="border-top:1px solid #E2E8F0;">
+            <h5 class="mb-2 text-primary"><i class="fas fa-pen-to-square me-2"></i>Request a correction</h5>
+            <p class="view-only-note">For a wrong name, birth date, gender, contact or guardian detail. The Registrar reviews the request; the record changes only when it is approved.</p>
+            <?php if ($is_embedded && $sr_flash_ok): ?><div class="alert alert-success py-2" style="font-size:13px;"><?php echo htmlspecialchars($sr_flash_ok); ?></div><?php endif; ?>
+            <?php if ($is_embedded && $sr_flash_err): ?><div class="alert alert-danger py-2" style="font-size:13px;"><?php echo htmlspecialchars($sr_flash_err); ?></div><?php endif; ?>
+            <form method="POST" action="" class="row g-2 align-items-end">
+                <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
+                <input type="hidden" name="action" value="request_correction">
+                <div class="col-md-3">
+                    <label class="form-label small mb-1">Information</label>
+                    <select name="field_name" class="form-select form-select-sm" required>
+                        <option value="">Choose...</option>
+                        <?php foreach ($sr_fields as $fk => $fl): ?>
+                            <option value="<?php echo $fk; ?>"><?php echo htmlspecialchars($fl); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-1">Correct value</label>
+                    <input type="text" name="new_value" class="form-control form-control-sm" maxlength="255" placeholder="e.g. Maria / 2013-05-14 / Female" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small mb-1">Reason / basis</label>
+                    <input type="text" name="reason" class="form-control form-control-sm" maxlength="500" placeholder="e.g. Per PSA birth certificate" required>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-sm btn-outline-primary w-100"><i class="fas fa-paper-plane me-1"></i>Send request</button>
+                </div>
+            </form>
+            <?php if (!empty($sr_requests)): ?>
+                <div class="table-responsive mt-3">
+                    <table class="table table-sm" style="font-size:12.5px;">
+                        <thead><tr><th>Information</th><th>From</th><th>To</th><th>Reason</th><th>By</th><th>Status</th></tr></thead>
+                        <tbody>
+                        <?php foreach ($sr_requests as $rq): ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($sr_fields[$rq['field_name']] ?? $rq['field_name']); ?></td>
+                                <td><?php echo htmlspecialchars((string) $rq['old_value']); ?></td>
+                                <td><strong><?php echo htmlspecialchars($rq['new_value']); ?></strong></td>
+                                <td><?php echo htmlspecialchars($rq['reason']); ?></td>
+                                <td><?php echo htmlspecialchars($rq['requested_by_role']); ?> · <?php echo date('M j, Y', strtotime($rq['created_at'])); ?></td>
+                                <td><span class="badge <?php echo $rq['status'] === 'Approved' ? 'bg-success' : ($rq['status'] === 'Rejected' ? 'bg-danger' : 'bg-warning text-dark'); ?>"><?php echo $rq['status']; ?></span>
+                                    <?php if (!empty($rq['review_note'])): ?><br><small class="text-muted"><?php echo htmlspecialchars($rq['review_note']); ?></small><?php endif; ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+            <?php if (hasAnyRole(['Registrar', 'Administrator'])): ?>
+                <a href="<?php echo BASE_URL; ?>modules/students/corrections.php" class="small" target="_top"><i class="fas fa-list-check me-1"></i>Review all correction requests</a>
+            <?php endif; ?>
+        </div>
+
     </div>
 </div>
 

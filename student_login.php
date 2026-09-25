@@ -27,7 +27,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Information in Online Enrollment -- no online application with this
     // LRN means no portal access (and it must be approved first).
     $application = null;
+    $walkin = null; // portal access given by the registrar (walk-in / older records, no online application)
     if ($lrn !== '' && preg_match('/^\d{12}$/', $lrn)) {
+        require_once __DIR__ . '/includes/student_records_helpers.php';
+        srEnsureSchema();
+        $walkin = getRecord("SELECT student_id FROM students WHERE lrn = ? AND is_active = 1 AND portal_access = 1", [$lrn]);
         $application = getRecord(
             "SELECT reference_no, status FROM online_applications WHERE lrn = ?
              ORDER BY FIELD(status, 'Approved', 'Under Review', 'Pending', 'Rejected'), application_id DESC LIMIT 1",
@@ -41,11 +45,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Your LRN must be exactly 12 digits (numbers only).';
     } elseif (isStudentIpRateLimited()) {
         $error = 'Too many attempts from this device. Please try again in a few minutes.';
-    } elseif (!$application) {
+    } elseif (!$walkin && !$application) {
         logActivity(null, 'student', 'Failed login', "LRN not found in Online Enrollment: $lrn");
         $error = 'This LRN is not registered in Online Enrollment. Please enroll first using the same LRN you will use to sign in.';
         $error_link = ['online_enrollment.php', 'Go to Online Enrollment'];
-    } elseif ($application['status'] !== 'Approved') {
+    } elseif (!$walkin && $application['status'] !== 'Approved') {
         logActivity(null, 'student', 'Failed login', "LRN $lrn application not approved ({$application['status']})");
         $error = $application['status'] === 'Rejected'
             ? 'Your enrollment application (Ref. ' . $application['reference_no'] . ') was not approved, so the Student Portal is not available for this LRN. Please contact the registrar.'

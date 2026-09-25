@@ -482,6 +482,10 @@ include '../../includes/header.php';
                 <a href="<?php echo BASE_URL; ?>modules/students/bulk_import.php" class="btn btn-outline-dark btn-sm">
                     <i class="fas fa-file-import me-2"></i>Bulk Import
                 </a>
+                <?php require_once __DIR__ . '/../../includes/student_records_helpers.php'; $sr_pending = srPendingCount(); ?>
+                <a href="<?php echo BASE_URL; ?>modules/students/corrections.php" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-pen-to-square me-2"></i>Correction Requests<?php if ($sr_pending): ?> <span class="badge bg-danger ms-1"><?php echo $sr_pending; ?></span><?php endif; ?>
+                </a>
             </div>
             <?php endif; ?>
         </div>

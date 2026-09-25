@@ -84,6 +84,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['profile_image'])) {
     }
 }
 
+// A correction of official information (name, birth date, gender): a request the Registrar approves.
+require_once '../../../includes/student_records_helpers.php';
+$sr_student_fields = array_intersect_key(srCorrectionFields(), array_flip(['first_name', 'middle_name', 'last_name', 'birth_date', 'gender']));
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_correction'])) {
+    if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
+        $errors[] = 'Invalid security token.';
+    } elseif (!isset($sr_student_fields[$_POST['field_name'] ?? ''])) {
+        $errors[] = 'Choose which information to correct.';
+    } else {
+        $sr = srRequestCorrection($student_id, $_POST['field_name'], (string) ($_POST['new_value'] ?? ''), (string) ($_POST['reason'] ?? ''), 'Student', $student_id);
+        if ($sr['success']) {
+            $success = 'Your correction request was sent. The Registrar will review it; your record changes once it is approved.';
+        } else {
+            $errors[] = htmlspecialchars($sr['error']);
+        }
+    }
+}
+
 // Handle profile update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
@@ -470,6 +488,59 @@ $page_title = 'My Profile';
                             <div class="info-row"><span class="info-label"><i class="fas fa-key info-icon"></i>Login Method</span><span class="info-value">LRN-Based Login</span></div>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Request a correction (official information) -->
+            <?php $sr_requests = srStudentRequests($student_id); ?>
+            <div class="card-portal" id="corrections">
+                <div class="card-portal-header"><span><i class="fas fa-pen-to-square me-1"></i> Request a correction</span></div>
+                <div class="card-portal-body">
+                    <p style="font-size:13px;color:var(--portal-gray);margin-bottom:10px;">
+                        Is your name, birth date or gender wrong? Send a request with the correct value and the basis (e.g. your PSA birth certificate).
+                        The Registrar reviews it, and your record changes once it is approved. (Contact, address and guardian details you can edit yourself above.)
+                    </p>
+                    <form method="POST" action="#corrections" class="row g-2 align-items-end">
+                        <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
+                        <input type="hidden" name="request_correction" value="1">
+                        <div class="col-md-3">
+                            <label class="form-label" style="font-size:12.5px;font-weight:600;">Information</label>
+                            <select name="field_name" class="form-select form-select-sm" required>
+                                <option value="">Choose...</option>
+                                <?php foreach ($sr_student_fields as $fk => $fl): ?>
+                                    <option value="<?php echo $fk; ?>"><?php echo htmlspecialchars($fl); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label" style="font-size:12.5px;font-weight:600;">Correct value</label>
+                            <input type="text" name="new_value" class="form-control form-control-sm" maxlength="255" placeholder="e.g. Maria / 2013-05-14 / Female" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" style="font-size:12.5px;font-weight:600;">Reason / basis</label>
+                            <input type="text" name="reason" class="form-control form-control-sm" maxlength="500" placeholder="e.g. Per my PSA birth certificate" required>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-sm w-100" style="background:#14213D;color:#fff;">Send request</button>
+                        </div>
+                    </form>
+                    <?php if (!empty($sr_requests)): ?>
+                        <div class="table-responsive mt-3">
+                            <table class="table table-sm mb-0" style="font-size:12.5px;">
+                                <thead><tr><th>Information</th><th>Requested</th><th>Date</th><th>Status</th></tr></thead>
+                                <tbody>
+                                <?php foreach ($sr_requests as $rq): ?>
+                                    <tr>
+                                        <td><?php echo htmlspecialchars(srCorrectionFields()[$rq['field_name']] ?? $rq['field_name']); ?></td>
+                                        <td><?php echo htmlspecialchars($rq['new_value']); ?></td>
+                                        <td><?php echo date('M j, Y', strtotime($rq['created_at'])); ?></td>
+                                        <td><?php echo htmlspecialchars($rq['status']); ?><?php echo !empty($rq['review_note']) ? ' — ' . htmlspecialchars($rq['review_note']) : ''; ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
