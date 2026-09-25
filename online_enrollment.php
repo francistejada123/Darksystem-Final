@@ -2037,7 +2037,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                     var rcCard = group.querySelector('.doc-card[data-doc-key="form138"]');
                     var rcMsg = rcCard ? reportCardProblem(rcCard) : '';
                     if (rcMsg) {
-                        showDocError(rcCard, rcMsg);
+                        rcCard.classList.add('doc-card-invalid');   // the message itself is on the card's status line
                         ok4 = false;
                         firstInvalidCard = rcCard;
                     }
@@ -2689,7 +2689,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             if (!rcRequiredDone(card)) { setCardLrnStatus(card, '', ''); setCardRead(card, null); return; }
             if (!s || s.sig !== rcSig(card)) { setCardLrnStatus(card, '', ''); setCardRead(card, null); return; }
             if (s.status === 'checking') {
-                setCardLrnStatus(card, 'checking', '<i class="fas fa-spinner fa-spin me-1"></i>Reading your Report Card pages (LRN and grades)…');
+                setCardLrnStatus(card, 'checking', '<i class="fas fa-spinner fa-spin me-1"></i>Reading your Report Card pages (LRN and grades)… this can take up to a minute.');
                 setCardRead(card, null);
                 return;
             }

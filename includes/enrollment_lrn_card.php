@@ -199,6 +199,71 @@ function oeReportCardAnalyze(array $paths)
 }
 
 /**
+ * A handwritten LRN on a tilted phone photo is often misread by one digit
+ * (6 read as 4, 5 as 6...). When the first read does not match, the LRN alone
+ * is read again on each page, turned upright in the other directions, until
+ * one read EXACTLY matches the entered LRN. That is still safe: a misread can
+ * practically never produce, digit for digit, the other 12-digit number the
+ * applicant typed -- a wrong LRN stays "Wrong LRN number".
+ * @return array{matched:bool, reads:string[]}
+ */
+function oeReportCardLrnRecheck(array $paths, $entered)
+{
+    $entered = oeNormalizeLrn($entered);
+    if ($entered === '') return ['matched' => false, 'reads' => []];
+    $key = 'lrnre:' . sha1(implode('|', array_map('sha1_file', array_filter($paths, 'is_file')))) . ':' . $entered;
+    if (isset($_SESSION['oe_card_read'][$key])) return $_SESSION['oe_card_read'][$key];
+
+    $schema = ['type' => 'object', 'properties' => ['lrn' => ['type' => 'string'], 'clearly_readable' => ['type' => 'boolean']], 'required' => ['lrn', 'clearly_readable']];
+    $format = ['type' => 'text', 'mime_type' => 'application/json', 'schema' => $schema];
+    $system = 'Find the LRN (Learner Reference Number: 12 digits, printed or HANDWRITTEN, usually after the label "LRN", often at the top right) '
+        . 'on this Philippine report card image. Read every handwritten digit carefully (tell 6 from 4, 1 from 7, 5 from 6, 0 from 9). '
+        . 'Reply with ONLY the JSON {"lrn": the digits you see, "clearly_readable": bool}.';
+
+    // Candidate images: each page upright in 3 directions (images), or the PDF as it is.
+    $tries = [];
+    $seen = [];
+    foreach ($paths as $p) {
+        $mime = oeReportCardMime($p);
+        if ($mime === null) continue;
+        $h = sha1_file($p);
+        if (isset($seen[$h])) continue;
+        $seen[$h] = true;
+        if ($mime === 'application/pdf' || !function_exists('imagecreatefromstring')) {
+            $tries[] = ['type' => $mime === 'application/pdf' ? 'document' : 'image', 'data' => base64_encode(file_get_contents($p)), 'mime_type' => $mime];
+            continue;
+        }
+        $img = @imagecreatefromstring(file_get_contents($p));
+        if (!$img) continue;
+        // keep the upload light: longest side at most 2000 px
+        $w = imagesx($img); $hgt = imagesy($img); $scale = min(1, 2000 / max($w, $hgt));
+        if ($scale < 1) { $img = imagescale($img, (int) round($w * $scale), (int) round($hgt * $scale)); }
+        foreach ([90, 270, 0] as $deg) {
+            $r = $deg ? imagerotate($img, $deg, 0) : $img;
+            ob_start(); imagejpeg($r, null, 90); $bytes = ob_get_clean();
+            $tries[] = ['type' => 'image', 'data' => base64_encode($bytes), 'mime_type' => 'image/jpeg'];
+        }
+    }
+    $hadSession = session_status() === PHP_SESSION_ACTIVE;
+    if ($hadSession) session_write_close();
+    $reads = [];
+    $matched = false;
+    foreach (array_slice($tries, 0, 6) as $i => $part) {
+        $api = callGeminiAPI($system, 'Read the LRN.', $format, 45, $part, $i >= 3 ? 'gemini-2.5-flash' : null);
+        if (empty($api['success'])) continue;
+        $d = json_decode(trim(preg_replace('/\s*```$/', '', preg_replace('/^```(?:json)?\s*/i', '', trim((string) extractGeminiRawText($api['response'] ?? null))))), true);
+        $lrn = is_array($d) ? oeNormalizeLrn($d['lrn'] ?? '') : '';
+        if ($lrn === '') continue;
+        $reads[] = $lrn;
+        if (hash_equals($lrn, $entered)) { $matched = true; break; }
+    }
+    if ($hadSession) @session_start();
+    $res = ['matched' => $matched, 'reads' => $reads];
+    $_SESSION['oe_card_read'][$key] = $res;
+    return $res;
+}
+
+/**
  * Check the whole Report Card against the LRN from Step 2.
  * @param string[] $paths
  * @return array{status:string, message:string, detected:string, data:array}
@@ -211,6 +276,15 @@ function oeReportCardCheck(array $paths, $enteredLrn)
         return ['status' => 'error', 'message' => 'The Report Card could not be checked right now. Please try again in a moment.', 'detected' => '', 'data' => []];
     }
     $d = $read['data'];
+    // First read did not match (or found no LRN): read the LRN alone again, upright, before deciding.
+    if ($entered !== '' && $d['lrn'] !== $entered) {
+        $re = oeReportCardLrnRecheck($paths, $entered);
+        if ($re['matched']) {
+            $d['lrn'] = $entered;
+        } elseif ($d['lrn'] === '' && !empty($re['reads'])) {
+            $d['lrn'] = $re['reads'][0];
+        }
+    }
     if ($d['lrn'] === '') {
         return ['status' => 'unreadable', 'message' => OE_LRN_MSG_UNREADABLE, 'detected' => '', 'data' => $d];
     }
