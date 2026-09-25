@@ -166,6 +166,7 @@ function classroomOnlineWork($teacherId, $sectionId, $subjectCode, $syId, array 
             'title'       => $t['item_name'] . ($t['topic'] ? ' – ' . $t['topic'] : ''),
             'window'      => aim_formatDateTime($t['start_at']) . ' – ' . aim_formatDateTime($t['end_at']),
             'end_at'      => $t['end_at'],
+            'updated_at'  => $t['updated_at'] ?? $t['start_at'],
             'lesson_sent' => (int) ($withLesson['n'] ?? 0),
         ];
     }

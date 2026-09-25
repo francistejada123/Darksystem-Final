@@ -575,6 +575,13 @@ include '../../includes/header.php';
     /* Online quizzes/activities (Classwork) and student comments (Stream) */
     .cr-pills { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
     .cw-mail-line { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:8px; font-size:12px; color:#64748b; }
+    .cr-students + .cw-mail-line { margin-top:10px; padding-top:8px; border-top:1px solid var(--gc-line, #e5e7eb); }
+    .cw-list { display:flex; flex-direction:column; }
+    .cw-toggle-card { cursor:pointer; transition:box-shadow .15s ease, border-color .15s ease; }
+    .cw-toggle-card:hover { border-color:var(--gc-accent, #2563eb); box-shadow:0 1px 6px rgba(37,99,235,.12); }
+    .cw-toggle-card table, .cw-toggle-card form { cursor:auto; }
+    .cw-toggle-card .cr-students:not([open]) > summary { display:none; }
+    .cw-toggle-card:not(.is-open) .gc-work-body::after { content:'Click to view student work'; display:block; margin-top:8px; font-size:12px; color:var(--gc-accent, #2563eb); font-weight:600; }
     .cw-mail-line.cw-mail-bad { color:#b91c1c; }
     .cw-mail-line .cw-mail-fail { font-weight:600; color:#b91c1c; }
     .cw-mail-line .cw-mail-err { flex-basis:100%; font-size:11px; color:#b91c1c; }
@@ -1261,9 +1268,11 @@ include '../../includes/header.php';
         <div class="gc-cw-head">
             <span class="gc-cw-hint">Online quizzes and activities from Teacher AI show here automatically with each student's status.</span>
         </div>
+        <?php $cw_order = function ($when) { $t = $when ? strtotime((string) $when) : 0; return (int) -floor(($t ?: 0) / 60); }; ?>
+        <div class="cw-list">
 
         <?php foreach ($online_work['prepared'] as $pw): ?>
-            <div class="classwork-card cr-prepared gc-work">
+            <div class="classwork-card cr-prepared gc-work" style="order:<?php echo $cw_order($pw['updated_at'] ?? null); ?>">
                 <span class="gc-work-icon is-pending"><i class="fas fa-hourglass-half"></i></span>
                 <div class="gc-work-body d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <div>
@@ -1277,7 +1286,7 @@ include '../../includes/header.php';
         <?php endforeach; ?>
 
         <?php foreach ($online_work['sent'] as $ow): ?>
-            <div class="classwork-card cr-online gc-work">
+            <div class="classwork-card cr-online gc-work cw-toggle-card" style="order:<?php echo $cw_order($ow['sent_raw'] ?? null); ?>">
                 <span class="gc-work-icon"><i class="fas fa-clipboard-list"></i></span>
                 <div class="gc-work-body">
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
@@ -1303,7 +1312,7 @@ include '../../includes/header.php';
                     <?php endif; ?>
                 </div>
                 <details class="cr-students">
-                    <summary>View students</summary>
+                    <summary>Student work</summary>
                     <table>
                         <thead><tr><th>Student</th><th>Status</th><th>Score</th><th>Submitted</th></tr></thead>
                         <tbody>
@@ -1328,7 +1337,7 @@ include '../../includes/header.php';
             $cw_grading = $item['grading_category'] ?? classworkGradingCategory($item['category']);
             $cw_open = (int) ($_GET['open'] ?? 0) === (int) $item['assignment_id'];
         ?>
-            <div class="classwork-card gc-work" id="cw-<?php echo (int) $item['assignment_id']; ?>">
+            <div class="classwork-card gc-work cw-toggle-card<?php echo $cw_open ? ' is-open' : ''; ?>" id="cw-<?php echo (int) $item['assignment_id']; ?>" style="order:<?php echo $cw_order($item['assigned_at'] ?? $item['created_at']); ?>">
                 <span class="gc-work-icon <?php echo $cw_grading === 'PT' ? 'is-pt' : ($cw_grading === 'QA' ? 'is-exam' : ($cw_grading ? '' : 'is-assignment')); ?>"><i class="fas <?php echo $cw_grading === 'PT' ? 'fa-star' : ($cw_grading === 'QA' ? 'fa-file-signature' : ($cw_grading ? 'fa-clipboard-list' : 'fa-book-open')); ?>"></i></span>
                 <div class="gc-work-body">
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
@@ -1373,26 +1382,6 @@ include '../../includes/header.php';
                         <input type="hidden" name="term" value="<?php echo htmlspecialchars($term); ?>">
                         <i class="fas fa-triangle-exclamation"></i> The Google Form for this quiz was not created yet.
                         <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2">Create Google Form again</button>
-                    </form>
-                <?php endif; ?>
-                <?php $cw_mail = $cw_email_status[(int) $item['assignment_id']] ?? []; if ($cw_mail): ?>
-                    <form method="post" class="cw-mail-line<?php echo !empty($cw_mail['Failed']) ? ' cw-mail-bad' : ''; ?>">
-                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
-                        <input type="hidden" name="form_action" value="retry_classwork_email">
-                        <input type="hidden" name="assignment_id" value="<?php echo (int) $item['assignment_id']; ?>">
-                        <input type="hidden" name="section_id" value="<?php echo (int) $section_id; ?>">
-                        <input type="hidden" name="subject_code" value="<?php echo htmlspecialchars($subject_code); ?>">
-                        <input type="hidden" name="school_year_id" value="<?php echo (int) $school_year_id; ?>">
-                        <input type="hidden" name="term" value="<?php echo htmlspecialchars($term); ?>">
-                        <i class="fas fa-envelope"></i> Email:
-                        <?php if (!empty($cw_mail['Sent'])): ?><span><?php echo (int) $cw_mail['Sent']; ?> sent</span><?php endif; ?>
-                        <?php if (!empty($cw_mail['Queued'])): ?><span><?php echo (int) $cw_mail['Queued']; ?> sending…</span><?php endif; ?>
-                        <?php if (!empty($cw_mail['Failed'])): ?><span class="cw-mail-fail" title="<?php echo htmlspecialchars($cw_mail['error_Failed'] ?? ''); ?>"><?php echo (int) $cw_mail['Failed']; ?> failed</span><?php endif; ?>
-                        <?php if (!empty($cw_mail['Skipped'])): ?><span title="<?php echo htmlspecialchars($cw_mail['error_Skipped'] ?? ''); ?>"><?php echo (int) $cw_mail['Skipped']; ?> not sent (<?php echo htmlspecialchars($cw_mail['error_Skipped'] ?? 'switched off'); ?>)</span><?php endif; ?>
-                        <?php if (!empty($cw_mail['Failed']) || !empty($cw_mail['Skipped'])): ?>
-                            <button type="submit" class="btn btn-sm btn-outline-secondary py-0 px-2">Send again</button>
-                            <?php if (!empty($cw_mail['error_Failed'])): ?><div class="cw-mail-err"><?php echo htmlspecialchars(mb_strimwidth($cw_mail['error_Failed'], 0, 160, '…')); ?><?php echo stripos($cw_mail['error_Failed'], 'authenticate') !== false ? ' — the Gmail App Password in Settings › Email Settings needs to be updated.' : ''; ?></div><?php endif; ?>
-                        <?php endif; ?>
                     </form>
                 <?php endif; ?>
                 <div class="cr-pills">
@@ -1477,10 +1466,46 @@ include '../../includes/header.php';
                         <p class="cw-note"><i class="fas fa-table-list me-1"></i>AI checks turned-in work first and records the score; open the student's file and change the score any time — your score always wins. Scores are saved to Manage Assessment Items → <?php echo htmlspecialchars(CLASSWORK_GRADING_LABELS[$cw_grading]); ?> only.</p>
                     <?php endif; ?>
                 </details>
+                <?php $cw_mail = $cw_email_status[(int) $item['assignment_id']] ?? []; if ($cw_mail): ?>
+                    <form method="post" class="cw-mail-line<?php echo !empty($cw_mail['Failed']) ? ' cw-mail-bad' : ''; ?>">
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
+                        <input type="hidden" name="form_action" value="retry_classwork_email">
+                        <input type="hidden" name="assignment_id" value="<?php echo (int) $item['assignment_id']; ?>">
+                        <input type="hidden" name="section_id" value="<?php echo (int) $section_id; ?>">
+                        <input type="hidden" name="subject_code" value="<?php echo htmlspecialchars($subject_code); ?>">
+                        <input type="hidden" name="school_year_id" value="<?php echo (int) $school_year_id; ?>">
+                        <input type="hidden" name="term" value="<?php echo htmlspecialchars($term); ?>">
+                        <i class="fas fa-envelope"></i> Email:
+                        <?php if (!empty($cw_mail['Sent'])): ?><span><?php echo (int) $cw_mail['Sent']; ?> sent</span><?php endif; ?>
+                        <?php if (!empty($cw_mail['Queued'])): ?><span><?php echo (int) $cw_mail['Queued']; ?> sending…</span><?php endif; ?>
+                        <?php if (!empty($cw_mail['Failed'])): ?><span class="cw-mail-fail" title="<?php echo htmlspecialchars($cw_mail['error_Failed'] ?? ''); ?>"><?php echo (int) $cw_mail['Failed']; ?> failed</span><?php endif; ?>
+                        <?php if (!empty($cw_mail['Skipped'])): ?><span title="<?php echo htmlspecialchars($cw_mail['error_Skipped'] ?? ''); ?>"><?php echo (int) $cw_mail['Skipped']; ?> not sent (<?php echo htmlspecialchars($cw_mail['error_Skipped'] ?? 'switched off'); ?>)</span><?php endif; ?>
+                        <?php if (!empty($cw_mail['Failed']) || !empty($cw_mail['Skipped'])): ?>
+                            <button type="submit" class="btn btn-sm btn-outline-secondary py-0 px-2">Send again</button>
+                            <?php if (!empty($cw_mail['error_Failed'])): ?><div class="cw-mail-err"><?php echo htmlspecialchars(mb_strimwidth($cw_mail['error_Failed'], 0, 160, '…')); ?><?php echo stripos($cw_mail['error_Failed'], 'authenticate') !== false ? ' — the Gmail App Password in Settings › Email Settings needs to be updated.' : ''; ?></div><?php endif; ?>
+                        <?php endif; ?>
+                    </form>
+                <?php endif; ?>
                 </div>
             </div>
         <?php endforeach; endif; ?>
+        </div>
     </div>
+    <script>
+    // Click a card to show / hide its student work. Clicks on links, buttons,
+    // score boxes and the table itself never toggle the card.
+    document.querySelectorAll('#classwork .cw-toggle-card').forEach(function (card) {
+        var det = card.querySelector('details.cr-students');
+        if (!det) return;
+        det.open = card.classList.contains('is-open');
+        det.addEventListener('toggle', function () { card.classList.toggle('is-open', det.open); });
+        card.addEventListener('click', function (e) {
+            if (e.target.closest('a, button, input, select, textarea, label, form, table, summary, .cw-note')) return;
+            if (window.getSelection && String(window.getSelection()).length) return;
+            det.open = !det.open;
+        });
+    });
+    </script>
     <?php endif; ?>
 
     <?php if ($tab === 'stream' || $tab === 'classwork'): ?>
