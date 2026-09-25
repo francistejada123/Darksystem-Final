@@ -267,6 +267,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+        if ($generate_format === 'gform') {
+            $instructions = classworkQuizDirections($instructions) . "\n\nAnswer the Google Form below, then click Turn in.";
+            if ($ai_teacher_answer_key === '') {
+                $letters = range('A', 'Z');
+                $ai_teacher_answer_key = implode("\n", array_map(function ($q, $i) use ($letters) {
+                    return ($i + 1) . '. ' . $letters[$q['correct_index']] . ' - ' . $q['choices'][$q['correct_index']];
+                }, $quiz_questions, array_keys($quiz_questions)));
+            }
+        }
+
         // One post per opened form: a double-click or a page refresh never
         // creates (and emails) the same assignment twice.
         $cw_nonce = preg_replace('/[^a-f0-9]/', '', (string) ($_POST['cw_nonce'] ?? ''));
@@ -572,6 +582,16 @@ include '../../includes/header.php';
     .cw-quiz-review li { margin-bottom:6px; }
     .cw-quiz-review .ok { color:#15803d; font-weight:600; }
     .cw-format-hint { font-size:11px; color:#64748b; margin-top:3px; }
+    .cw-answer-key { margin-top:8px; font-size:12.5px; }
+    .cw-answer-key summary { cursor:pointer; color:#1d4ed8; font-weight:600; }
+    .cw-answer-key ol { margin:8px 0 0; padding-left:20px; }
+    .cw-answer-key li { margin-bottom:6px; }
+    .cw-answer-key .cw-key-ans { color:#15803d; font-weight:600; }
+    .cw-answer-key .cw-key-text { margin-top:6px; white-space:normal; }
+    .gc-composer-row { display:flex; align-items:center; gap:10px; }
+    .gc-composer-row .gc-composer-toggle { flex:1 1 auto; }
+    .gc-composer.is-open .gc-composer-row { display:none; }
+    .gc-btn-create.gc-btn-sm { padding:7px 16px; font-size:13px; white-space:nowrap; text-decoration:none; }
     .cr-pill { display:inline-block; border-radius:99px; padding:2px 9px; font-size:11px; font-weight:600; background:#F2F4F7; color:#475467; }
     .cr-pill.upcoming { background:#EAF2FE; color:#1D4ED8; }
     .cr-pill.active { background:#FEF3E6; color:#B54708; }
@@ -1075,10 +1095,13 @@ include '../../includes/header.php';
         </aside>
         <div class="gc-main">
         <div class="stream-post gc-composer" id="gcComposer">
-            <button type="button" class="gc-composer-toggle" id="gcComposerToggle">
-                <span class="gc-avatar"><?php echo htmlspecialchars($gc_teacher_initials); ?></span>
-                <span>Announce something to your class</span>
-            </button>
+            <div class="gc-composer-row">
+                <button type="button" class="gc-composer-toggle" id="gcComposerToggle">
+                    <span class="gc-avatar"><?php echo htmlspecialchars($gc_teacher_initials); ?></span>
+                    <span>Announce something to your class</span>
+                </button>
+                <a class="gc-btn-create gc-btn-sm" href="<?php echo $gc_classwork_url; ?>&amp;create=1" title="New assignment, quiz or material"><i class="fas fa-plus"></i> Create</a>
+            </div>
             <form method="post" enctype="multipart/form-data" class="gc-composer-form">
                 <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
                 <input type="hidden" name="form_action" value="post_announcement">
@@ -1341,6 +1364,24 @@ include '../../includes/header.php';
                             <a class="attachment-chip" href="<?php echo htmlspecialchars($item['google_form_edit_url']); ?>" target="_blank" rel="noopener"><i class="fas fa-pen"></i> Edit Google Form (teacher only)</a>
                         <?php endif; ?>
                     </div>
+                <?php endif; ?>
+                <?php $cw_key_q = !empty($item['quiz_questions_json']) ? (json_decode($item['quiz_questions_json'], true) ?: []) : []; ?>
+                <?php if ($cw_key_q || trim((string) ($item['answer_key'] ?? '')) !== ''): ?>
+                    <details class="cw-answer-key">
+                        <summary><i class="fas fa-key me-1"></i>Answer key (teacher only)</summary>
+                        <?php if ($cw_key_q): ?>
+                            <ol>
+                                <?php foreach ($cw_key_q as $q): $ci = (int) ($q['correct_index'] ?? 0); ?>
+                                    <li>
+                                        <?php echo htmlspecialchars($q['question'] ?? ''); ?>
+                                        <div class="cw-key-ans"><i class="fas fa-check"></i> <?php echo chr(65 + $ci); ?>. <?php echo htmlspecialchars($q['choices'][$ci] ?? ''); ?> <span class="text-muted">(<?php echo (int) ($q['points'] ?? 1); ?> pt)</span></div>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ol>
+                        <?php else: ?>
+                            <div class="cw-key-text"><?php echo nl2br(htmlspecialchars($item['answer_key'])); ?></div>
+                        <?php endif; ?>
+                    </details>
                 <?php endif; ?>
                 <?php if (!empty($item['quiz_questions_json']) && empty($item['google_form_id'])): ?>
                     <form method="post" class="cw-mail-line cw-mail-bad">
@@ -1808,6 +1849,11 @@ include '../../includes/header.php';
         modalEl.addEventListener('shown.bs.modal', function () {
             if (!greeted) { greeted = true; send({ greet: true }); }
         });
+        // "+ Create" from the Stream opens the New Assignment form right away.
+        if (/[?&]create=1\b/.test(location.search)) {
+            window.addEventListener('load', function () { bootstrap.Modal.getOrCreateInstance(modalEl).show(); });
+            window.history.replaceState(null, '', location.href.replace(/&create=1\b/, ''));
+        }
     })();
     </script>
     <?php endif; ?>

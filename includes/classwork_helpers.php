@@ -384,6 +384,22 @@ function classworkAiCheck($assignmentId, $studentId)
 }
 
 /**
+ * Just the directions of a quiz (the text before item 1), without the
+ * questions themselves -- the Google Form holds the questions.
+ */
+function classworkQuizDirections($text)
+{
+    $text = trim(str_replace("\r\n", "\n", (string) $text));
+    $parts = preg_split('/^\s*(?:Q\s*)?1\s*[\.\):]\s+/mi', $text, 2);
+    $dir = trim($parts[0] ?? '');
+    $dir = trim(preg_replace('/^\s*(?:instructions?|directions?)\s*:\s*/i', '', $dir));
+    if ($dir === '' || mb_strlen($dir) > 600 || count($parts) < 2 && mb_strlen($text) > 300) {
+        $dir = 'Read each question carefully and choose the best answer.';
+    }
+    return $dir;
+}
+
+/**
  * Build the Google Form for a Quiz from the questions the teacher reviewed
  * (saved on the assignment) and attach its student link. Safe to call again:
  * a Form that already exists is never made twice.
@@ -402,7 +418,7 @@ function classworkCreateGoogleForm($assignmentId)
         return ['success' => false, 'error' => 'There are no reviewed quiz questions to build the Google Form from. Generate the quiz with AI and click "Use this content" first.'];
     }
     $title = html_entity_decode((string) $a['title'], ENT_QUOTES, 'UTF-8');
-    $desc = mb_strimwidth(trim((string) $a['instructions']), 0, 1500, '…');
+    $desc = classworkQuizDirections($a['instructions']);
     if (!empty($a['max_points'])) {
         $desc .= "\n\nTotal: " . rtrim(rtrim(number_format((float) $a['max_points'], 2), '0'), '.') . ' points';
     }

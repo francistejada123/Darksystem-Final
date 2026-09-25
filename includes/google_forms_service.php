@@ -448,3 +448,17 @@ function googleDocsCreateFromDocx($docxPath, $title)
         'view_url' => $up['webViewLink'] ?? ('https://docs.google.com/document/d/' . $fileId . '/edit?usp=sharing'),
     ];
 }
+
+/** Replace the description shown at the top of an existing Form. */
+function googleFormsUpdateDescription($formId, $description)
+{
+    $token = googleGetAccessToken();
+    if (!$token['success']) {
+        return ['success' => false, 'error' => $token['error']];
+    }
+    $r = googleHttpRequest('POST', GOOGLE_FORMS_API_BASE . '/' . rawurlencode($formId) . ':batchUpdate',
+        ['Authorization: Bearer ' . $token['access_token']],
+        ['requests' => [['updateFormInfo' => ['info' => ['description' => mb_substr(trim((string) $description), 0, 4000)], 'updateMask' => 'description']]]],
+        true, true);
+    return $r['success'] ? ['success' => true] : ['success' => false, 'error' => $r['error'] ?? 'unknown'];
+}
