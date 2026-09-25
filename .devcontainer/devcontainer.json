@@ -1,0 +1,22 @@
+{
+  "name": "EGradePro",
+  "build": { "dockerfile": "Dockerfile" },
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "forwardPorts": [80],
+  "portsAttributes": {
+    "80": { "label": "EGradePro", "onAutoForward": "notify" }
+  },
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "postStartCommand": "bash .devcontainer/start.sh",
+  "secrets": {
+    "MAIL_PASSWORD": { "description": "16-letter Gmail App Password of the sending Gmail account" },
+    "MAIL_USERNAME": { "description": "Gmail address that sends the emails (e.g. jaynunez017@gmail.com)" },
+    "GEMINI_API_KEY": { "description": "Gemini API key (value of GEMINI_API_KEY in config/gemini_config.php)" },
+    "GOOGLE_OAUTH_CLIENT_ID": { "description": "From config/google_config.php" },
+    "GOOGLE_OAUTH_CLIENT_SECRET": { "description": "From config/google_config.php" },
+    "GOOGLE_REFRESH_TOKEN": { "description": "From config/google_config.php" }
+  },
+  "customizations": {
+    "vscode": { "extensions": ["bmewburn.vscode-intelephense-client"] }
+  }
+}
