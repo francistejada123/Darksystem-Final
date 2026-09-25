@@ -141,6 +141,14 @@ if ($attach_resource_id !== null) {
         "UPDATE ai_generated_resources SET status = 'Sent', sent_at = NOW() WHERE resource_id = ?",
         [$attach_resource_id]
     );
+    $sen_res = getRecord("SELECT title, resource_type FROM ai_generated_resources WHERE resource_id = ?", [$attach_resource_id]);
+    require_once __DIR__ . '/../../includes/student_email_notify.php';
+    senNotifyStudents([$student_id], [
+        'key' => 'ask:' . (int) $teacher_id . ':' . md5(mb_strtolower(trim((string) ($sen_res['title'] ?? $attach_resource_id)))),
+        'subject_code' => $subject_code, 'teacher_id' => (int) $teacher_id,
+        'title' => $sen_res['title'] ?? 'New activity',
+        'kind' => function_exists('aiResourceTypeLabel') ? aiResourceTypeLabel($sen_res['resource_type'] ?? 'other') : 'Activity',
+    ]);
     logActivity(
         $teacher_id,
         'AI Resource',

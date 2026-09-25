@@ -359,7 +359,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // "New" badge on each student's class card + portal bell.
         classworkNotifyStudents(
-            ['title' => $title, 'category' => $category, 'due_date' => $due_date, 'subject_code' => $post_subject_code, 'school_year_id' => $post_sy_id],
+            ['assignment_id' => (int) $assignment_id, 'title' => $title, 'category' => $category, 'due_date' => $due_date, 'subject_code' => $post_subject_code, 'school_year_id' => $post_sy_id],
             array_column($roster, 'student_id'),
             $teacher_id
         );

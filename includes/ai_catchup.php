@@ -493,6 +493,12 @@ function aiCatchupSend($teacherId, array $req)
                 $sent++;
                 $sectionSent++;
                 $sentIds[] = (int) $studentId;
+                require_once __DIR__ . '/student_email_notify.php';
+                senNotifyStudents([(int) $studentId], [
+                    'key' => 'resource:' . (int) $studentResourceId,
+                    'subject_code' => $subjectCode, 'teacher_id' => $teacherId,
+                    'title' => $title, 'kind' => 'Make-up Quiz',
+                ]);
                 if ($viaGoogle) {
                     $googleCount++;
                     $forms[] = [

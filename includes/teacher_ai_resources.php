@@ -1218,6 +1218,7 @@ function teacherAiSendResource($teacherId, array $req)
 
     $risk = teacherAiSupportRiskValues();
     $sent = 0;
+    $emailIds = []; // students who got it -> emailed after the loop
     $already = 0;
     $failed = 0;
     $relinked = 0;
@@ -1304,6 +1305,7 @@ function teacherAiSendResource($teacherId, array $req)
                 $db->commit();
             }
             $sent++;
+            $emailIds[] = (int) $studentId;
         } else {
             if ($inTx && $db->inTransaction()) {
                 $db->rollBack();
@@ -1324,6 +1326,15 @@ function teacherAiSendResource($teacherId, array $req)
     // above already told them, so no second message.
     if ($linkedTask && ($sent > 0 || $already > 0)) {
         aim_sendTaskToClass((int) $linkedTask['task_id'], $teacherId, $targetIds, false);
+    }
+    if (!empty($emailIds)) {
+        require_once __DIR__ . '/student_email_notify.php';
+        senNotifyStudents($emailIds, [
+            'key' => 'tai_send:' . (int) $sendId,
+            'subject_code' => $subjectCode, 'teacher_id' => (int) $teacherId,
+            'title' => $res['title'], 'kind' => aiResourceTypeLabel($res['resource_type']),
+            'deadline' => $linkedTask['end_at'] ?? null,
+        ]);
     }
     if ($sent > 0) {
         executeQuery("UPDATE teacher_ai_resources SET status = 'Sent', sent_at = NOW() WHERE resource_id = ?", [(int) $res['resource_id']]);

@@ -392,6 +392,16 @@ function aim_sendTaskToClass($task_id, $teacher_id, $student_ids = null, $notify
     }
     executeQuery("UPDATE learning_material_tasks SET sent_at = ? WHERE task_id = ?", [$now, (int) $task['task_id']]);
     aim_syncTaskStatuses([$task]);
+    // Email the students (once per student per task). When $notify is false the
+    // caller (Teacher AI send) already emails them for the same work.
+    if ($notify && $roster) {
+        require_once __DIR__ . '/student_email_notify.php';
+        senNotifyStudents(array_column($roster, 'student_id'), [
+            'key' => 'task:' . (int) $task['task_id'],
+            'subject_code' => $task['subject_code'], 'teacher_id' => (int) $teacher_id,
+            'title' => $task['title'], 'kind' => $task['assessment_type'], 'deadline' => $task['end_at'],
+        ]);
+    }
     return ['total' => count($roster), 'added' => $added];
 }
 

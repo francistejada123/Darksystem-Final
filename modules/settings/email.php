@@ -43,7 +43,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'smtp_username' => $smtp_username,
             'smtp_password' => $smtp_password,
             'smtp_from' => $smtp_from,
-            'smtp_from_name' => $smtp_from_name
+            'smtp_from_name' => $smtp_from_name,
+            // Email students when a teacher publishes new work (includes/student_email_notify.php)
+            'email_task_notifications' => !empty($_POST['email_task_notifications']) ? '1' : '0',
         ];
         
         foreach ($settings_data as $key => $value) {
@@ -127,6 +129,13 @@ include '../../includes/header.php';
                     <input type="text" name="smtp_from_name" class="form-control" 
                            value="<?php echo htmlspecialchars($email_settings['smtp_from_name'] ?? 'EGRADEPRO System'); ?>" 
                            placeholder="EGRADEPRO System" required>
+                </div>
+                <div class="col-12">
+                    <label class="form-check" style="display:flex;gap:8px;align-items:flex-start;">
+                        <input type="checkbox" class="form-check-input mt-1" name="email_task_notifications" value="1" <?php echo ($email_settings['email_task_notifications'] ?? '1') !== '0' ? 'checked' : ''; ?>>
+                        <span><strong>Email students about new work</strong><br>
+                            <small class="text-muted">When a teacher publishes a quiz, activity, assignment or learning material task, each student gets an email at the address from their enrollment (subject, teacher, title, deadline).</small></span>
+                    </label>
                 </div>
             </div>
             

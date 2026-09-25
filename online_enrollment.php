@@ -10,6 +10,7 @@ session_start();
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/includes/enrollment_helpers_online.php';
 require_once __DIR__ . '/includes/email_verify_helpers.php'; // real, existing email account check ("Couldn't find this account")
+require_once __DIR__ . '/includes/enrollment_lrn_card.php';   // LRN on the uploaded Report Card must match the entered LRN
 
 $errors = [];
 $success_ref = null;
@@ -43,6 +44,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['oe_action'] ?? '') === 'em
     $_SESSION['oe_tries_email'] = $ev_tries;
     @set_time_limit(30);
     echo json_encode(evCheckEmail($_POST['email'] ?? ''));
+    exit;
+}
+
+// AJAX (Step 3): read the LRN on the Report Card the applicant just chose and
+// compare it with the LRN from Step 2. The final submit checks it again.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['oe_action'] ?? '') === 'report_card_lrn') {
+    header('Content-Type: application/json; charset=utf-8');
+    if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
+        echo json_encode(['status' => 'error', 'message' => 'Your session expired. Please refresh the page.']);
+        exit;
+    }
+    $rc_now = time();
+    $rc_tries = array_values(array_filter($_SESSION['oe_tries_card'] ?? [], function ($t) use ($rc_now) { return $t > $rc_now - 600; }));
+    if (count($rc_tries) >= 20) {
+        echo json_encode(['status' => 'error', 'message' => 'Too many checks. Please wait a few minutes and try again.']);
+        exit;
+    }
+    $rc_tries[] = $rc_now;
+    $_SESSION['oe_tries_card'] = $rc_tries;
+    $rc_file = $_FILES['report_card'] ?? null;
+    if (!$rc_file || ($rc_file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || ($rc_file['size'] ?? 0) > 5 * 1024 * 1024) {
+        echo json_encode(['status' => 'unreadable', 'message' => OE_LRN_MSG_UNREADABLE]);
+        exit;
+    }
+    @set_time_limit(90);
+    echo json_encode(oeReportCardCheck($rc_file['tmp_name'], $_POST['lrn'] ?? ''));
     exit;
 }
 
@@ -279,6 +306,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 continue;
             }
             $uploads[] = ['doc' => $doc, 'file' => $file];
+
+            // The LRN printed on the Report Card must be the LRN entered in Step 2.
+            if ($doc['key'] === OE_LRN_CARD_DOC_KEY) {
+                $rc = ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK
+                    ? oeReportCardCheck($file['tmp_name'], $lrn)
+                    : ['status' => 'unreadable', 'message' => OE_LRN_MSG_UNREADABLE];
+                if ($rc['status'] !== 'verified') {
+                    $errors[] = $rc['message'];
+                }
+            }
         }
 
         if (empty($errors)) {
@@ -663,6 +700,11 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
         .btn-doc:disabled{opacity:.5;cursor:not-allowed}
 
         .doc-card-error{font-size:12px;color:var(--danger);font-weight:600;margin-top:8px;display:none}
+        .form-label.req::after{content:" *";color:var(--danger,#dc2626);font-weight:700}
+        .doc-lrn-status{display:none;margin-top:8px;font-size:12.5px;font-weight:700;border-radius:8px;padding:7px 10px}
+        .doc-lrn-status.is-checking{display:block;background:#EFF6FF;color:#1D4ED8}
+        .doc-lrn-status.is-verified{display:block;background:#ECFDF5;color:#047857}
+        .doc-lrn-status.is-bad{display:block;background:#FEF2F2;color:#B91C1C}
         .doc-card-error.show{display:block}
         .doc-card-invalid{border-color:var(--danger) !important;background:var(--danger-soft) !important}
         .doc-card-invalid .doc-empty-state{border-color:var(--danger)}
@@ -1307,6 +1349,9 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                                                 </div>
                                             </div>
                                         </div>
+                                        <?php if ($doc['key'] === OE_LRN_CARD_DOC_KEY): ?>
+                                            <div class="doc-lrn-status" aria-live="polite"></div>
+                                        <?php endif; ?>
                                         <div class="doc-card-error"></div>
                                     </div>
                                 <?php endforeach; ?>
@@ -1915,6 +1960,15 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                         clearDocError(card);
                     }
                 });
+                if (ok4) {
+                    var rcCard = group.querySelector('.doc-card[data-doc-key="form138"]');
+                    var rcMsg = rcCard ? reportCardLrnProblem(rcCard) : '';
+                    if (rcMsg) {
+                        showDocError(rcCard, rcMsg);
+                        ok4 = false;
+                        firstInvalidCard = rcCard;
+                    }
+                }
                 if (!ok4) {
                     showBanner('docs');
                     if (firstInvalidCard) firstInvalidCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -2514,6 +2568,88 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             return bytes + ' B';
         }
 
+        // ---- Report Card LRN check (Step 3) ----
+        // The server reads the LRN printed on the uploaded Report Card and
+        // compares it with the LRN from Step 2. Kept per file; re-compared
+        // right away if the applicant edits the LRN afterwards.
+        var rcState = {};   // input id -> { sig, status, detected, message }
+        function fileSig(f) { return f ? f.name + '|' + f.size + '|' + f.lastModified : ''; }
+        function enteredLrn() {
+            var a = document.getElementById('f_lrn'), b = document.getElementById('v_lrn');
+            var v = (a && a.value.trim()) || (b && b.value.trim()) || '';
+            return v.replace(/[\s-]+/g, '');
+        }
+        function setCardLrnStatus(card, kind, msg) {
+            if (!card) return;
+            var st = card.querySelector('.doc-lrn-status');
+            if (!st) return;
+            st.className = 'doc-lrn-status' + (kind ? ' is-' + kind : '');
+            st.innerHTML = msg;
+        }
+        function applyRcState(input) {
+            var card = input.closest('.doc-card');
+            var s = rcState[input.id];
+            if (!s) { setCardLrnStatus(card, '', ''); return; }
+            if (s.status === 'checking') { setCardLrnStatus(card, 'checking', '<i class="fas fa-spinner fa-spin me-1"></i>Reading the LRN on your Report Card…'); return; }
+            // Re-compare with the LRN as it is NOW (the applicant may have fixed Step 2).
+            if (s.detected) {
+                var now = enteredLrn();
+                s.status = (now.length === 12 && now === s.detected) ? 'verified' : 'mismatch';
+                s.message = s.status === 'verified' ? 'LRN Verified' : 'Wrong LRN number. The LRN entered does not match the LRN on the uploaded Report Card.';
+            }
+            if (s.status === 'verified') {
+                setCardLrnStatus(card, 'verified', '✅ LRN Verified');
+                clearDocError(card);
+            } else {
+                setCardLrnStatus(card, 'bad', '<i class="fas fa-circle-xmark me-1"></i>' + esc(s.message || 'LRN could not be verified. Please upload a clear and readable Report Card.'));
+            }
+        }
+        function checkReportCardLrn(input) {
+            var file = input.files && input.files[0];
+            if (!file) { delete rcState[input.id]; applyRcState(input); return; }
+            var sig = fileSig(file);
+            if (rcState[input.id] && rcState[input.id].sig === sig && rcState[input.id].status !== 'error') { applyRcState(input); return; }
+            rcState[input.id] = { sig: sig, status: 'checking', detected: '', message: '' };
+            applyRcState(input);
+            var fd = new FormData();
+            fd.append('oe_action', 'report_card_lrn');
+            fd.append('csrf_token', document.querySelector('#oeForm [name="csrf_token"]').value);
+            fd.append('lrn', enteredLrn());
+            fd.append('report_card', file);
+            fetch(window.location.href.split('#')[0], { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    var cur = input.files && input.files[0];
+                    if (fileSig(cur) !== sig) return;                // a different file was chosen meanwhile
+                    rcState[input.id] = { sig: sig, status: (res && res.status) || 'error', detected: (res && res.detected) || '', message: (res && res.message) || '' };
+                    applyRcState(input);
+                })
+                .catch(function () {
+                    rcState[input.id] = { sig: sig, status: 'error', detected: '', message: 'The Report Card could not be checked right now. Please choose the file again.' };
+                    applyRcState(input);
+                });
+        }
+        /** '' when the Report Card LRN is verified for this card; otherwise the message to show. */
+        function reportCardLrnProblem(card) {
+            var input = card.querySelector('.doc-file-input');
+            var file = input && input.files && input.files[0];
+            if (!file) return '';
+            var s = rcState[input.id];
+            if (!s || s.sig !== fileSig(file)) { checkReportCardLrn(input); return 'Checking the LRN on your Report Card… please wait.'; }
+            if (s.status === 'checking') return 'Checking the LRN on your Report Card… please wait.';
+            applyRcState(input);
+            return s.status === 'verified' ? '' : (s.message || 'LRN could not be verified. Please upload a clear and readable Report Card.');
+        }
+        // Editing the LRN in Step 2 re-checks every chosen Report Card at once.
+        ['f_lrn', 'v_lrn'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('input', function () {
+                document.querySelectorAll('.doc-card[data-doc-key="form138"] .doc-file-input').forEach(function (inp) {
+                    if (rcState[inp.id]) applyRcState(inp);
+                });
+            });
+        });
+
         function validateDocFile(file) {
             var ext = (file.name.split('.').pop() || '').toLowerCase();
             if (ALLOWED_EXTS.indexOf(ext) === -1) return 'Only JPG, PNG, WEBP and PDF files are allowed.';
@@ -2574,6 +2710,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                     rInput.value = '';
                     updateDocCardUI(rInput);
                     clearDocError(rInput.closest('.doc-card'));
+                    setCardLrnStatus(rInput.closest('.doc-card'), '', '');
                 }
                 return;
             }
@@ -2607,6 +2744,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             }
             clearDocError(card);
             updateDocCardUI(input);
+            if (card && card.getAttribute('data-doc-key') === 'form138') checkReportCardLrn(input);
         });
 
         // Shared preview modal (image lightbox / PDF viewer) for both the

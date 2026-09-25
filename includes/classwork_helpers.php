@@ -267,6 +267,16 @@ function classworkNotifyStudents(array $assignment, array $studentIds, $teacherI
             [(int) $teacherId, (int) $sid, $assignment['subject_code'], (int) $assignment['school_year_id'], $message]
         );
     }
+    // Email too (once per student per classwork).
+    if (!empty($assignment['assignment_id'])) {
+        require_once __DIR__ . '/student_email_notify.php';
+        senNotifyStudents($studentIds, [
+            'key' => 'classwork:' . (int) $assignment['assignment_id'],
+            'subject_code' => $assignment['subject_code'], 'teacher_id' => (int) $teacherId,
+            'title' => $assignment['title'], 'kind' => $assignment['category'] ?: 'Classwork',
+            'deadline' => $assignment['due_date'] ?? null,
+        ]);
+    }
 }
 
 /**
