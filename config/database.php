@@ -17,6 +17,10 @@ if (!defined('BASE_URL')) {
     define('BASE_URL', '/watdahel/');
 }
 
+// Admin / Registrar / Teacher portals: desktop or laptop only. Student Portal and
+// Online Enrollment also work on phones (includes/device_policy.php).
+require_once __DIR__ . '/../includes/device_policy.php';
+
 $host = 'localhost';
 $dbname = 'egradepro';
 $username = 'root';
