@@ -2,7 +2,7 @@
 # data, logs and installed dependencies are NOT tracked.
 static/uploads/*
 !static/uploads/.htaccess
-vendor/
+/vendor/
 node_modules/
 /egradepro.sql
 *.log
