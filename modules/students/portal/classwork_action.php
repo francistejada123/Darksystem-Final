@@ -110,21 +110,39 @@ if ($action === 'turn_in') {
          BASE_URL . 'modules/teachers/classroom.php?section_id=' . (int) (getRecord("SELECT section_id FROM classwork_assignments WHERE assignment_id = ?", [$assignment_id])['section_id'] ?? 0)
             . '&subject_code=' . urlencode($row['subject_code']) . '&tab=classwork&open=' . $assignment_id . '#cw-' . $assignment_id]
     );
-    // AI checks it right away and records the score; the teacher reviews
-    // it and can change the score at any time.
-    $ai = null;
+    // AI checks it and records the score; the teacher reviews it and can
+    // change the score at any time. The check runs AFTER the student already
+    // got the "Turned in" page (it can take up to a minute), so nobody waits.
     $a = getRecord("SELECT grading_category, category FROM classwork_assignments WHERE assignment_id = ?", [$assignment_id]);
     $hasFiles = getRecord("SELECT COUNT(*) AS n FROM classwork_submission_files WHERE assignment_id = ? AND student_id = ?", [$assignment_id, $student_id]);
-    if ($a && ($a['grading_category'] ?: classworkGradingCategory($a['category'])) && (int) ($hasFiles['n'] ?? 0) > 0) {
-        $ai = classworkAiCheck($assignment_id, $student_id);
-    }
+    $willCheck = $a && ($a['grading_category'] ?: classworkGradingCategory($a['category'])) && (int) ($hasFiles['n'] ?? 0) > 0;
     $msg = $late ? 'Turned in late. Your teacher will see it as "Missing – Submitted Late".' : 'Turned in!';
-    if ($ai && $ai['success']) {
-        $msg .= ' It was checked by AI; your teacher will review it and may adjust the score.';
-    } elseif ($ai) {
-        $msg .= ' Your teacher will check it.';
+    if ($willCheck) {
+        $msg .= ' The AI is checking it now — refresh in a minute to see the score. Your teacher will review it and may adjust the score.';
     }
-    $go(['cw_msg' => $msg]);
+    if (!$willCheck) {
+        $go(['cw_msg' => $msg]);
+    }
+
+    // Send the redirect now, close the connection, then run the AI check.
+    ignore_user_abort(true);
+    @set_time_limit(240);
+    $url = $back . '&' . http_build_query(['cw_msg' => $msg, 'cw' => $assignment_id]);
+    session_write_close();
+    while (ob_get_level() > 0) { ob_end_clean(); }
+    header('Location: ' . $url);
+    header('Connection: close');
+    header('Content-Length: 0');
+    flush();
+    if (function_exists('fastcgi_finish_request')) {
+        fastcgi_finish_request();
+    }
+    try {
+        classworkAiCheck($assignment_id, $student_id);
+    } catch (\Throwable $e) {
+        error_log('Background classwork AI check failed (assignment ' . $assignment_id . ', student ' . $student_id . '): ' . $e->getMessage());
+    }
+    exit;
 }
 
 if ($action === 'unsubmit') {

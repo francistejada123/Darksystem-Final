@@ -82,7 +82,7 @@ $lm_tasks = aim_getStudentTasks($student_id, (int) $class['section_id'], $class[
 // Late / Graded).
 classworkEnsureSchema();
 $cw_items = getRecords(
-    "SELECT ca.*, cs.status AS my_status, cs.submitted_at, cs.is_late, cs.score, cs.teacher_feedback, cs.score_source
+    "SELECT ca.*, cs.status AS my_status, cs.submitted_at, cs.is_late, cs.score, cs.teacher_feedback, cs.score_source, cs.ai_checked_at
      FROM classwork_assignments ca
      INNER JOIN classwork_assignment_students cs ON cs.assignment_id = ca.assignment_id AND cs.student_id = ?
      WHERE ca.section_id = ? AND ca.subject_code = ? AND ca.school_year_id = ? AND ca.status = 'Published'
@@ -674,6 +674,9 @@ $page_title = $class['subject_name'];
                                 <?php endif; ?>
                                 <?php if ($cw_done && !empty($cw['submitted_at'])): ?>
                                     <div class="yw-note">Turned in <?php echo htmlspecialchars(date('M j, Y g:i A', strtotime($cw['submitted_at']))); ?></div>
+                                    <?php if (!$cw_graded && $cw_g && $cw_myfiles && empty($cw['ai_checked_at']) && strtotime($cw['submitted_at']) > time() - 600): ?>
+                                        <div class="yw-note"><i class="fas fa-spinner fa-spin me-1"></i>The AI is checking your work — refresh in a minute to see the score.</div>
+                                    <?php endif; ?>
                                 <?php elseif ($cw_state['key'] === 'missing' && $cw_closed): ?>
                                     <div class="yw-note yw-warn"><i class="fas fa-lock me-1"></i>Closed — your teacher does not accept work after the due date.</div>
                                 <?php elseif ($cw_state['key'] === 'missing'): ?>
