@@ -256,8 +256,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $n = executeQuery("UPDATE student_email_notifications SET status = 'Queued', error = NULL WHERE notify_key = ? AND status IN ('Failed','Skipped')", ['classwork:' . $aid]);
             $n = $n ? $n->rowCount() : 0;
             if ($n > 0) {
-                senScheduleDispatch();
-                $_SESSION['success_message'] = 'Sending the email again to ' . $n . ' student(s). Refresh in a moment to see the result.';
+                @set_time_limit(60 + 5 * $n);
+                $d = senDispatchQueued(500, 'classwork:' . $aid);
+                if ($d['failed'] || $d['skipped']) {
+                    $_SESSION['error_message'] = 'Sent again: ' . $d['sent'] . ' of ' . $n . ' email(s) sent. ' . ($d['failed'] + $d['skipped']) . ' failed: ' . $d['reason'];
+                } else {
+                    $_SESSION['success_message'] = 'Sent again: all ' . $d['sent'] . ' email(s) were sent.';
+                }
             } else {
                 $_SESSION['success_message'] = 'There are no failed emails to send again.';
             }
@@ -503,16 +508,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // "New" badge on each student's class card + portal bell.
         $cw_mailed = classworkNotifyStudents(
-            ['assignment_id' => (int) $assignment_id, 'title' => $title, 'category' => $category, 'due_date' => $due_date, 'subject_code' => $post_subject_code, 'school_year_id' => $post_sy_id, 'instructions' => $instructions, 'topic' => $topic],
+            ['assignment_id' => (int) $assignment_id, 'title' => $title, 'category' => $category, 'due_date' => $due_date, 'subject_code' => $post_subject_code, 'school_year_id' => $post_sy_id, 'instructions' => $instructions, 'topic' => $topic, 'send_now' => true],
             array_column($roster, 'student_id'),
             $teacher_id
         );
 
         logActivity($teacher_id, 'Classroom', 'Posted classwork', "Assignment #$assignment_id ($category, $title), subject $post_subject_code, section #$post_section_id");
-        $_SESSION['success_message'] = 'Assessment posted successfully: "' . $title . '" was assigned to ' . count($roster) . ' student(s) of ' . ($post_class['section_name'] ?? 'this section') . '.' . $cw_file_note
-            . ((int) ($cw_mailed['queued'] ?? 0) > 0 ? ' Email notifications are being sent to ' . (int) $cw_mailed['queued'] . ' student(s)' . (senEnabled() ? '' : ' (email sending is switched off in Settings)') . '.' : '')
-            . ((int) ($cw_mailed['no_email'] ?? 0) > 0 ? ' ' . (int) $cw_mailed['no_email'] . ' student(s) have no registered email, so they only see it in the Student Portal.' : '')
-            . ' The email status is shown at the bottom of the assignment card.'
+        // "Email notifications sent to 34 of 35 students. 1 email failed (reason)."
+        $cw_total = count($roster);
+        $cw_sent = (int) ($cw_mailed['sent'] ?? 0);
+        $cw_bad = (int) ($cw_mailed['failed'] ?? 0) + (int) ($cw_mailed['no_email'] ?? 0);
+        $cw_mail_note = '';
+        if ($cw_total > 0) {
+            $cw_mail_note = !empty($cw_mailed['switched_off'])
+                ? ' Email notifications are switched off in Settings › Email Settings, so no email was sent.'
+                : ' Email notifications sent to ' . $cw_sent . ' of ' . $cw_total . ' student(s).'
+                    . ($cw_bad > 0 ? ' ' . $cw_bad . ' email(s) failed'
+                        . ((int) ($cw_mailed['no_email'] ?? 0) > 0 ? ' (' . (int) $cw_mailed['no_email'] . ' with no registered email)' : '')
+                        . (($cw_mailed['reason'] ?? '') !== '' ? ': ' . $cw_mailed['reason'] : '.')
+                        . ' See the email status at the bottom of the assignment card; you can send them again there.' : '')
+                    . ((int) ($cw_mailed['pending'] ?? 0) > 0 ? ' ' . (int) $cw_mailed['pending'] . ' still pending.' : '');
+        }
+        $_SESSION['success_message'] = 'Assessment posted successfully: "' . $title . '" was assigned to ' . $cw_total . ' student(s) of ' . ($post_class['section_name'] ?? 'this section') . '.' . $cw_file_note
+            . $cw_mail_note
             . ($item ?' Saved in Manage Assessment Items as "' . html_entity_decode($item['item_name'], ENT_QUOTES, 'UTF-8') . '" under ' . CLASSWORK_GRADING_LABELS[$grading_category] . ' (' . rtrim(rtrim(number_format($max_points, 2), '0'), '.') . ' pts).' : ' Not graded (learning material).');
         header('Location: classroom.php?' . $redirect_qs . $cw_back);
         exit;
@@ -1648,12 +1666,12 @@ include '../../includes/header.php';
                         <input type="hidden" name="term" value="<?php echo htmlspecialchars($term); ?>">
                         <i class="fas fa-envelope"></i> Email:
                         <?php if (!empty($cw_mail['Sent'])): ?><span><?php echo (int) $cw_mail['Sent']; ?> sent</span><?php endif; ?>
-                        <?php if (!empty($cw_mail['Queued'])): ?><span><?php echo (int) $cw_mail['Queued']; ?> sending…</span><?php endif; ?>
+                        <?php if (!empty($cw_mail['Queued'])): ?><span><?php echo (int) $cw_mail['Queued']; ?> pending</span><?php endif; ?>
                         <?php if (!empty($cw_mail['Failed'])): ?><span class="cw-mail-fail" title="<?php echo htmlspecialchars($cw_mail['error_Failed'] ?? ''); ?>"><?php echo (int) $cw_mail['Failed']; ?> failed</span><?php endif; ?>
                         <?php if (!empty($cw_mail['Skipped'])): ?><span title="<?php echo htmlspecialchars($cw_mail['error_Skipped'] ?? ''); ?>"><?php echo (int) $cw_mail['Skipped']; ?> not sent (<?php echo htmlspecialchars($cw_mail['error_Skipped'] ?? 'switched off'); ?>)</span><?php endif; ?>
                         <?php if (!empty($cw_mail['Failed']) || !empty($cw_mail['Skipped'])): ?>
                             <button type="submit" class="btn btn-sm btn-outline-secondary py-0 px-2">Send again</button>
-                            <?php if (!empty($cw_mail['error_Failed'])): ?><div class="cw-mail-err"><?php echo htmlspecialchars(mb_strimwidth($cw_mail['error_Failed'], 0, 160, '…')); ?><?php echo stripos($cw_mail['error_Failed'], 'authenticate') !== false ? ' — the Gmail App Password in Settings › Email Settings needs to be updated.' : ''; ?></div><?php endif; ?>
+                            <?php if (!empty($cw_mail['error_Failed'])): ?><div class="cw-mail-err"><?php echo htmlspecialchars(mb_strimwidth($cw_mail['error_Failed'], 0, 260, '…')); ?></div><?php endif; ?>
                         <?php endif; ?>
                     </form>
                 <?php endif; ?>

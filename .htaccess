@@ -34,7 +34,7 @@
 
 # Security: never serve database dumps, backups, archives, logs or env files,
 # and never print PHP errors on a page (they go to the PHP error log instead).
-<FilesMatch "\.(sql|bak|zip|log|env|ini|sh|lock)$|^(composer\.json|package\.json|AGENTS\.md|README\.md|write_test\.txt)$">
+<FilesMatch "\.(sql|bak|zip|log|env|ini|sh|lock)$|^\.env|^(composer\.json|package\.json|AGENTS\.md|README\.md|write_test\.txt)$">
     Require all denied
 </FilesMatch>
 RedirectMatch 404 /\.git(/|$)

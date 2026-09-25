@@ -35,16 +35,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         senEnsureSchema();
         $n = executeQuery("UPDATE student_email_notifications SET status = 'Queued', error = NULL WHERE status IN ('Failed','Skipped')");
         $n = $n ? $n->rowCount() : 0;
-        if ($n > 0) senScheduleDispatch();
         logActivity($_SESSION['user_id'], 'Settings', 'Retried student email notifications', "$n email(s) queued again");
-        $_SESSION['success_message'] = $n ? "Sending $n email(s) again. Refresh in a minute to see the result." : 'There are no failed emails to send again.';
+        if ($n > 0) {
+            @set_time_limit(60 + 5 * $n);
+            $d = senDispatchQueued(500);
+            if ($d['failed'] || $d['skipped']) {
+                $_SESSION['error_message'] = "Sent again: {$d['sent']} of $n email(s) sent. " . ($d['failed'] + $d['skipped']) . ' failed: ' . $d['reason'];
+            } else {
+                $_SESSION['success_message'] = "Sent again: all {$d['sent']} email(s) were sent.";
+            }
+        } else {
+            $_SESSION['success_message'] = 'There are no failed emails to send again.';
+        }
         header('Location: email.php#notification-status');
+        exit;
+    } elseif (($_POST['form_action'] ?? '') === 'send_test_email') {
+        // Development / setup check: is SMTP really working? Shows the exact reason when not.
+        require_once '../../includes/mail_config.php';
+        $test_to = trim((string) ($_POST['test_to'] ?? ''));
+        $cfg = mailConfig();
+        $r = mailSendOne($test_to, 'EGradePro test email',
+            '<div style="font-family:Arial,sans-serif;font-size:14px;"><p>This is a test email from <strong>EGradePro</strong>.</p>'
+            . '<p>If you can read this, SMTP is working: students will receive their new-work notifications.</p>'
+            . '<p style="color:#64748b;font-size:12px;">Sent ' . date('F j, Y g:i A') . ' via ' . htmlspecialchars($cfg['host'] . ':' . $cfg['port'] . ' (' . strtoupper($cfg['secure']) . ')') . ' as ' . htmlspecialchars($cfg['username']) . '.</p></div>');
+        logActivity($_SESSION['user_id'], 'Settings', 'Sent test email', ($r['success'] ? 'OK' : 'Failed: ' . $r['error']) . " to $test_to");
+        if ($r['success']) {
+            $_SESSION['success_message'] = 'Test email sent to ' . $test_to . '. SMTP is working — check that inbox (and the Spam folder).';
+        } else {
+            $_SESSION['error_message'] = 'Test email failed: ' . $r['error'];
+        }
+        header('Location: email.php#test-email');
         exit;
     } else {
         $smtp_host = sanitize($_POST['smtp_host'] ?? '');
         $smtp_port = sanitize($_POST['smtp_port'] ?? '');
         $smtp_username = sanitize($_POST['smtp_username'] ?? '');
-        $smtp_password = sanitize($_POST['smtp_password'] ?? '');
+        // Leave the App Password blank to keep the saved one. Stored as typed (spaces removed).
+        $smtp_password = str_replace(' ', '', trim((string) ($_POST['smtp_password'] ?? '')));
+        if ($smtp_password === '') $smtp_password = (string) ($email_settings['smtp_password'] ?? '');
         $smtp_from = sanitize($_POST['smtp_from'] ?? '');
         $smtp_from_name = sanitize($_POST['smtp_from_name'] ?? '');
         
@@ -76,6 +104,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $csrf_token = generateCSRFToken();
+
+// The settings actually used for sending (.env / environment variables win over this form).
+require_once '../../includes/mail_config.php';
+$mail_cfg = mailConfig();
+$mail_problem = mailConfigProblem($mail_cfg);
+$mail_env_keys = array_keys(array_filter($mail_cfg['source'], function ($src) { return $src === 'env'; }));
 
 // Student email notifications (new classwork / tasks): status for the admin.
 require_once '../../includes/student_email_notify.php';
@@ -137,9 +171,10 @@ include '../../includes/header.php';
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">SMTP Password (App Password)</label>
-                    <input type="password" name="smtp_password" class="form-control" 
-                           value="<?php echo htmlspecialchars($email_settings['smtp_password'] ?? ''); ?>" 
-                           placeholder="Enter app password" required>
+                    <input type="password" name="smtp_password" class="form-control" autocomplete="new-password"
+                           value=""
+                           placeholder="<?php echo $mail_cfg['source']['smtp_password'] === 'env' ? 'Set in .env (MAIL_PASSWORD)' : (($email_settings['smtp_password'] ?? '') !== '' ? 'Saved — leave blank to keep it' : 'Enter the 16-letter Gmail App Password'); ?>">
+                    <small class="text-muted">Not shown for security. <?php echo ($mail_cfg['password'] ?? '') === '' ? '<span class="text-danger fw-bold">No password is set — emails cannot be sent.</span>' : 'A password is set.'; ?></small>
                 </div>
                 
                 <div class="col-md-6">
@@ -180,6 +215,26 @@ include '../../includes/header.php';
     </div>
 </div>
 
+<div class="card shadow-sm rounded-3 mt-4" id="test-email">
+    <div class="card-body">
+        <h5 class="mb-2"><i class="fas fa-vial text-primary me-2"></i>Send Test Email</h5>
+        <p class="text-muted small mb-2">Check that SMTP works before testing assessment notifications. The exact reason is shown when it fails.</p>
+        <div class="small mb-3">
+            Sending with: <strong><?php echo htmlspecialchars($mail_cfg['host'] . ':' . $mail_cfg['port']); ?></strong> (<?php echo strtoupper($mail_cfg['secure']); ?>)
+            as <strong><?php echo htmlspecialchars($mail_cfg['username'] ?: '—'); ?></strong>,
+            from <strong><?php echo htmlspecialchars($mail_cfg['from_name'] . ' <' . $mail_cfg['from'] . '>'); ?></strong>
+            <?php if ($mail_env_keys): ?><br><span class="text-success"><i class="fas fa-lock me-1"></i>From the .env file / environment: <?php echo htmlspecialchars(implode(', ', $mail_env_keys)); ?></span><?php endif; ?>
+            <?php if ($mail_problem): ?><div class="text-danger fw-bold mt-1"><i class="fas fa-triangle-exclamation me-1"></i><?php echo htmlspecialchars($mail_problem); ?></div><?php endif; ?>
+        </div>
+        <form method="POST" class="d-flex flex-wrap gap-2 m-0">
+            <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
+            <input type="hidden" name="form_action" value="send_test_email">
+            <input type="email" name="test_to" class="form-control" style="max-width:340px" required placeholder="Send the test to…" value="<?php echo htmlspecialchars($mail_cfg['username']); ?>">
+            <button type="submit" class="btn btn-primary" onclick="var b=this;setTimeout(function(){b.disabled=true;b.innerHTML='<i class=&quot;fas fa-spinner fa-spin me-1&quot;></i>Sending…';},0);"><i class="fas fa-paper-plane me-1"></i>Send Test Email</button>
+        </form>
+    </div>
+</div>
+
 <div class="card shadow-sm rounded-3 mt-4" id="notification-status">
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
@@ -195,7 +250,7 @@ include '../../includes/header.php';
         <p class="text-muted small mb-2">One email per student each time a teacher posts new work, sent to the email from the student's enrollment. A failed email never stops the post; it stays here until it is sent again.</p>
         <div class="d-flex flex-wrap gap-2 mb-3">
             <span class="badge bg-success">Sent: <?php echo (int) ($sen_counts['Sent'] ?? 0); ?></span>
-            <span class="badge bg-secondary">Sending: <?php echo (int) ($sen_counts['Queued'] ?? 0); ?></span>
+            <span class="badge bg-secondary">Pending: <?php echo (int) ($sen_counts['Queued'] ?? 0); ?></span>
             <span class="badge bg-danger">Failed: <?php echo (int) ($sen_counts['Failed'] ?? 0); ?></span>
             <span class="badge bg-warning text-dark">Not sent: <?php echo (int) ($sen_counts['Skipped'] ?? 0); ?></span>
         </div>
@@ -213,7 +268,7 @@ include '../../includes/header.php';
                         <td><?php echo htmlspecialchars($r['email']); ?></td>
                         <td><?php echo htmlspecialchars($r['subject']); ?></td>
                         <td>
-                            <span class="badge <?php echo ['Sent' => 'bg-success', 'Queued' => 'bg-secondary', 'Failed' => 'bg-danger', 'Skipped' => 'bg-warning text-dark'][$r['status']] ?? 'bg-secondary'; ?>"><?php echo $r['status'] === 'Skipped' ? 'Not sent' : ($r['status'] === 'Queued' ? 'Sending' : $r['status']); ?></span>
+                            <span class="badge <?php echo ['Sent' => 'bg-success', 'Queued' => 'bg-secondary', 'Failed' => 'bg-danger', 'Skipped' => 'bg-warning text-dark'][$r['status']] ?? 'bg-secondary'; ?>"><?php echo $r['status'] === 'Skipped' ? 'Not sent' : ($r['status'] === 'Queued' ? 'Pending' : $r['status']); ?></span>
                             <?php if (!empty($r['error'])): ?><div class="text-danger small"><?php echo htmlspecialchars(mb_strimwidth($r['error'], 0, 140, '…')); ?></div><?php endif; ?>
                         </td>
                     </tr>

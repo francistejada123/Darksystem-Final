@@ -314,6 +314,7 @@ function classworkNotifyStudents(array $assignment, array $studentIds, $teacherI
             'instruction' => $assignment['instructions'] ?? '',
             'grading' => classworkGradingCategory($assignment['category'] ?? ''),
             'topic' => $assignment['topic'] ?? '',
+            'send_now' => !empty($assignment['send_now']),
             'link' => 'modules/students/portal/subject.php?subject=' . rawurlencode((string) $assignment['subject_code']) . '&cw=' . (int) $assignment['assignment_id'],
         ]);
         return senLastResult();

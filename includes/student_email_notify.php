@@ -17,6 +17,7 @@
 // rows are then kept as Skipped).
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/mail_config.php'; // SMTP settings (.env / environment first), clear error reasons
 
 function senEnsureSchema()
 {
@@ -63,7 +64,7 @@ function senAppUrl($path)
 /** What the last senNotifyStudents() call did: queued now / students with no registered email. */
 function senLastResult(array $set = null)
 {
-    static $last = ['queued' => 0, 'no_email' => 0];
+    static $last = ['queued' => 0, 'no_email' => 0, 'sent' => 0, 'failed' => 0, 'pending' => 0, 'reason' => ''];
     if ($set !== null) $last = $set + $last;
     return $last;
 }
@@ -81,14 +82,15 @@ function senEnabled()
  * @param array $info key, subject_code, teacher_id, title, kind, deadline(optional),
  *                    instruction(optional short text), link(optional app path for the button),
  *                    grading (optional WW / PT / QA -- "New Written Work Posted - English 7"),
- *                    topic (optional), posted_at (optional, default now)
+ *                    topic (optional), posted_at (optional, default now),
+ *                    send_now (optional: send right away and report sent / failed, instead of after the reply)
  * @return int emails queued now
  */
 function senNotifyStudents(array $studentIds, array $info)
 {
     try {
         senEnsureSchema();
-        senLastResult(['queued' => 0, 'no_email' => 0]);
+        senLastResult(['queued' => 0, 'no_email' => 0, 'sent' => 0, 'failed' => 0, 'pending' => 0, 'reason' => '']);
         $ids = array_values(array_unique(array_filter(array_map('intval', $studentIds))));
         $key = mb_substr(trim((string) ($info['key'] ?? '')), 0, 100);
         if (!$ids || $key === '') return 0;
@@ -120,7 +122,16 @@ function senNotifyStudents(array $studentIds, array $info)
         $noEmail = 0;
         foreach ($students as $s) {
             $to = trim((string) $s['email']);
-            if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) { $noEmail++; continue; } // the portal notice still shows
+            if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
+                // Recorded so the teacher / admin can see who was not emailed and why (the portal notice still shows).
+                $noEmail++;
+                executeQuery(
+                    "INSERT IGNORE INTO student_email_notifications (student_id, notify_key, email, subject, body, status, error) VALUES (?, ?, ?, ?, '', 'Failed', ?)",
+                    [(int) $s['student_id'], $key, mb_substr($to, 0, 255), mb_substr("New {$postedAs} Posted - {$subjectName}", 0, 250),
+                     $to === '' ? 'Missing student email (no email saved in the enrollment / student record)' : 'Invalid recipient email: ' . mb_substr($to, 0, 200)]
+                );
+                continue;
+            }
             $mailSubject = mb_substr("New {$postedAs} Posted - {$subjectName}", 0, 250);
             $e = function ($v) { return htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8'); };
             $row = function ($label, $value, $strong = false) use ($e) {
@@ -153,10 +164,22 @@ function senNotifyStudents(array $studentIds, array $info)
             );
             if ($stmt && $stmt->rowCount() > 0) $queued++;
         }
+        $result = ['queued' => $queued, 'no_email' => $noEmail + max(0, count($ids) - count($students)), 'sent' => 0, 'failed' => 0, 'pending' => $queued, 'reason' => ''];
         if ($queued > 0) {
-            senScheduleDispatch();
+            if (!empty($info['send_now'])) {
+                // Send while the teacher waits, so the page can say "sent to 34 of 35".
+                @set_time_limit(60 + 5 * $queued);
+                $d = senDispatchQueued(500, $key);
+                $result['sent'] = $d['sent'];
+                $result['failed'] = $d['failed'];
+                $result['pending'] = max(0, $queued - $d['sent'] - $d['failed']);
+                $result['reason'] = $d['reason'] ?? '';
+                $result['switched_off'] = !empty($d['skipped']);
+            } else {
+                senScheduleDispatch();
+            }
         }
-        senLastResult(['queued' => $queued, 'no_email' => $noEmail + max(0, count($ids) - count($students))]);
+        senLastResult($result);
         return $queued;
     } catch (\Throwable $e) {
         error_log('Student email notification could not be queued: ' . $e->getMessage());
@@ -194,57 +217,77 @@ function senScheduleDispatch()
     });
 }
 
-/** Send (or skip when switched off) up to $limit queued emails over ONE SMTP connection. */
-function senDispatchQueued($limit = 200)
+/**
+ * Send (or skip when switched off) up to $limit queued emails over ONE SMTP
+ * connection; $onlyKey limits it to one post. Every failure is saved with a
+ * clear reason (SMTP authentication failed, connection timeout, ...).
+ * @return array sent, failed, skipped, reason (first failure reason)
+ */
+function senDispatchQueued($limit = 200, $onlyKey = null)
 {
     senEnsureSchema();
-    $rows = getRecords("SELECT * FROM student_email_notifications WHERE status = 'Queued' ORDER BY id LIMIT " . (int) $limit);
-    if (!$rows) return ['sent' => 0, 'failed' => 0, 'skipped' => 0];
+    $rows = $onlyKey !== null
+        ? getRecords("SELECT * FROM student_email_notifications WHERE status = 'Queued' AND notify_key = ? ORDER BY id LIMIT " . (int) $limit, [(string) $onlyKey])
+        : getRecords("SELECT * FROM student_email_notifications WHERE status = 'Queued' ORDER BY id LIMIT " . (int) $limit);
+    $out = ['sent' => 0, 'failed' => 0, 'skipped' => 0, 'reason' => ''];
+    if (!$rows) return $out;
+    $fail = function ($row, $reason) use (&$out) {
+        executeQuery("UPDATE student_email_notifications SET status = 'Failed', error = ? WHERE id = ?", [mb_substr($reason, 0, 500), (int) $row['id']]);
+        $out['failed']++;
+        if ($out['reason'] === '') $out['reason'] = $reason;
+    };
     if (!senEnabled()) {
-        foreach ($rows as $r) executeQuery("UPDATE student_email_notifications SET status = 'Skipped', error = 'Email notifications are switched off' WHERE id = ?", [(int) $r['id']]);
-        return ['sent' => 0, 'failed' => 0, 'skipped' => count($rows)];
+        foreach ($rows as $r) executeQuery("UPDATE student_email_notifications SET status = 'Skipped', error = 'Email notifications are switched off in Settings › Email Settings' WHERE id = ?", [(int) $r['id']]);
+        $out['skipped'] = count($rows);
+        $out['reason'] = 'Email notifications are switched off in Settings › Email Settings.';
+        return $out;
     }
-    require_once __DIR__ . '/../config/email.php';
-    $settings = getEmailSettings();
-    if (empty($settings['smtp_host']) || empty($settings['smtp_username'])) {
-        foreach ($rows as $r) executeQuery("UPDATE student_email_notifications SET status = 'Skipped', error = 'SMTP settings not configured' WHERE id = ?", [(int) $r['id']]);
-        return ['sent' => 0, 'failed' => 0, 'skipped' => count($rows)];
+    $cfg = mailConfig();
+    if (($problem = mailConfigProblem($cfg)) !== null) {
+        error_log('Student email notifications not sent: ' . $problem);
+        foreach ($rows as $r) $fail($r, $problem);
+        return $out;
     }
-    $sent = 0; $failed = 0;
-    $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+    $mail = null;
     try {
-        $mail->isSMTP();
-        $mail->Host = $settings['smtp_host'];
-        $mail->SMTPAuth = true;
-        $mail->Username = $settings['smtp_username'];
-        $mail->Password = $settings['smtp_password'] ?? '';
-        $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port = (int) ($settings['smtp_port'] ?? 587);
+        $mail = mailNewMailer($cfg);
         $mail->SMTPKeepAlive = true;   // one connection for the whole batch
-        $mail->Timeout = 20;
-        $mail->CharSet = 'UTF-8';
-        $from = $settings['smtp_from'] ?? $settings['smtp_username'];
-        $mail->setFrom($from, html_entity_decode($settings['smtp_from_name'] ?? 'EGradePro', ENT_QUOTES, 'UTF-8'));
-        $mail->isHTML(true);
+        // Log in once first: a wrong App Password / blocked port fails every email the same way.
+        if (!$mail->smtpConnect()) throw new \RuntimeException($mail->ErrorInfo ?: 'Could not connect');
     } catch (\Throwable $e) {
-        error_log('Student email notifications: mailer setup failed: ' . $e->getMessage());
-        return ['sent' => 0, 'failed' => 0, 'skipped' => 0];
+        $reason = mailFriendlyError($mail ? ($mail->ErrorInfo ?: $e->getMessage()) : $e->getMessage(), $cfg);
+        error_log('Student email notifications: ' . $reason);
+        foreach ($rows as $r) $fail($r, $reason);
+        return $out;
     }
     foreach ($rows as $r) {
+        $to = trim((string) $r['email']);
+        if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
+            // an email may have been added to the student record since
+            $st = getRecord("SELECT email FROM students WHERE student_id = ?", [(int) $r['student_id']]);
+            $to = trim((string) ($st['email'] ?? ''));
+            if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
+                $fail($r, $to === '' ? 'Missing student email (no email saved in the enrollment / student record)' : 'Invalid recipient email: ' . $to);
+                continue;
+            }
+            executeQuery("UPDATE student_email_notifications SET email = ? WHERE id = ?", [$to, (int) $r['id']]);
+        }
         try {
             $mail->clearAddresses();
-            $mail->addAddress($r['email']);
+            $mail->addAddress($to);
             $mail->Subject = $r['subject'];
             $mail->Body = $r['body'];
             $mail->AltBody = trim(strip_tags(str_replace(['</tr>', '</p>'], ["\n", "\n\n"], $r['body'])));
             $mail->send();
             executeQuery("UPDATE student_email_notifications SET status = 'Sent', sent_at = NOW(), error = NULL WHERE id = ?", [(int) $r['id']]);
-            $sent++;
+            $out['sent']++;
         } catch (\Throwable $e) {
-            executeQuery("UPDATE student_email_notifications SET status = 'Failed', error = ? WHERE id = ?", [mb_substr($mail->ErrorInfo ?: $e->getMessage(), 0, 500), (int) $r['id']]);
-            $failed++;
+            $reason = mailFriendlyError($mail->ErrorInfo ?: $e->getMessage(), $cfg);
+            error_log('Student email to ' . $to . ' failed: ' . $reason);
+            $fail($r, $reason);
+            try { $mail->getSMTPInstance()->reset(); } catch (\Throwable $e2) {}
         }
     }
     try { $mail->smtpClose(); } catch (\Throwable $e) {}
-    return ['sent' => $sent, 'failed' => $failed, 'skipped' => 0];
+    return $out;
 }
