@@ -202,6 +202,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ev_result = evCheckEmail($email);
             if (evIsRejected($ev_result)) {
                 $errors[] = $ev_result['message'];
+            } elseif (($ev_result['status'] ?? '') === 'unknown' && empty($_POST['email_confirmed'])) {
+                // The mail server could not be asked right now (blocked/slow). Never
+                // reject a real address for that -- the applicant confirms it instead.
+                $errors[] = 'We could not verify your email right now. Please check it carefully and tick "I confirm this email is correct".';
             }
         }
         if ($address === '') $errors[] = 'Complete address is required.';
@@ -1134,6 +1138,10 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                                 <input type="email" id="f_email" name="email" class="form-control" autocomplete="email" placeholder="example@email.com" value="<?php echo ov('email', $old); ?>">
                                 <div class="field-error" id="err-email">A valid email address is required.</div>
                                 <div class="form-hint email-status" id="emailStatus" style="display:none"></div>
+                                <label class="email-confirm" id="emailConfirmWrap" style="display:none;margin-top:6px;font-size:13px;gap:8px;align-items:flex-start;">
+                                    <input type="checkbox" name="email_confirmed" value="1" id="emailConfirm" style="margin-top:3px;">
+                                    <span>We could not check this email right now. <strong>I confirm this email is correct</strong> and I can open it — my enrollment result will be sent here.</span>
+                                </label>
                             </div>
                         </div>
                         </div><!-- /#personalFields -->
@@ -1797,6 +1805,11 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                         ok = false;
                         if (!firstInvalid) firstInvalid = emEl;
                         setBanner2(emailCheck.message);
+                    } else if (emailCheck.status === 'unknown' && !(document.getElementById('emailConfirm') || {}).checked) {
+                        showEmailConfirm(true);
+                        ok = false;
+                        if (!firstInvalid) firstInvalid = document.getElementById('emailConfirm') || emEl;
+                        setBanner2('We could not verify your email right now. Please check it and tick "I confirm this email is correct".');
                     }
                 }
 
@@ -2363,6 +2376,12 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             st.appendChild(document.createTextNode(msg));
             st.style.display = '';
         }
+        function showEmailConfirm(show) {
+            var w = document.getElementById('emailConfirmWrap');
+            if (!w) return;
+            w.style.display = show ? 'flex' : 'none';
+            if (!show) { var c = document.getElementById('emailConfirm'); if (c) c.checked = false; }
+        }
         function checkEmailAccount(continueAfter) {
             var emEl = document.querySelector('[name="email"]');
             if (!emEl) return;
@@ -2385,6 +2404,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                     if (emEl.value.trim().toLowerCase() !== val) return;
                     var bad = ['invalid', 'typo', 'bad_domain', 'not_found'].indexOf(res && res.status) >= 0;
                     emailCheck = { email: val, status: (res && res.status) || 'unknown', bad: bad, message: (res && res.message) || '' };
+                    showEmailConfirm(emailCheck.status === 'unknown');
                     if (bad) {
                         var er = document.getElementById('err-email');
                         if (er) er.textContent = emailCheck.message;
@@ -2412,6 +2432,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                     // Offline / server problem: do not block the applicant.
                     emailCheck = { email: val, status: 'unknown', bad: false, message: '' };
                     setEmailStatus('', '');
+                    showEmailConfirm(true);
                     if (continueAfter) { var nb3 = document.querySelector('[data-next="2"]'); if (nb3) nb3.click(); }
                 });
         }
@@ -2421,6 +2442,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             emEl.addEventListener('input', function() {
                 emailCheck = { email: '', status: '', bad: false, message: '' };
                 setEmailStatus('', '');
+                showEmailConfirm(false);
                 clearTimeout(emailTimer);
                 emailTimer = setTimeout(function() { checkEmailAccount(false); }, 450);
             });
