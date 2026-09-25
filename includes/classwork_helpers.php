@@ -45,6 +45,37 @@ const CLASSWORK_LEGACY_CATEGORIES = [
 
 const CLASSWORK_GRADING_LABELS = ['WW' => 'Written Works', 'PT' => 'Performance Task', 'QA' => 'Examination'];
 
+/** "Also create a file from the instructions" choices ('' = no file). */
+const CLASSWORK_OUTPUT_LABELS = [
+    ''      => 'No file (text only)',
+    'gform' => 'Google Form (auto-graded quiz)',
+    'docx'  => 'Word (.docx)',
+    'gdoc'  => 'Google Docs',
+    'pdf'   => 'PDF',
+];
+
+/** Which of those fit each assessment kind (the first is the default). */
+const CLASSWORK_OUTPUT_BY_KIND = [
+    'quiz'                 => ['gform', ''],
+    'written_activity'     => ['', 'docx', 'gdoc'],
+    'worksheet'            => ['', 'docx', 'gdoc'],
+    'recitation'           => ['', 'docx', 'gdoc'],
+    'performance_activity' => ['', 'docx', 'gdoc', 'pdf'],
+    'project'              => ['', 'docx', 'gdoc', 'pdf'],
+    'presentation'         => ['', 'docx', 'gdoc', 'pdf'],
+    'peta'                 => ['', 'docx', 'gdoc', 'pdf'],
+    'creative_output'      => ['', 'docx', 'gdoc', 'pdf'],
+    'examination'          => ['', 'gform', 'docx', 'gdoc', 'pdf'],
+    'learning_material'    => ['', 'pdf', 'docx', 'gdoc'],
+];
+
+/** Allowed output formats for an assessment type (category). */
+function classworkOutputFormats($category)
+{
+    $kind = CLASSWORK_TYPES[$category][1] ?? null;
+    return CLASSWORK_OUTPUT_BY_KIND[$kind] ?? ['', 'pdf', 'docx'];
+}
+
 define('CLASSWORK_SUBMISSION_DIR', __DIR__ . '/../static/uploads/classwork_submissions/');
 
 /** WW / PT / QA for a category (new or legacy), or null when it is not graded. */
@@ -61,7 +92,7 @@ function classworkEnsureSchema()
     static $done = false;
     if ($done) return;
     $done = true;
-    if (schemaIsReady('classwork_v2')) return;
+    if (schemaIsReady('classwork_v3')) return;
     $cols = function ($table) {
         return array_column(getRecords(
             "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?",
@@ -76,6 +107,9 @@ function classworkEnsureSchema()
         'assigned_at'        => "ADD COLUMN assigned_at DATETIME DEFAULT NULL",
         'answer_key'         => "ADD COLUMN answer_key TEXT DEFAULT NULL COMMENT 'Teacher-only answer key / rubric the AI checks against'",
         'lock_after_due'     => "ADD COLUMN lock_after_due TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = no turn-in after the due date (teacher choice)'",
+        'google_form_id'     => "ADD COLUMN google_form_id VARCHAR(100) DEFAULT NULL COMMENT 'Google Form made from the AI quiz questions'",
+        'google_form_edit_url' => "ADD COLUMN google_form_edit_url VARCHAR(500) DEFAULT NULL COMMENT 'Teacher-only edit link (students get the responder link as an attachment)'",
+        'quiz_questions_json'  => "ADD COLUMN quiz_questions_json MEDIUMTEXT DEFAULT NULL COMMENT 'The reviewed AI questions the Google Form was built from'",
     ];
     foreach ($adds as $col => $ddl) {
         if ($a && !in_array($col, $a, true)) {
@@ -114,7 +148,7 @@ function classworkEnsureSchema()
             KEY idx_csf (assignment_id, student_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
     );
-    schemaMarkReady('classwork_v2');
+    schemaMarkReady('classwork_v3');
 }
 
 /** Save one student upload under classwork_submissions (same validation as every classroom upload). */
@@ -275,6 +309,8 @@ function classworkNotifyStudents(array $assignment, array $studentIds, $teacherI
             'subject_code' => $assignment['subject_code'], 'teacher_id' => (int) $teacherId,
             'title' => $assignment['title'], 'kind' => $assignment['category'] ?: 'Classwork',
             'deadline' => $assignment['due_date'] ?? null,
+            'instruction' => $assignment['instructions'] ?? '',
+            'link' => 'modules/students/portal/subject.php?subject=' . rawurlencode((string) $assignment['subject_code']) . '&cw=' . (int) $assignment['assignment_id'],
         ]);
     }
 }
@@ -345,4 +381,65 @@ function classworkAiCheck($assignmentId, $studentId)
         return $saved;
     }
     return ['success' => true, 'score' => $score];
+}
+
+/**
+ * Build the Google Form for a Quiz from the questions the teacher reviewed
+ * (saved on the assignment) and attach its student link. Safe to call again:
+ * a Form that already exists is never made twice.
+ * @return array{success:bool, view_url?:string, error?:string}
+ */
+function classworkCreateGoogleForm($assignmentId)
+{
+    classworkEnsureSchema();
+    require_once __DIR__ . '/gemini_service.php';        // aiSanitizeQuizQuestions()
+    require_once __DIR__ . '/google_forms_service.php';
+    $a = getRecord("SELECT * FROM classwork_assignments WHERE assignment_id = ?", [(int) $assignmentId]);
+    if (!$a) return ['success' => false, 'error' => 'That assignment was not found.'];
+    if (!empty($a['google_form_id'])) return ['success' => true, 'view_url' => null];
+    $questions = aiSanitizeQuizQuestions(json_decode((string) ($a['quiz_questions_json'] ?? ''), true) ?: []);
+    if (!$questions) {
+        return ['success' => false, 'error' => 'There are no reviewed quiz questions to build the Google Form from. Generate the quiz with AI and click "Use this content" first.'];
+    }
+    $title = html_entity_decode((string) $a['title'], ENT_QUOTES, 'UTF-8');
+    $desc = mb_strimwidth(trim((string) $a['instructions']), 0, 1500, '…');
+    if (!empty($a['max_points'])) {
+        $desc .= "\n\nTotal: " . rtrim(rtrim(number_format((float) $a['max_points'], 2), '0'), '.') . ' points';
+    }
+    $form = googleFormsCreateQuizForm($title, $desc, $questions);
+    if (empty($form['success'])) {
+        return ['success' => false, 'error' => $form['error'] ?? 'Google Forms is unavailable right now.'];
+    }
+    executeQuery("UPDATE classwork_assignments SET google_form_id = ?, google_form_edit_url = ? WHERE assignment_id = ?",
+        [$form['form_id'], $form['edit_url'], (int) $assignmentId]);
+    insertRecord(
+        "INSERT INTO classwork_assignment_attachments (assignment_id, original_filename, attachment_type, external_url) VALUES (?, ?, 'link', ?)",
+        [(int) $assignmentId, mb_substr('Google Form: ' . $title, 0, 255), $form['view_url']]
+    );
+    return ['success' => true, 'view_url' => $form['view_url']];
+}
+
+/**
+ * Email delivery for one classwork (Sent / Failed / Queued / Skipped counts
+ * and the latest error) -- shown on the teacher's classwork card.
+ */
+function classworkEmailStatus(array $assignmentIds)
+{
+    $out = [];
+    $ids = array_values(array_filter(array_map('intval', $assignmentIds)));
+    if (!$ids) return $out;
+    try {
+        require_once __DIR__ . '/student_email_notify.php';
+        senEnsureSchema();
+        $keys = array_map(function ($id) { return 'classwork:' . $id; }, $ids);
+        $ph = implode(',', array_fill(0, count($keys), '?'));
+        foreach (getRecords("SELECT notify_key, status, COUNT(*) AS n, MAX(error) AS err FROM student_email_notifications WHERE notify_key IN ($ph) GROUP BY notify_key, status", $keys) as $r) {
+            $id = (int) substr($r['notify_key'], 10);
+            $out[$id][$r['status']] = (int) $r['n'];
+            if ($r['status'] === 'Failed' || $r['status'] === 'Skipped') $out[$id]['error_' . $r['status']] = (string) $r['err'];
+        }
+    } catch (\Throwable $e) {
+        error_log('classworkEmailStatus: ' . $e->getMessage());
+    }
+    return $out;
 }

@@ -43,6 +43,23 @@ function senEnsureSchema()
     schemaMarkReady('student_email_notifications_v1');
 }
 
+/**
+ * Full URL of a page in this app for an email button. Settings key
+ * "portal_public_url" (e.g. https://school.example/watdahel/) wins, so the link
+ * also works outside the school network; otherwise the current host is used.
+ */
+function senAppUrl($path)
+{
+    $row = getRecord("SELECT setting_value FROM system_settings WHERE setting_key = 'portal_public_url'");
+    $base = trim((string) ($row['setting_value'] ?? ''));
+    if ($base === '' || !preg_match('#^https?://#i', $base)) {
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $https = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+        $base = ($https ? 'https' : 'http') . '://' . $host . (defined('BASE_URL') ? BASE_URL : '/');
+    }
+    return rtrim($base, '/') . '/' . ltrim((string) $path, '/');
+}
+
 /** Is task email sending switched on? (default: on) */
 function senEnabled()
 {
@@ -53,7 +70,8 @@ function senEnabled()
 /**
  * Queue (and, after the response, send) one email per student.
  * @param int[] $studentIds
- * @param array $info key, subject_code, teacher_id, title, kind, deadline(optional)
+ * @param array $info key, subject_code, teacher_id, title, kind, deadline(optional),
+ *                    instruction(optional short text), link(optional app path for the button)
  * @return int emails queued now
  */
 function senNotifyStudents(array $studentIds, array $info)
@@ -72,25 +90,31 @@ function senNotifyStudents(array $studentIds, array $info)
         $kind = trim((string) ($info['kind'] ?? 'Task')) ?: 'Task';
         $deadline = !empty($info['deadline']) && strtotime($info['deadline']) ? date('F j, Y g:i A', strtotime($info['deadline'])) : '';
         $school = function_exists('getSchoolName') ? getSchoolName() : 'EGradePro';
+        $instruction = trim(preg_replace('/\s+/u', ' ', html_entity_decode((string) ($info['instruction'] ?? ''), ENT_QUOTES, 'UTF-8')));
+        if (mb_strlen($instruction) > 300) $instruction = mb_substr($instruction, 0, 297) . '...';
+        $link = senAppUrl(!empty($info['link']) ? (string) $info['link'] : 'student_login.php');
 
         $ph = implode(',', array_fill(0, count($ids), '?'));
-        $students = getRecords("SELECT student_id, first_name, email FROM students WHERE is_active = 1 AND student_id IN ($ph)", $ids);
+        $students = getRecords("SELECT student_id, first_name, last_name, email FROM students WHERE is_active = 1 AND student_id IN ($ph)", $ids);
         $queued = 0;
         foreach ($students as $s) {
             $to = trim((string) $s['email']);
             if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) continue; // no email on file -- the portal notice still shows
-            $mailSubject = mb_substr("New {$kind} in {$subjectName}: {$title}", 0, 250);
+            $mailSubject = mb_substr("New {$kind} Assigned – {$title}", 0, 250);
             $e = function ($v) { return htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8'); };
             $body = '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1f2937;max-width:560px;">'
-                . '<p>Hi ' . $e($s['first_name']) . ',</p>'
-                . '<p>A new <strong>' . $e($kind) . '</strong> is available for you in <strong>EGradePro</strong>.</p>'
+                . '<p>Hi ' . $e(trim($s['first_name'] . ' ' . ($s['last_name'] ?? ''))) . ',</p>'
+                . '<p>A new <strong>' . $e($kind) . '</strong> is available in <strong>EGradePro</strong>.</p>'
                 . '<table cellpadding="6" style="border-collapse:collapse;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">'
                 . '<tr><td style="color:#64748b;">Subject</td><td><strong>' . $e($subjectName) . '</strong></td></tr>'
                 . '<tr><td style="color:#64748b;">Teacher</td><td>' . $e($teacherName) . '</td></tr>'
-                . '<tr><td style="color:#64748b;">' . $e($kind) . '</td><td><strong>' . $e($title) . '</strong></td></tr>'
-                . ($deadline !== '' ? '<tr><td style="color:#64748b;">Deadline</td><td><strong>' . $e($deadline) . '</strong></td></tr>' : '')
+                . '<tr><td style="color:#64748b;">Title</td><td><strong>' . $e($title) . '</strong></td></tr>'
+                . '<tr><td style="color:#64748b;">Type</td><td>' . $e($kind) . '</td></tr>'
+                . '<tr><td style="color:#64748b;">Due date</td><td><strong>' . $e($deadline !== '' ? $deadline : 'No due date') . '</strong></td></tr>'
+                . ($instruction !== '' ? '<tr><td style="color:#64748b;vertical-align:top;">Instruction</td><td>' . $e($instruction) . '</td></tr>' : '')
                 . '</table>'
-                . '<p>Sign in to the Student Portal with your LRN and open ' . $e($subjectName) . ' &rsaquo; Classwork to see it.</p>'
+                . '<p style="margin:18px 0;"><a href="' . $e($link) . '" style="background:#2563eb;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:6px;display:inline-block;font-weight:bold;">Open in EGradePro Student Portal</a></p>'
+                . '<p style="font-size:12px;color:#64748b;">If the button does not work, copy this link: ' . $e($link) . '<br>Sign in with your LRN, then open ' . $e($subjectName) . ' &rsaquo; Classwork.</p>'
                 . '<p style="color:#64748b;font-size:12px;">This is an automatic message from ' . $e($school) . ' EGradePro. Please do not reply.</p>'
                 . '</div>';
             $stmt = executeQuery(

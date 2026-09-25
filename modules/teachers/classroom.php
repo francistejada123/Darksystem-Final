@@ -202,6 +202,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    // ---- Retry what failed after posting: the students' emails, or the Google Form ----
+    if (in_array(($_POST['form_action'] ?? ''), ['retry_classwork_email', 'retry_classwork_gform'], true)) {
+        $aid = (int) ($_POST['assignment_id'] ?? 0);
+        $owned = getRecord("SELECT assignment_id FROM classwork_assignments WHERE assignment_id = ? AND teacher_id = ? AND section_id = ? AND subject_code = ?", [$aid, $teacher_id, $post_section_id, $post_subject_code]);
+        if (!$owned) {
+            $_SESSION['error_message'] = 'That assignment could not be found.';
+        } elseif ($_POST['form_action'] === 'retry_classwork_gform') {
+            $gf = classworkCreateGoogleForm($aid);
+            if ($gf['success']) {
+                $_SESSION['success_message'] = 'The Google Form was created and attached to the assignment.';
+            } else {
+                $_SESSION['error_message'] = 'The Google Form could not be created: ' . $gf['error'];
+            }
+        } else {
+            require_once __DIR__ . '/../../includes/student_email_notify.php';
+            senEnsureSchema();
+            $n = executeQuery("UPDATE student_email_notifications SET status = 'Queued', error = NULL WHERE notify_key = ? AND status IN ('Failed','Skipped')", ['classwork:' . $aid]);
+            $n = $n ? $n->rowCount() : 0;
+            if ($n > 0) {
+                senScheduleDispatch();
+                $_SESSION['success_message'] = 'Sending the email again to ' . $n . ' student(s). Refresh in a moment to see the result.';
+            } else {
+                $_SESSION['success_message'] = 'There are no failed emails to send again.';
+            }
+            logActivity($teacher_id, 'Classroom', 'Retried classwork email', "Assignment #$aid, $n email(s) queued again");
+        }
+        header('Location: classroom.php?' . $redirect_qs . '&tab=classwork&open=' . $aid . '#cw-' . $aid);
+        exit;
+    }
+
     // ---- Create a classwork assignment (Classwork tab) ----
     if (($_POST['form_action'] ?? '') === 'create_classwork') {
         $title = trim((string) ($_POST['title'] ?? ''));
@@ -217,7 +247,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $ai_generated = !empty($_POST['ai_generated']) ? 1 : 0;
         $ai_resource_type = trim((string) ($_POST['ai_resource_type'] ?? ''));
         $ai_teacher_answer_key = trim((string) ($_POST['ai_teacher_answer_key'] ?? ''));
-        $generate_format = in_array(($_POST['generate_format'] ?? ''), ['pdf', 'docx'], true) ? $_POST['generate_format'] : null;
+        // Only the file types that fit the selected assessment type are accepted
+        // (Quiz -> Google Form; Written Activity -> Word / Google Docs; ...).
+        $format_in = (string) ($_POST['generate_format'] ?? '');
+        if (!in_array($format_in, classworkOutputFormats($category), true)) {
+            $_SESSION['error_message'] = '"' . (CLASSWORK_OUTPUT_LABELS[$format_in] ?? $format_in) . '" is not available for a ' . $category . '. Please choose one of the listed file options.';
+            header('Location: classroom.php?' . $redirect_qs . '&tab=classwork#classwork');
+            exit;
+        }
+        $generate_format = $format_in !== '' ? $format_in : null;
+        $quiz_questions = [];
+        if ($generate_format === 'gform') {
+            require_once __DIR__ . '/../../includes/gemini_service.php'; // aiSanitizeQuizQuestions()
+            $quiz_questions = aiSanitizeQuizQuestions(json_decode((string) ($_POST['ai_quiz_questions'] ?? ''), true) ?: []);
+            if (!$quiz_questions) {
+                $_SESSION['error_message'] = 'The Google Form is built from the AI quiz questions. Generate the quiz with AI (from the attached lesson), review it, click "Use this content", then assign.';
+                header('Location: classroom.php?' . $redirect_qs . '&tab=classwork#classwork');
+                exit;
+            }
+        }
+
+        // One post per opened form: a double-click or a page refresh never
+        // creates (and emails) the same assignment twice.
+        $cw_nonce = preg_replace('/[^a-f0-9]/', '', (string) ($_POST['cw_nonce'] ?? ''));
+        $used_nonces = $_SESSION['cw_nonces_used'] ?? [];
+        if ($cw_nonce !== '' && in_array($cw_nonce, $used_nonces, true)) {
+            $_SESSION['success_message'] = 'This assignment was already posted (it was not posted twice).';
+            header('Location: classroom.php?' . $redirect_qs . '&tab=classwork#classwork');
+            exit;
+        }
 
         if ($title === '' || $instructions === '') {
             $_SESSION['error_message'] = 'Please provide a title and instructions/content for this assignment.';
@@ -260,6 +318,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
              $ai_teacher_answer_key !== '' ? mb_substr($ai_teacher_answer_key, 0, 12000) : null]
         );
 
+        if ($assignment_id && $cw_nonce !== '') {
+            $used_nonces[] = $cw_nonce;
+            $_SESSION['cw_nonces_used'] = array_slice($used_nonces, -30);
+        }
+        if ($assignment_id && $quiz_questions) {
+            executeQuery("UPDATE classwork_assignments SET quiz_questions_json = ? WHERE assignment_id = ?",
+                [json_encode($quiz_questions, JSON_UNESCAPED_UNICODE), (int) $assignment_id]);
+        }
         if ($assignment_id && !empty($_POST['lock_after_due']) && $due_date !== null) {
             executeQuery("UPDATE classwork_assignments SET lock_after_due = 1 WHERE assignment_id = ?", [(int) $assignment_id]);
         }
@@ -273,7 +339,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // teacher-reviewed content -- only now, at save time, never during
         // AI chat preview (see classroom_ai_chat.php's header comment for
         // why: never create a file for a draft that's never posted).
-        if ($generate_format !== null) {
+        $cw_file_note = '';
+        if ($generate_format === 'gform') {
+            // Quiz -> an auto-graded Google Form from the questions the teacher reviewed.
+            $gf = classworkCreateGoogleForm((int) $assignment_id);
+            if ($gf['success']) {
+                $cw_file_note = ' A Google Form was created from the reviewed questions and attached.';
+            } else {
+                $_SESSION['error_message'] = 'The assignment was posted, but the Google Form could not be created: ' . $gf['error'] . ' Use "Create Google Form again" on the assignment card.';
+            }
+        } elseif ($generate_format !== null) {
             $resource = [
                 'title' => $title,
                 'resource_type' => $ai_resource_type !== '' ? $ai_resource_type : 'assignment',
@@ -287,8 +362,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'teacher_name' => $teacher ? trim($teacher['first_name'] . ' ' . $teacher['last_name']) : '',
                 'date' => date('F j, Y'),
             ];
-            $file_result = aiGenerateResourceFile($resource, $doc_context, $generate_format, 'student');
-            if ($file_result['success']) {
+            // Google Docs = the same Word file, converted in Google Drive and shared by link.
+            $file_result = aiGenerateResourceFile($resource, $doc_context, $generate_format === 'gdoc' ? 'docx' : $generate_format, 'student');
+            $gdoc_done = false;
+            if ($file_result['success'] && $generate_format === 'gdoc') {
+                require_once __DIR__ . '/../../includes/google_forms_service.php';
+                $gdoc = googleDocsCreateFromDocx(aiResourceStorageDir() . $file_result['stored_filename'], $title);
+                if ($gdoc['success']) {
+                    insertRecord(
+                        "INSERT INTO classwork_assignment_attachments (assignment_id, original_filename, attachment_type, external_url) VALUES (?, ?, 'link', ?)",
+                        [$assignment_id, mb_substr('Google Docs: ' . $title, 0, 255), $gdoc['view_url']]
+                    );
+                    @unlink(aiResourceStorageDir() . $file_result['stored_filename']);
+                    $gdoc_done = true;
+                    $cw_file_note = ' A Google Doc was created and attached (anyone with the link can view).';
+                } else {
+                    $_SESSION['error_message'] = 'Google Docs could not be created (' . $gdoc['error'] . '), so the Word (.docx) file was attached instead.';
+                }
+            }
+            if ($gdoc_done) {
+                // attached as a Google Docs link above
+            } elseif ($file_result['success']) {
                 // aiGenerateResourceFile() always writes into its own fixed
                 // location, static/uploads/ai_resources/ (aiResourceStorageDir()
                 // in includes/ai_document_generator.php) -- that's correct for
@@ -314,7 +408,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['error_message'] = 'The assignment was posted, but the generated file could not be saved. Please try again.';
                 }
             } else {
-                $_SESSION['error_message'] = 'The assignment was posted, but the ' . strtoupper($generate_format) . ' file could not be generated: ' . $file_result['error'];
+                $_SESSION['error_message'] = 'The assignment was posted, but the ' . (CLASSWORK_OUTPUT_LABELS[$generate_format] ?? strtoupper($generate_format)) . ' file could not be generated: ' . $file_result['error'];
             }
         }
 
@@ -359,14 +453,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // "New" badge on each student's class card + portal bell.
         classworkNotifyStudents(
-            ['assignment_id' => (int) $assignment_id, 'title' => $title, 'category' => $category, 'due_date' => $due_date, 'subject_code' => $post_subject_code, 'school_year_id' => $post_sy_id],
+            ['assignment_id' => (int) $assignment_id, 'title' => $title, 'category' => $category, 'due_date' => $due_date, 'subject_code' => $post_subject_code, 'school_year_id' => $post_sy_id, 'instructions' => $instructions],
             array_column($roster, 'student_id'),
             $teacher_id
         );
 
         logActivity($teacher_id, 'Classroom', 'Posted classwork', "Assignment #$assignment_id ($category, $title), subject $post_subject_code, section #$post_section_id");
-        $_SESSION['success_message'] = '"' . $title . '" was assigned to ' . count($roster) . ' student(s) of ' . ($post_class['section_name'] ?? 'this section') . '.'
-            . ($item ? ' Saved in Manage Assessment Items as "' . html_entity_decode($item['item_name'], ENT_QUOTES, 'UTF-8') . '" under ' . CLASSWORK_GRADING_LABELS[$grading_category] . ' (' . rtrim(rtrim(number_format($max_points, 2), '0'), '.') . ' pts).' : ' Not graded (learning material).');
+        $_SESSION['success_message'] = '"' . $title . '" was assigned to ' . count($roster) . ' student(s) of ' . ($post_class['section_name'] ?? 'this section') . '.' . $cw_file_note
+            . ' An email is being sent to each student with a registered email (see the status on the assignment card).'
+            . ($item ?' Saved in Manage Assessment Items as "' . html_entity_decode($item['item_name'], ENT_QUOTES, 'UTF-8') . '" under ' . CLASSWORK_GRADING_LABELS[$grading_category] . ' (' . rtrim(rtrim(number_format($max_points, 2), '0'), '.') . ' pts).' : ' Not graded (learning material).');
         header('Location: classroom.php?' . $redirect_qs . '&tab=classwork#classwork');
         exit;
     }
@@ -379,6 +474,7 @@ $stream_posts = [];
 $classwork_items = [];
 $roster = [];
 $online_work = ['sent' => [], 'prepared' => []];
+$cw_email_status = [];
 $student_comments = [];
 
 if ($authorized) {
@@ -449,6 +545,7 @@ if ($authorized) {
             }
         }
         unset($c);
+        $cw_email_status = classworkEmailStatus(array_column($classwork_items, 'assignment_id'));
     }
 
     $roster = classroomSectionStudents($section_id, $school_year_id);
@@ -466,6 +563,15 @@ include '../../includes/header.php';
 <style>
     /* Online quizzes/activities (Classwork) and student comments (Stream) */
     .cr-pills { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+    .cw-mail-line { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:8px; font-size:12px; color:#64748b; }
+    .cw-mail-line.cw-mail-bad { color:#b91c1c; }
+    .cw-mail-line .cw-mail-fail { font-weight:600; color:#b91c1c; }
+    .cw-mail-line .cw-mail-err { flex-basis:100%; font-size:11px; color:#b91c1c; }
+    .cw-quiz-review { max-height:260px; overflow:auto; margin:8px 0; padding:8px 10px; border:1px solid #e2e8f0; border-radius:8px; background:#fff; font-size:12px; }
+    .cw-quiz-review ol { padding-left:18px; margin:0; }
+    .cw-quiz-review li { margin-bottom:6px; }
+    .cw-quiz-review .ok { color:#15803d; font-weight:600; }
+    .cw-format-hint { font-size:11px; color:#64748b; margin-top:3px; }
     .cr-pill { display:inline-block; border-radius:99px; padding:2px 9px; font-size:11px; font-weight:600; background:#F2F4F7; color:#475467; }
     .cr-pill.upcoming { background:#EAF2FE; color:#1D4ED8; }
     .cr-pill.active { background:#FEF3E6; color:#B54708; }
@@ -1226,12 +1332,48 @@ include '../../includes/header.php';
                     <div class="mt-2">
                         <?php foreach ($item['attachments'] as $att): ?>
                             <a class="attachment-chip" href="classroom_download.php?kind=classwork&id=<?php echo (int) $att['attachment_id']; ?>" target="_blank">
-                                <i class="fas <?php echo classroomMimeIcon($att['mime_type'], $att['original_filename']); ?>"></i>
+                                <i class="fas <?php echo $att['attachment_type'] === 'link' ? (strpos((string) $att['external_url'], '/forms/') !== false ? 'fa-list-check' : 'fa-file-lines') : classroomMimeIcon($att['mime_type'], $att['original_filename']); ?>"></i>
                                 <?php echo htmlspecialchars($att['original_filename']); ?>
-                                <span class="text-muted"><?php echo classroomFileSizeLabel($att['file_size']); ?></span>
+                                <?php if ($att['attachment_type'] !== 'link'): ?><span class="text-muted"><?php echo classroomFileSizeLabel($att['file_size']); ?></span><?php endif; ?>
                             </a>
                         <?php endforeach; ?>
+                        <?php if (!empty($item['google_form_edit_url'])): ?>
+                            <a class="attachment-chip" href="<?php echo htmlspecialchars($item['google_form_edit_url']); ?>" target="_blank" rel="noopener"><i class="fas fa-pen"></i> Edit Google Form (teacher only)</a>
+                        <?php endif; ?>
                     </div>
+                <?php endif; ?>
+                <?php if (!empty($item['quiz_questions_json']) && empty($item['google_form_id'])): ?>
+                    <form method="post" class="cw-mail-line cw-mail-bad">
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
+                        <input type="hidden" name="form_action" value="retry_classwork_gform">
+                        <input type="hidden" name="assignment_id" value="<?php echo (int) $item['assignment_id']; ?>">
+                        <input type="hidden" name="section_id" value="<?php echo (int) $section_id; ?>">
+                        <input type="hidden" name="subject_code" value="<?php echo htmlspecialchars($subject_code); ?>">
+                        <input type="hidden" name="school_year_id" value="<?php echo (int) $school_year_id; ?>">
+                        <input type="hidden" name="term" value="<?php echo htmlspecialchars($term); ?>">
+                        <i class="fas fa-triangle-exclamation"></i> The Google Form for this quiz was not created yet.
+                        <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2">Create Google Form again</button>
+                    </form>
+                <?php endif; ?>
+                <?php $cw_mail = $cw_email_status[(int) $item['assignment_id']] ?? []; if ($cw_mail): ?>
+                    <form method="post" class="cw-mail-line<?php echo !empty($cw_mail['Failed']) ? ' cw-mail-bad' : ''; ?>">
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
+                        <input type="hidden" name="form_action" value="retry_classwork_email">
+                        <input type="hidden" name="assignment_id" value="<?php echo (int) $item['assignment_id']; ?>">
+                        <input type="hidden" name="section_id" value="<?php echo (int) $section_id; ?>">
+                        <input type="hidden" name="subject_code" value="<?php echo htmlspecialchars($subject_code); ?>">
+                        <input type="hidden" name="school_year_id" value="<?php echo (int) $school_year_id; ?>">
+                        <input type="hidden" name="term" value="<?php echo htmlspecialchars($term); ?>">
+                        <i class="fas fa-envelope"></i> Email:
+                        <?php if (!empty($cw_mail['Sent'])): ?><span><?php echo (int) $cw_mail['Sent']; ?> sent</span><?php endif; ?>
+                        <?php if (!empty($cw_mail['Queued'])): ?><span><?php echo (int) $cw_mail['Queued']; ?> sending…</span><?php endif; ?>
+                        <?php if (!empty($cw_mail['Failed'])): ?><span class="cw-mail-fail" title="<?php echo htmlspecialchars($cw_mail['error_Failed'] ?? ''); ?>"><?php echo (int) $cw_mail['Failed']; ?> failed</span><?php endif; ?>
+                        <?php if (!empty($cw_mail['Skipped'])): ?><span title="<?php echo htmlspecialchars($cw_mail['error_Skipped'] ?? ''); ?>"><?php echo (int) $cw_mail['Skipped']; ?> not sent (<?php echo htmlspecialchars($cw_mail['error_Skipped'] ?? 'switched off'); ?>)</span><?php endif; ?>
+                        <?php if (!empty($cw_mail['Failed']) || !empty($cw_mail['Skipped'])): ?>
+                            <button type="submit" class="btn btn-sm btn-outline-secondary py-0 px-2">Send again</button>
+                            <?php if (!empty($cw_mail['error_Failed'])): ?><div class="cw-mail-err"><?php echo htmlspecialchars(mb_strimwidth($cw_mail['error_Failed'], 0, 160, '…')); ?><?php echo stripos($cw_mail['error_Failed'], 'authenticate') !== false ? ' — the Gmail App Password in Settings › Email Settings needs to be updated.' : ''; ?></div><?php endif; ?>
+                        <?php endif; ?>
+                    </form>
                 <?php endif; ?>
                 <div class="cr-pills">
                     <span class="cr-pill upcoming">Assigned: <?php echo (int) $item['counts']['assigned']; ?></span>
@@ -1340,6 +1482,8 @@ include '../../includes/header.php';
                         <input type="hidden" name="ai_generated" id="cwAiGenerated" value="0">
                         <input type="hidden" name="ai_resource_type" id="cwAiResourceType" value="">
                         <input type="hidden" name="ai_teacher_answer_key" id="cwAiAnswerKey" value="">
+                        <input type="hidden" name="ai_quiz_questions" id="cwAiQuizQuestions" value="">
+                        <input type="hidden" name="cw_nonce" id="cwNonce" value="<?php echo bin2hex(random_bytes(12)); ?>">
 
 
                         <div class="row g-2 mb-2">
@@ -1407,9 +1551,8 @@ include '../../includes/header.php';
                                 <label class="form-label small mb-1">Also create a file from the instructions</label>
                                 <select class="form-select form-select-sm" name="generate_format" id="cwGenerateFormat">
                                     <option value="">No file (text only)</option>
-                                    <option value="pdf">PDF</option>
-                                    <option value="docx">Word (DOCX)</option>
                                 </select>
+                                <div class="cw-format-hint" id="cwFormatHint"></div>
                             </div>
                         </div>
 
@@ -1446,6 +1589,20 @@ include '../../includes/header.php';
         var catEl = document.getElementById('cwCategory');
         var filesEl = document.getElementById('cwFiles');
         var GRADING = { WW: 'Written Works', PT: 'Performance Task', QA: 'Examination' };
+        var fmtEl = document.getElementById('cwGenerateFormat');
+        var fmtHint = document.getElementById('cwFormatHint');
+        var quizQEl = document.getElementById('cwAiQuizQuestions');
+        // "Also create a file" choices per assessment type (same list the server checks).
+        var FORMAT_LABELS = <?php echo json_encode(CLASSWORK_OUTPUT_LABELS); ?>;
+        var FORMATS = <?php $cw_fmt_map = []; foreach (array_keys(CLASSWORK_TYPES) as $cw_t) { $cw_fmt_map[$cw_t] = classworkOutputFormats($cw_t); } echo json_encode($cw_fmt_map); ?>;
+        var GOOGLE_READY = <?php require_once __DIR__ . '/../../includes/google_forms_service.php'; echo googleFormsIsConfigured() ? 'true' : 'false'; ?>;
+        var FORMAT_HINTS = {
+            '': 'Students see the instructions as text.',
+            gform: 'Generate the quiz with AI from the attached lesson, review the questions, then assign — the Google Form is created from them.',
+            docx: 'A Word file is made from the final instructions when you assign.',
+            gdoc: 'A Google Doc is made from the final instructions and shared by link when you assign.',
+            pdf: 'A PDF is made from the final instructions when you assign.'
+        };
         var history = [];
         var currentDraft = null;
         var sending = false;
@@ -1463,7 +1620,39 @@ include '../../includes/header.php';
             var comp = document.getElementById('cwComponentWrap');
             if (comp) comp.style.display = g ? '' : 'none';
             document.getElementById('cwAiScope').textContent = catEl.value + ' · ' + (g ? GRADING[g] : 'Not graded') + ' · ' + <?php echo json_encode($class['subject_name'] . ' · Section ' . $class['section_name'] . ' · ' . $term); ?>;
+            applyFormats();
         }
+
+        // Rebuild the file options for the selected type right away; an option
+        // that does not fit the new type is never kept.
+        function applyFormats() {
+            var allowed = FORMATS[catEl.value] || ['', 'pdf', 'docx'];
+            var keep = fmtEl.value;
+            fmtEl.innerHTML = '';
+            allowed.forEach(function (v) {
+                var o = document.createElement('option');
+                o.value = v;
+                var needsGoogle = (v === 'gform' || v === 'gdoc');
+                o.textContent = FORMAT_LABELS[v] + (needsGoogle && !GOOGLE_READY ? ' (Google not set up)' : '');
+                if (needsGoogle && !GOOGLE_READY) o.disabled = true;
+                fmtEl.appendChild(o);
+            });
+            var usable = allowed.filter(function (v) { return GOOGLE_READY || (v !== 'gform' && v !== 'gdoc'); });
+            fmtEl.value = usable.indexOf(keep) !== -1 && keep !== '' ? keep : (usable[0] || '');
+            if (allowed.indexOf('gform') === -1) quizQEl.value = '';
+            showFormatHint();
+        }
+        function showFormatHint() {
+            var h = FORMAT_HINTS[fmtEl.value] || '';
+            if (fmtEl.value === 'gform') {
+                var n = 0;
+                try { n = (JSON.parse(quizQEl.value || '[]') || []).length; } catch (e) {}
+                h = n ? '\u2713 ' + n + ' reviewed question(s) will be turned into the Google Form.' : h;
+            }
+            fmtHint.textContent = h;
+            fmtHint.style.color = (fmtEl.value === 'gform' && !quizQEl.value) ? '#b45309' : '';
+        }
+        fmtEl.addEventListener('change', showFormatHint);
 
         function addBubble(role, text) {
             var div = document.createElement('div');
@@ -1478,10 +1667,25 @@ include '../../includes/header.php';
             if (data.response_type !== 'resource') return;
             var box = document.createElement('div');
             box.className = 'ai-resource-preview';
-            var fileNote = data.output_format ? (' &middot; will generate a ' + data.output_format.toUpperCase() + ' file') : '';
+            var qs = Array.isArray(data.quiz_questions) ? data.quiz_questions : [];
+            var wantsForm = fmtEl.value === 'gform';
+            var fileNote = fmtEl.value ? (' &middot; ' + escapeHtml(FORMAT_LABELS[fmtEl.value] || fmtEl.value)) : '';
+            var review = '';
+            if (wantsForm && qs.length) {
+                review = '<div class="cw-quiz-review"><strong>Google Form questions (' + qs.length + ') — review before assigning:</strong><ol>' +
+                    qs.map(function (q) {
+                        return '<li>' + escapeHtml(q.question) + '<br>' + (q.choices || []).map(function (c, i) {
+                            return i === q.correct_index ? '<span class="ok">\u2713 ' + escapeHtml(c) + '</span>' : escapeHtml(c);
+                        }).join(' &middot; ') + ' <span class="text-muted">(' + (q.points || 1) + ' pt)</span></li>';
+                    }).join('') + '</ol></div>';
+            } else if (wantsForm) {
+                review = '<div class="cw-format-hint" style="color:#b45309;">No multiple-choice questions came back for the Google Form. Ask the AI: "Make it multiple choice for Google Form".</div>';
+            }
             box.innerHTML =
                 '<div style="font-size:12px;"><strong>' + escapeHtml(catEl.value) + ':</strong> ' + escapeHtml(data.title || '') + fileNote + '</div>' +
+                (data.lesson_topic ? '<div class="cw-format-hint"><i class="fas fa-book-open me-1"></i>Lesson topic detected: <strong>' + escapeHtml(data.lesson_topic) + '</strong></div>' : '') +
                 '<div class="cw-preview-text">' + escapeHtml((data.student_content || '').slice(0, 800)) + '</div>' +
+                review +
                 '<button type="button" class="btn btn-sm btn-outline-primary" id="cwUseAiContentBtn">Use this content</button>';
             previewContainer.appendChild(box);
             document.getElementById('cwUseAiContentBtn').addEventListener('click', function () {
@@ -1491,10 +1695,15 @@ include '../../includes/header.php';
                 document.getElementById('cwAiGenerated').value = '1';
                 document.getElementById('cwAiResourceType').value = data.resource_type || '';
                 document.getElementById('cwAiAnswerKey').value = data.teacher_answer_key || '';
-                // The assessment type stays exactly what the teacher selected.
-                if (data.output_format) {
-                    document.getElementById('cwGenerateFormat').value = data.output_format;
+                quizQEl.value = qs.length ? JSON.stringify(qs) : '';
+                // The assessment type stays exactly what the teacher selected;
+                // a file type the AI suggests is used only if it fits that type.
+                var allowed = FORMATS[catEl.value] || [];
+                if (data.output_format && allowed.indexOf(data.output_format) !== -1) {
+                    fmtEl.value = data.output_format;
                 }
+                showFormatHint();
+                this.textContent = '\u2713 Content applied — review it above, then assign';
             });
         }
 
@@ -1528,6 +1737,7 @@ include '../../includes/header.php';
             fd.append('assignment_title', document.getElementById('cwTitle').value);
             fd.append('assignment_instructions', document.getElementById('cwInstructions').value);
             fd.append('max_points', document.getElementById('cwPoints').value);
+            fd.append('output_choice', fmtEl.value);
             if (filesEl && filesEl.files) {
                 for (var i = 0; i < filesEl.files.length && i < 3; i++) fd.append('lesson_files[]', filesEl.files[i]);
             }
@@ -1576,6 +1786,22 @@ include '../../includes/header.php';
         catEl.addEventListener('change', function () { applyType(); regreet(); });
         if (filesEl) filesEl.addEventListener('change', regreet);
         applyType();
+
+        // Assign: a Google Form needs the reviewed AI questions; one click posts once.
+        var formEl = document.getElementById('newAssignmentForm');
+        formEl.addEventListener('submit', function (e) {
+            if (fmtEl.value === 'gform' && !quizQEl.value) {
+                e.preventDefault();
+                fmtHint.textContent = 'Generate the quiz with AI first, review the questions and click "Use this content" — the Google Form is made from them. Or choose "No file".';
+                fmtHint.style.color = '#b91c1c';
+                fmtEl.focus();
+                return;
+            }
+            var btn = formEl.querySelector('button[type=submit]');
+            if (formEl.dataset.sent === '1') { e.preventDefault(); return; }
+            formEl.dataset.sent = '1';
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Assigning…'; }
+        });
 
         var modalEl = document.getElementById('newAssignmentModal');
         var greeted = false;

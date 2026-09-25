@@ -391,3 +391,60 @@ function googleHttpRequest($method, $url, array $headers, $body = null, $hasBody
 
     return ['success' => true, 'body' => is_array($decoded) ? $decoded : [], 'http_code' => $http_code];
 }
+
+/**
+ * Upload a Word file to the shared account's Drive as a Google Doc (Drive
+ * converts it) and let anyone with the link view it -- the student gets the
+ * link as a classwork attachment. Uses the drive.file scope already granted.
+ *
+ * @return array{success:bool,file_id?:string,view_url?:string,error?:string}
+ */
+function googleDocsCreateFromDocx($docxPath, $title)
+{
+    if (!is_file($docxPath)) {
+        return ['success' => false, 'error' => 'The Word file to convert was not found.'];
+    }
+    $token = googleGetAccessToken();
+    if (!$token['success']) {
+        return ['success' => false, 'error' => $token['error']];
+    }
+    $auth = 'Authorization: Bearer ' . $token['access_token'];
+
+    $boundary = 'egp' . bin2hex(random_bytes(8));
+    $meta = json_encode(['name' => mb_substr(trim($title) !== '' ? trim($title) : 'Activity', 0, 200), 'mimeType' => 'application/vnd.google-apps.document']);
+    $body = "--$boundary\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n$meta\r\n"
+        . "--$boundary\r\nContent-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document\r\n\r\n"
+        . file_get_contents($docxPath) . "\r\n--$boundary--";
+
+    $ch = curl_init('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $body,
+        CURLOPT_TIMEOUT => 40,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_HTTPHEADER => [$auth, 'Content-Type: multipart/related; boundary=' . $boundary],
+    ]);
+    $raw = curl_exec($ch);
+    $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err = curl_error($ch);
+    curl_close($ch);
+    $up = json_decode((string) $raw, true);
+    if ($code < 200 || $code >= 300 || empty($up['id'])) {
+        error_log('Google Docs upload failed: HTTP ' . $code . ' ' . $err . ' ' . substr((string) $raw, 0, 500));
+        return ['success' => false, 'error' => 'Google Docs could not create the document right now.'];
+    }
+    $fileId = $up['id'];
+
+    $perm = googleHttpRequest('POST', 'https://www.googleapis.com/drive/v3/files/' . rawurlencode($fileId) . '/permissions',
+        [$auth], ['role' => 'reader', 'type' => 'anyone'], true, true);
+    if (!$perm['success']) {
+        error_log('Google Docs share-by-link failed for ' . $fileId . ': ' . ($perm['error'] ?? 'unknown'));
+        return ['success' => false, 'error' => 'The Google Doc was created but could not be shared with the students.'];
+    }
+    return [
+        'success' => true,
+        'file_id' => $fileId,
+        'view_url' => $up['webViewLink'] ?? ('https://docs.google.com/document/d/' . $fileId . '/edit?usp=sharing'),
+    ];
+}

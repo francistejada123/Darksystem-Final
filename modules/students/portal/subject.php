@@ -654,7 +654,7 @@ $page_title = $class['subject_name'];
                                 <?php foreach ($cw_attach[(int) $cw['assignment_id']] ?? [] as $att): ?>
                                     <div class="yw-file">
                                         <i class="fas <?php echo $att['attachment_type'] === 'link' ? 'fa-link' : classroomMimeIcon($att['mime_type'], $att['original_filename']); ?>"></i>
-                                        <span><?php echo htmlspecialchars($att['attachment_type'] === 'link' ? $att['external_url'] : $att['original_filename']); ?></span>
+                                        <span><?php echo htmlspecialchars($att['attachment_type'] === 'link' ? ($att['original_filename'] ?: $att['external_url']) : $att['original_filename']); ?></span>
                                         <a href="classwork_file.php?type=attachment&id=<?php echo (int) $att['attachment_id']; ?>" target="_blank" rel="noopener" class="btn-attach-action">View</a>
                                         <?php if ($att['attachment_type'] !== 'link'): ?><a href="classwork_file.php?type=attachment&id=<?php echo (int) $att['attachment_id']; ?>&download=1" class="btn-attach-action"><i class="fas fa-download me-1"></i>Download File</a><?php endif; ?>
                                     </div>

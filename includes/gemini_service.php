@@ -210,6 +210,7 @@ function buildResourceResponseSchema()
             'title' => ['type' => 'string'],
             'student_content' => ['type' => 'string'],
             'teacher_answer_key' => ['type' => 'string'],
+            'lesson_topic' => ['type' => 'string'],
             'quiz_questions' => [
                 'type' => 'array',
                 'items' => [
@@ -740,7 +741,7 @@ function geminiConvertDraftToQuizQuestions(array $context, array $draft, $expect
         . "Keep the SAME topic, language and reading level as the material. Keep every existing multiple-choice / true-false question as it is; rewrite any open-ended item as a single-best-answer multiple-choice item. For true/false use exactly two choices. "
         . "Never mention the student's grade, risk, or that they are struggling.";
 
-    $input = "STUDENT ACADEMIC CONTEXT\n" . formatRiskContextForPrompt($context) . "\n\n"
+    $input = (isset($context['class_prompt']) ? "CLASS CONTEXT\n" . $context['class_prompt'] : "STUDENT ACADEMIC CONTEXT\n" . formatRiskContextForPrompt($context)) . "\n\n"
         . "MATERIAL TO CONVERT\nTitle: " . (string) ($draft['title'] ?? '') . "\n"
         . "Content:\n" . mb_substr((string) ($draft['student_content'] ?? ''), 0, 6000) . "\n";
     if (!empty($draft['teacher_answer_key'])) {
@@ -1567,6 +1568,8 @@ function validateGeminiResourceResponse($response, $maxReplyLength = 1000)
         $result['title'] = $title;
         $result['student_content'] = $student_content;
         $result['teacher_answer_key'] = $teacher_answer_key !== '' ? $teacher_answer_key : null;
+        $lesson_topic = trim((string) ($decoded['lesson_topic'] ?? ''));
+        if ($lesson_topic !== '') $result['lesson_topic'] = mb_substr($lesson_topic, 0, 150);
 
         if (in_array($resource_type, AI_GFORM_ELIGIBLE_TYPES, true) && isset($decoded['quiz_questions'])) {
             $quiz_questions = aiSanitizeQuizQuestions($decoded['quiz_questions']);
@@ -2027,7 +2030,14 @@ function getGeminiClassResourceReply($teacherId, $sectionId, $subjectCode, $syId
             . ($assignment['lesson_names'] ? "Attached lesson file(s): " . implode('; ', $assignment['lesson_names']) . "\n" : "No lesson file attached.\n")
             . "What to generate: " . $assignment['rule'] . "\n"
             . "Base it ONLY on the attached lesson (when there is one) and the teacher's instruction, for this grade level, section, subject and term. Never add unrelated topics.\n"
-            . "When you generate it, use response_type \"resource\", put the complete student-facing content in student_content (with clear directions), and the answer key / rubric / scoring guide in teacher_answer_key.\n";
+            . (($assignment['lesson_names'] ?? []) || !empty($assignment['lesson_text']) || !empty($assignment['file_part'])
+                ? "THE ATTACHED LESSON IS THE MAIN SOURCE: first read it and identify its main topic (put it in lesson_topic, e.g. \"Philippine Poetry: elements of a poem\"). Every question, item and task must come directly from the lesson's own content -- its terms, definitions, examples, facts and texts. Do not write generic questions that could fit any lesson, and do not use outside topics.\n"
+                : "No lesson is attached: use the title and the teacher's instruction as the topic, and put that topic in lesson_topic.\n")
+            . "When you generate it, use response_type \"resource\", put the complete student-facing content in student_content (with clear directions), and the answer key / rubric / scoring guide in teacher_answer_key.\n"
+            . (($assignment['output'] ?? '') === 'gform'
+                ? "DELIVERY: an auto-graded GOOGLE FORM. Every item must be a single-best-answer multiple-choice (4 choices) or true/false question. Fill quiz_questions with EVERY item, in the same order as student_content"
+                    . ($assignment['points'] > 0 ? ", and make the points of all quiz_questions add up to exactly " . $assignment['points'] : '') . ". Set output_format \"gform\".\n"
+                : '');
         if (!empty($assignment['lesson_text'])) {
             $user_input .= "ATTACHED LESSON CONTENT:\n" . mb_substr($assignment['lesson_text'], 0, 12000) . "\n";
         }
@@ -2086,6 +2096,15 @@ function getGeminiClassResourceReply($teacherId, $sectionId, $subjectCode, $syId
         $result['parsed']['resource_type'] = $assignment['resource_type'];
         if (!in_array($assignment['kind'] ?? '', ['quiz', 'examination'], true)) {
             unset($result['parsed']['quiz_questions']);
+        } elseif (($assignment['output'] ?? '') === 'gform') {
+            $result['parsed']['output_format'] = 'gform';
+            if (empty($result['parsed']['quiz_questions'])) {
+                // The model wrote the quiz as text only: turn that same draft into Form questions.
+                $result['parsed']['quiz_questions'] = geminiConvertDraftToQuizQuestions(
+                    ['class_prompt' => "Grade Level: " . ($class['section_grade_level'] ?: $class['grade_level']) . "\nSubject: " . $class['subject_name'] . "\nWhole class quiz."],
+                    $result['parsed']
+                );
+            }
         }
     }
 

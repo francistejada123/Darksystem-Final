@@ -141,6 +141,8 @@ if (array_key_exists($assessment_type, CLASSWORK_TYPES)) {
         'lesson_names'  => $lessonNames,
         'lesson_text'   => $lessonText,
         'file_part'     => $filePart,
+        // The file the teacher picked under "Also create a file" (only one that fits this type).
+        'output'        => in_array((string) ($_POST['output_choice'] ?? ''), classworkOutputFormats($assessment_type), true) ? (string) $_POST['output_choice'] : '',
     ];
 
     // Opening message: fixed and specific to the selected type (no model call).
@@ -190,6 +192,7 @@ echo json_encode([
     'title' => $result['title'],
     'student_content' => $result['student_content'],
     'teacher_answer_key' => $result['teacher_answer_key'],
-    'output_format' => $result['output_format'], // 'pdf' | 'docx' | null
+    'output_format' => $result['output_format'], // 'pdf' | 'docx' | 'gform' | null
     'quiz_questions' => $result['quiz_questions'] ?? null,
+    'lesson_topic' => $result['lesson_topic'] ?? null,
 ]);
