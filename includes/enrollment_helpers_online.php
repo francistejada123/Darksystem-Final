@@ -357,19 +357,65 @@ if (!function_exists('onlineCreateNextSection')) {
     }
 }
 
+/**
+ * sections.min_average / max_average: the General Average range the school
+ * set for a section (Settings > Sections). Additive columns, added once.
+ */
+function onlineEnsureSectionRangeColumns()
+{
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    if (function_exists('schemaIsReady') && schemaIsReady('section_ga_range_v1')) return;
+    $cols = array_column(getRecords("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sections'"), 'COLUMN_NAME');
+    if (!in_array('min_average', $cols, true)) {
+        executeQuery("ALTER TABLE sections ADD COLUMN min_average DECIMAL(5,2) NULL COMMENT 'Section assignment: lowest General Average for this section (NULL = not set)'");
+    }
+    if (!in_array('max_average', $cols, true)) {
+        executeQuery("ALTER TABLE sections ADD COLUMN max_average DECIMAL(5,2) NULL COMMENT 'Section assignment: highest General Average for this section (NULL = not set)'");
+    }
+    if (function_exists('schemaMarkReady')) schemaMarkReady('section_ga_range_v1');
+}
+
 if (!function_exists('assignSectionForApplication')) {
     function assignSectionForApplication($grade_level, $average_grade, $strand, $school_year_id)
     {
         $is_shs = isSeniorHigh($grade_level);
+        onlineEnsureSectionRangeColumns();
 
         $sections = getRecords(
-            "SELECT section_id, section_name, grade_level, strand, capacity, current_enrollment
+            "SELECT section_id, section_name, grade_level, strand, capacity, current_enrollment, min_average, max_average
              FROM sections WHERE is_active = 1 AND grade_level = ? ORDER BY section_name",
             [$grade_level]
         );
 
         if ($is_shs && !empty($strand)) {
             $sections = array_values(array_filter($sections, fn($s) => $s['strand'] === $strand));
+        }
+
+        // School-configured General Average ranges (Settings > Sections). When a
+        // grade level has any, the learner goes to a section whose range holds
+        // their verified General Average -- the least-filled one, so learners of
+        // the same range are spread by capacity. If every matching section is
+        // full, a section without a range takes them, otherwise the usual rule below.
+        $ranged = array_values(array_filter($sections, fn($s) => $s['min_average'] !== null || $s['max_average'] !== null));
+        if (!empty($ranged) && $average_grade > 0) {
+            $fits = array_filter($ranged, fn($s) => ($s['min_average'] === null || $average_grade >= (float) $s['min_average'])
+                                                 && ($s['max_average'] === null || $average_grade <= (float) $s['max_average']));
+            $best = null; $bestFill = 2.0;
+            foreach ($fits as $s) {
+                $cap = max(1, (int) $s['capacity']);
+                $occ = onlineSectionOccupancy($s['section_id'], $school_year_id);
+                if ($occ < $cap && ($occ / $cap) < $bestFill) { $best = $s; $bestFill = $occ / $cap; }
+            }
+            if ($best) return $best;
+            foreach ($sections as $s) {
+                if ($s['min_average'] === null && $s['max_average'] === null
+                    && onlineSectionOccupancy($s['section_id'], $school_year_id) < intval($s['capacity'])) {
+                    return $s;
+                }
+            }
+            // Nothing configured fits / has room: the school's usual rule below, over every section.
         }
 
         usort($sections, fn($a, $b) => strcmp(onlineSectionLetter($a['section_name']) ?? 'Z', onlineSectionLetter($b['section_name']) ?? 'Z'));

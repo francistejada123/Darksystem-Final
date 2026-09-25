@@ -311,6 +311,25 @@ html[data-theme="dark"] .ar-actionbar .btn-reject:hover { background: rgba(217,4
                 </table>
             </div>
 
+            <?php $ar_card = !empty($application['report_card_data']) ? json_decode($application['report_card_data'], true) : null; ?>
+            <?php if (is_array($ar_card)): ?>
+            <!-- What was read from the verified Report Card (all pages together) -->
+            <div class="ar-card">
+                <div class="ar-card-head"><i class="fas fa-file-invoice head-ic"></i><h5>Report Card (Form 138) — verified</h5>
+                    <span class="right"><i class="fas fa-circle-check me-1"></i>LRN matched</span></div>
+                <table class="detail-table">
+                    <tr><th>Name on card</th><td><?php echo htmlspecialchars($ar_card['name'] ?? ''); ?></td></tr>
+                    <tr><th>LRN on card</th><td><?php echo htmlspecialchars($ar_card['lrn'] ?? ''); ?></td></tr>
+                    <tr><th>Grade level</th><td><?php echo htmlspecialchars($ar_card['grade_level'] ?? ''); ?></td></tr>
+                    <tr><th>General Average</th><td><strong><?php echo htmlspecialchars((string) ($ar_card['general_average'] ?? '')); ?></strong> <small class="text-muted">— used for section assignment</small></td></tr>
+                    <?php if (!empty($ar_card['remarks'])): ?><tr><th>Remarks</th><td><?php echo htmlspecialchars($ar_card['remarks']); ?></td></tr><?php endif; ?>
+                    <?php if (!empty($ar_card['subjects'])): ?>
+                        <tr><th>Subject grades</th><td><?php echo htmlspecialchars(implode(' · ', array_map(function ($sj) { return $sj['subject'] . ' ' . rtrim(rtrim((string) $sj['grade'], '0'), '.'); }, $ar_card['subjects']))); ?></td></tr>
+                    <?php endif; ?>
+                </table>
+            </div>
+            <?php endif; ?>
+
             <!-- Parent / Guardian -->
             <div class="ar-card">
                 <div class="ar-card-head"><i class="fas fa-users head-ic"></i><h5>Parent / Guardian Information</h5></div>

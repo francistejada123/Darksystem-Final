@@ -164,6 +164,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
+// General Average range per section (used when online applications are assigned a section).
+require_once __DIR__ . '/../../includes/enrollment_helpers_online.php';
+onlineEnsureSectionRangeColumns();
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'set_section_range') {
+    if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
+        $_SESSION['error_message'] = 'Invalid security token.';
+    } else {
+        $rid = (int) ($_POST['section_id'] ?? 0);
+        $rmin = trim((string) ($_POST['min_average'] ?? ''));
+        $rmax = trim((string) ($_POST['max_average'] ?? ''));
+        $okNum = function ($v) { return $v === '' || (is_numeric($v) && $v >= 60 && $v <= 100); };
+        if (!$okNum($rmin) || !$okNum($rmax)) {
+            $_SESSION['error_message'] = 'A General Average range uses numbers from 60 to 100 (leave both blank for no range).';
+        } elseif ($rmin !== '' && $rmax !== '' && (float) $rmin > (float) $rmax) {
+            $_SESSION['error_message'] = 'The lowest General Average cannot be higher than the highest.';
+        } else {
+            executeQuery("UPDATE sections SET min_average = ?, max_average = ? WHERE section_id = ?",
+                [$rmin === '' ? null : round((float) $rmin, 2), $rmax === '' ? null : round((float) $rmax, 2), $rid]);
+            logActivity($_SESSION['user_id'], 'settings', 'Section GA range', "Section #$rid: " . ($rmin === '' && $rmax === '' ? 'no range' : ($rmin ?: '...') . '-' . ($rmax ?: '...')));
+            $_SESSION['success_message'] = 'Section General Average range saved.';
+        }
+    }
+    header('Location: index.php?tab=sections');
+    exit;
+}
+
 // Get sections
 $sections = getRecords("SELECT * FROM sections WHERE is_active = 1 ORDER BY grade_level, section_name");
 
@@ -538,6 +564,7 @@ include '../../includes/header.php';
                                 <th>Strand (SHS)</th>
                                 <th>Type</th>
                                 <th style="min-width: 150px;">Enrollment</th>
+                                <th style="min-width: 220px;" title="Online applications are placed in the section whose range holds their verified Report Card General Average">General Average range</th>
                                 <th>Status</th>
                                 <th class="text-center">Actions</th>
                             </tr>
@@ -577,6 +604,19 @@ include '../../includes/header.php';
                                             </div>
                                         </td>
                                         <td>
+                                            <form method="POST" class="d-flex align-items-center gap-1">
+                                                <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
+                                                <input type="hidden" name="action" value="set_section_range">
+                                                <input type="hidden" name="section_id" value="<?php echo (int) $section['section_id']; ?>">
+                                                <input type="number" name="min_average" class="form-control form-control-sm" style="width:72px" min="60" max="100" step="0.01" placeholder="from"
+                                                       value="<?php echo $section['min_average'] !== null ? htmlspecialchars(rtrim(rtrim((string) $section['min_average'], '0'), '.')) : ''; ?>">
+                                                <span class="text-muted">–</span>
+                                                <input type="number" name="max_average" class="form-control form-control-sm" style="width:72px" min="60" max="100" step="0.01" placeholder="to"
+                                                       value="<?php echo $section['max_average'] !== null ? htmlspecialchars(rtrim(rtrim((string) $section['max_average'], '0'), '.')) : ''; ?>">
+                                                <button type="submit" class="btn btn-sm btn-outline-primary" title="Save range"><i class="fas fa-check"></i></button>
+                                            </form>
+                                        </td>
+                                        <td>
                                             <span class="badge bg-<?php echo $section['is_active'] ? 'success' : 'danger'; ?>">
                                                 <?php echo $section['is_active'] ? 'Active' : 'Inactive'; ?>
                                             </span>
@@ -593,7 +633,7 @@ include '../../includes/header.php';
                                 <?php endforeach; ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="7" class="text-center py-5 text-muted">
+                                    <td colspan="8" class="text-center py-5 text-muted">
                                         <i class="fas fa-layer-group fa-2x d-block mb-2"></i>
                                         No sections or strands found.
                                     </td>

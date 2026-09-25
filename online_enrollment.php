@@ -63,13 +63,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['oe_action'] ?? '') === 're
     }
     $rc_tries[] = $rc_now;
     $_SESSION['oe_tries_card'] = $rc_tries;
-    $rc_file = $_FILES['report_card'] ?? null;
-    if (!$rc_file || ($rc_file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || ($rc_file['size'] ?? 0) > 5 * 1024 * 1024) {
-        echo json_encode(['status' => 'unreadable', 'message' => OE_LRN_MSG_UNREADABLE]);
+    // report_card[] = the pages in order (Page 1 / Front, Page 2 / Back / Grades, optional Page 3)
+    $rc_paths = [];
+    $rc_in = $_FILES['report_card'] ?? null;
+    if ($rc_in && is_array($rc_in['name'] ?? null)) {
+        foreach ($rc_in['name'] as $i => $n) {
+            if (($rc_in['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || ($rc_in['size'][$i] ?? 0) > 5 * 1024 * 1024) continue;
+            $rc_paths[] = $rc_in['tmp_name'][$i];
+            if (count($rc_paths) >= 3) break;
+        }
+    }
+    if (count($rc_paths) < 2) {
+        echo json_encode(['status' => 'incomplete', 'message' => OE_CARD_MSG_INCOMPLETE]);
         exit;
     }
-    @set_time_limit(90);
-    echo json_encode(oeReportCardCheck($rc_file['tmp_name'], $_POST['lrn'] ?? ''));
+    @set_time_limit(120);
+    $rc = oeReportCardCheck($rc_paths, $_POST['lrn'] ?? '');
+    $rc_d = $rc['data'] ?? [];
+    echo json_encode([
+        'status' => $rc['status'], 'message' => $rc['message'], 'detected' => $rc['detected'],
+        // shown to the applicant so they can see what was read
+        'card' => $rc['status'] === 'verified' ? [
+            'name' => $rc_d['name'] ?? '', 'grade_level' => $rc_d['grade_level'] ?? '',
+            'general_average' => $rc_d['general_average'] ?? null, 'remarks' => $rc_d['remarks'] ?? '',
+            'subjects' => count($rc_d['subjects'] ?? []),
+        ] : null,
+    ]);
     exit;
 }
 
@@ -295,27 +314,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // --- documents ---
         $required_docs = empty($errors) ? getRequiredDocuments($grade_level, $application_type) : [];
+        $card_data = null; // what was read from the verified Report Card
         $uploads = [];
         foreach ($required_docs as $doc) {
             $field = 'doc_' . $doc['key'];
             $file = $_FILES[$field] ?? null;
             $has_file = $file && isset($file['error']) && $file['error'] !== UPLOAD_ERR_NO_FILE;
 
+            if ($doc['key'] === OE_LRN_CARD_DOC_KEY) {
+                // Page 1 / Front and Page 2 / Back / Grades are required; Page 3 is optional.
+                $card_paths = [];
+                $card_missing = [];
+                foreach (oeReportCardPages() as $suffix => $pg) {
+                    $pf = $_FILES[$field . $suffix] ?? null;
+                    $pf_has = $pf && isset($pf['error']) && $pf['error'] !== UPLOAD_ERR_NO_FILE;
+                    if (!$pf_has) {
+                        if ($pg['required']) $card_missing[] = $pg['label'];
+                        continue;
+                    }
+                    $uploads[] = ['doc' => ['key' => $doc['key'] . $suffix, 'label' => $doc['label'] . ' — ' . $pg['label']] + $doc, 'file' => $pf];
+                    if (($pf['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) $card_paths[] = $pf['tmp_name'];
+                }
+                if ($card_missing) {
+                    $errors[] = $doc['label'] . ': please upload ' . implode(' and ', $card_missing) . '.';
+                    continue;
+                }
+                // All pages read together: the LRN must match Step 2 and the grades / General Average must be found.
+                $rc = oeReportCardCheck($card_paths, $lrn);
+                if ($rc['status'] !== 'verified') {
+                    $errors[] = $rc['message'];
+                } else {
+                    $card_data = $rc['data'];
+                }
+                continue;
+            }
+
             if (!$has_file) {
                 if ($doc['required']) $errors[] = $doc['label'] . ' is required for ' . $application_type . ' applicants (' . $grade_level . ').';
                 continue;
             }
             $uploads[] = ['doc' => $doc, 'file' => $file];
-
-            // The LRN printed on the Report Card must be the LRN entered in Step 2.
-            if ($doc['key'] === OE_LRN_CARD_DOC_KEY) {
-                $rc = ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK
-                    ? oeReportCardCheck($file['tmp_name'], $lrn)
-                    : ['status' => 'unreadable', 'message' => OE_LRN_MSG_UNREADABLE];
-                if ($rc['status'] !== 'verified') {
-                    $errors[] = $rc['message'];
-                }
-            }
         }
 
         if (empty($errors)) {
@@ -353,6 +391,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ]
                 );
 
+                if ($application_id && $card_data !== null) {
+                    // The verified Report Card's General Average is the one used for section assignment.
+                    oeEnsureReportCardSchema();
+                    executeQuery(
+                        "UPDATE online_applications SET report_card_average = ?, report_card_data = ?, average_grade = ? WHERE application_id = ?",
+                        [$card_data['general_average'], json_encode($card_data, JSON_UNESCAPED_UNICODE), $card_data['general_average'], (int) $application_id]
+                    );
+                }
                 if ($application_id) {
                     foreach ($saved as $s) {
                         executeQuery(
@@ -701,6 +747,12 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
 
         .doc-card-error{font-size:12px;color:var(--danger);font-weight:600;margin-top:8px;display:none}
         .form-label.req::after{content:" *";color:var(--danger,#dc2626);font-weight:700}
+        .doc-slot.is-page{border:1px dashed var(--border,#dbe3ee);border-radius:10px;padding:8px 10px;margin-top:8px}
+        .doc-slot-label{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;margin-bottom:6px;flex-wrap:wrap}
+        .doc-slot-done{display:none;color:#047857;font-size:12px;font-weight:700}
+        .doc-slot.has-file .doc-slot-done{display:inline-flex;align-items:center;gap:4px}
+        .doc-card-read{display:none;margin-top:6px;font-size:12.5px;color:#334155;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:7px 10px}
+        .doc-card-read.show{display:block}
         .doc-lrn-status{display:none;margin-top:8px;font-size:12.5px;font-weight:700;border-radius:8px;padding:7px 10px}
         .doc-lrn-status.is-checking{display:block;background:#EFF6FF;color:#1D4ED8}
         .doc-lrn-status.is-verified{display:block;background:#ECFDF5;color:#047857}
@@ -1328,29 +1380,47 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                                         </div>
                                         <div class="doc-formats"><i class="fas fa-circle-info"></i> JPG, PNG, WEBP or PDF &middot; Maximum 5 MB</div>
 
-                                        <label class="visually-hidden" for="<?php echo $fid; ?>"><?php echo htmlspecialchars($doc['label']); ?> file upload</label>
-                                        <input type="file" class="doc-file-input" id="<?php echo $fid; ?>" name="doc_<?php echo $doc['key']; ?>" accept=".jpg,.jpeg,.png,.webp,.pdf" disabled>
-
-                                        <div class="doc-upload-zone">
-                                            <div class="doc-empty-state">
-                                                <button type="button" class="btn-doc btn-doc-choose" data-for="<?php echo $fid; ?>"><i class="fas fa-upload"></i> Choose File</button>
-                                                <span class="doc-empty-text">No file selected</span>
-                                            </div>
-                                            <div class="doc-file-state" style="display:none">
-                                                <div class="doc-file-icon"><i class="fas fa-file"></i></div>
-                                                <div class="doc-file-info">
-                                                    <div class="doc-file-name"></div>
-                                                    <div class="doc-file-meta"></div>
+                                        <?php
+                                            // The Report Card is 2-3 pages under ONE requirement; every other document is one file.
+                                            $doc_slots = $doc['key'] === OE_LRN_CARD_DOC_KEY
+                                                ? oeReportCardPages()
+                                                : ['' => ['label' => '', 'required' => (bool) $doc['required']]];
+                                        ?>
+                                        <?php foreach ($doc_slots as $slot_suffix => $slot): $sfid = $fid . $slot_suffix; ?>
+                                        <div class="doc-slot<?php echo $slot['label'] !== '' ? ' is-page' : ''; ?>">
+                                            <?php if ($slot['label'] !== ''): ?>
+                                                <div class="doc-slot-label"><?php echo htmlspecialchars($slot['label']); ?>
+                                                    <span class="<?php echo $slot['required'] ? 'badge-req' : 'badge-opt'; ?>"><?php echo $slot['required'] ? 'Required' : 'Optional'; ?></span>
+                                                    <span class="doc-slot-done"><i class="fas fa-circle-check"></i> Uploaded</span>
                                                 </div>
-                                                <div class="doc-file-actions">
-                                                    <button type="button" class="btn-doc btn-doc-view" data-for="<?php echo $fid; ?>"><i class="fas fa-eye"></i> View</button>
-                                                    <button type="button" class="btn-doc btn-doc-change" data-for="<?php echo $fid; ?>"><i class="fas fa-rotate"></i> Change File</button>
-                                                    <button type="button" class="btn-doc btn-doc-remove" data-for="<?php echo $fid; ?>"><i class="fas fa-trash"></i> Remove</button>
+                                            <?php endif; ?>
+                                            <label class="visually-hidden" for="<?php echo $sfid; ?>"><?php echo htmlspecialchars($doc['label'] . ($slot['label'] !== '' ? ' ' . $slot['label'] : '')); ?> file upload</label>
+                                            <input type="file" class="doc-file-input" id="<?php echo $sfid; ?>" name="doc_<?php echo $doc['key'] . $slot_suffix; ?>" accept=".jpg,.jpeg,.png,.webp,.pdf"
+                                                   data-page-label="<?php echo htmlspecialchars($slot['label']); ?>" data-required="<?php echo $slot['required'] ? '1' : '0'; ?>" disabled>
+
+                                            <div class="doc-upload-zone">
+                                                <div class="doc-empty-state">
+                                                    <button type="button" class="btn-doc btn-doc-choose" data-for="<?php echo $sfid; ?>"><i class="fas fa-upload"></i> Choose File</button>
+                                                    <span class="doc-empty-text">No file selected</span>
+                                                </div>
+                                                <div class="doc-file-state" style="display:none">
+                                                    <div class="doc-file-icon"><i class="fas fa-file"></i></div>
+                                                    <div class="doc-file-info">
+                                                        <div class="doc-file-name"></div>
+                                                        <div class="doc-file-meta"></div>
+                                                    </div>
+                                                    <div class="doc-file-actions">
+                                                        <button type="button" class="btn-doc btn-doc-view" data-for="<?php echo $sfid; ?>"><i class="fas fa-eye"></i> View</button>
+                                                        <button type="button" class="btn-doc btn-doc-change" data-for="<?php echo $sfid; ?>"><i class="fas fa-rotate"></i> Replace</button>
+                                                        <button type="button" class="btn-doc btn-doc-remove" data-for="<?php echo $sfid; ?>"><i class="fas fa-trash"></i> Remove</button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
+                                        <?php endforeach; ?>
                                         <?php if ($doc['key'] === OE_LRN_CARD_DOC_KEY): ?>
                                             <div class="doc-lrn-status" aria-live="polite"></div>
+                                            <div class="doc-card-read"></div>
                                         <?php endif; ?>
                                         <div class="doc-card-error"></div>
                                     </div>
@@ -1951,9 +2021,11 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                 if (!group) { showBanner('docs'); return false; }   // grade / applicant type not (validly) chosen
                 var ok4 = true, firstInvalidCard = null;
                 group.querySelectorAll('.doc-card.required').forEach(function(card) {
-                    var input = card.querySelector('.doc-file-input');
-                    if (!input.files || input.files.length === 0) {
-                        showDocError(card, 'This document is required.');
+                    var pagesMissing = Array.prototype.slice.call(card.querySelectorAll('.doc-file-input[data-required="1"]'))
+                        .filter(function (i) { return !(i.files && i.files.length); });
+                    if (pagesMissing.length) {
+                        var labels = pagesMissing.map(function (i) { return i.getAttribute('data-page-label'); }).filter(Boolean);
+                        showDocError(card, labels.length ? 'Please upload ' + labels.join(' and ') + '.' : 'This document is required.');
                         ok4 = false;
                         if (!firstInvalidCard) firstInvalidCard = card;
                     } else {
@@ -1962,7 +2034,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                 });
                 if (ok4) {
                     var rcCard = group.querySelector('.doc-card[data-doc-key="form138"]');
-                    var rcMsg = rcCard ? reportCardLrnProblem(rcCard) : '';
+                    var rcMsg = rcCard ? reportCardProblem(rcCard) : '';
                     if (rcMsg) {
                         showDocError(rcCard, rcMsg);
                         ok4 = false;
@@ -2017,7 +2089,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                         if (inp.files && inp.files.length) {
                             var file = inp.files[0];
                             var card = inp.closest('.doc-card');
-                            var target = (newGroup && pk[0] === grade && card) ? newGroup.querySelector('.doc-card[data-doc-key="' + card.getAttribute('data-doc-key') + '"] .doc-file-input') : null;
+                            var target = (newGroup && pk[0] === grade && card) ? newGroup.querySelector('.doc-card[data-doc-key="' + card.getAttribute('data-doc-key') + '"] .doc-file-input[name="' + inp.name + '"]') : null;
                             if (target) {
                                 try { var dt = new DataTransfer(); dt.items.add(file); target.files = dt.files; updateDocCardUI(target); } catch (err) {}
                             }
@@ -2568,12 +2640,26 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             return bytes + ' B';
         }
 
-        // ---- Report Card LRN check (Step 3) ----
-        // The server reads the LRN printed on the uploaded Report Card and
-        // compares it with the LRN from Step 2. Kept per file; re-compared
-        // right away if the applicant edits the LRN afterwards.
-        var rcState = {};   // input id -> { sig, status, detected, message }
+        // ---- Report Card (Form 138) check (Step 3) ----
+        // The 2-3 pages are sent TOGETHER; the server reads them as one Report
+        // Card (name, LRN, grade level, grades, General Average, remarks) and
+        // compares the LRN with Step 2. Kept per set of pages; re-compared at
+        // once if the applicant edits the LRN afterwards.
+        var rcState = {};   // card key -> { sig, status, detected, message, card }
+        var RC_MSG = {
+            mismatch: 'Wrong LRN number. The LRN entered in Personal Information does not match the LRN found on the Report Card.',
+            unreadable: 'LRN could not be verified. Please upload a clear and readable Report Card.',
+            incomplete: 'Complete Report Card grades could not be detected. Please upload the front and back/pages of your Form 138 clearly.'
+        };
         function fileSig(f) { return f ? f.name + '|' + f.size + '|' + f.lastModified : ''; }
+        function rcKey(card) { var g = card.closest('.doc-group'); return (g ? g.dataset.grade + '|' + g.dataset.type : '') + '|form138'; }
+        function rcPages(card) {   // chosen files, in page order
+            return Array.prototype.slice.call(card.querySelectorAll('.doc-file-input')).map(function (i) { return i.files && i.files[0]; });
+        }
+        function rcRequiredDone(card) {
+            return Array.prototype.slice.call(card.querySelectorAll('.doc-file-input[data-required="1"]')).every(function (i) { return i.files && i.files.length; });
+        }
+        function rcSig(card) { return rcPages(card).map(fileSig).join('#'); }
         function enteredLrn() {
             var a = document.getElementById('f_lrn'), b = document.getElementById('v_lrn');
             var v = (a && a.value.trim()) || (b && b.value.trim()) || '';
@@ -2582,71 +2668,87 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
         function setCardLrnStatus(card, kind, msg) {
             if (!card) return;
             var st = card.querySelector('.doc-lrn-status');
-            if (!st) return;
-            st.className = 'doc-lrn-status' + (kind ? ' is-' + kind : '');
-            st.innerHTML = msg;
+            if (st) { st.className = 'doc-lrn-status' + (kind ? ' is-' + kind : ''); st.innerHTML = msg; }
         }
-        function applyRcState(input) {
-            var card = input.closest('.doc-card');
-            var s = rcState[input.id];
-            if (!s) { setCardLrnStatus(card, '', ''); return; }
-            if (s.status === 'checking') { setCardLrnStatus(card, 'checking', '<i class="fas fa-spinner fa-spin me-1"></i>Reading the LRN on your Report Card…'); return; }
+        function setCardRead(card, info) {
+            var el = card && card.querySelector('.doc-card-read');
+            if (!el) return;
+            if (!info) { el.classList.remove('show'); el.innerHTML = ''; return; }
+            el.innerHTML = '<b>Read from your Report Card:</b> ' + [
+                info.name ? esc(info.name) : '',
+                info.grade_level ? esc(info.grade_level) : '',
+                info.general_average != null ? 'General Average <b>' + esc(String(info.general_average)) + '</b>' : '',
+                info.remarks ? esc(info.remarks) : '',
+                info.subjects ? info.subjects + ' subjects' : ''
+            ].filter(Boolean).join(' &middot; ');
+            el.classList.add('show');
+        }
+        function applyRcState(card) {
+            var s = rcState[rcKey(card)];
+            if (!rcRequiredDone(card)) { setCardLrnStatus(card, '', ''); setCardRead(card, null); return; }
+            if (!s || s.sig !== rcSig(card)) { setCardLrnStatus(card, '', ''); setCardRead(card, null); return; }
+            if (s.status === 'checking') {
+                setCardLrnStatus(card, 'checking', '<i class="fas fa-spinner fa-spin me-1"></i>Reading your Report Card pages (LRN and grades)…');
+                setCardRead(card, null);
+                return;
+            }
             // Re-compare with the LRN as it is NOW (the applicant may have fixed Step 2).
-            if (s.detected) {
+            if (s.detected && (s.status === 'verified' || s.status === 'mismatch')) {
                 var now = enteredLrn();
-                s.status = (now.length === 12 && now === s.detected) ? 'verified' : 'mismatch';
-                s.message = s.status === 'verified' ? 'LRN Verified' : 'Wrong LRN number. The LRN entered does not match the LRN on the uploaded Report Card.';
+                s.status = (now.length === 12 && now === s.detected) ? (s.card ? 'verified' : 'incomplete') : 'mismatch';
+                if (s.status !== 'verified') s.message = RC_MSG[s.status] || s.message;
             }
             if (s.status === 'verified') {
-                setCardLrnStatus(card, 'verified', '✅ LRN Verified');
+                setCardLrnStatus(card, 'verified', '✓ LRN Verified');
+                setCardRead(card, s.card);
                 clearDocError(card);
             } else {
-                setCardLrnStatus(card, 'bad', '<i class="fas fa-circle-xmark me-1"></i>' + esc(s.message || 'LRN could not be verified. Please upload a clear and readable Report Card.'));
+                setCardLrnStatus(card, 'bad', '<i class="fas fa-circle-xmark me-1"></i>' + esc(s.message || RC_MSG.unreadable));
+                setCardRead(card, null);
             }
         }
-        function checkReportCardLrn(input) {
-            var file = input.files && input.files[0];
-            if (!file) { delete rcState[input.id]; applyRcState(input); return; }
-            var sig = fileSig(file);
-            if (rcState[input.id] && rcState[input.id].sig === sig && rcState[input.id].status !== 'error') { applyRcState(input); return; }
-            rcState[input.id] = { sig: sig, status: 'checking', detected: '', message: '' };
-            applyRcState(input);
+        function checkReportCard(card) {
+            if (!card) return;
+            if (!rcRequiredDone(card)) { applyRcState(card); return; }
+            var key = rcKey(card), sig = rcSig(card);
+            var old = rcState[key];
+            if (old && old.sig === sig && old.status !== 'error') { applyRcState(card); return; }
+            rcState[key] = { sig: sig, status: 'checking', detected: '', message: '', card: null };
+            applyRcState(card);
             var fd = new FormData();
             fd.append('oe_action', 'report_card_lrn');
             fd.append('csrf_token', document.querySelector('#oeForm [name="csrf_token"]').value);
             fd.append('lrn', enteredLrn());
-            fd.append('report_card', file);
+            rcPages(card).forEach(function (f) { if (f) fd.append('report_card[]', f); });
             fetch(window.location.href.split('#')[0], { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
                 .then(function (r) { return r.json(); })
                 .then(function (res) {
-                    var cur = input.files && input.files[0];
-                    if (fileSig(cur) !== sig) return;                // a different file was chosen meanwhile
-                    rcState[input.id] = { sig: sig, status: (res && res.status) || 'error', detected: (res && res.detected) || '', message: (res && res.message) || '' };
-                    applyRcState(input);
+                    if (rcSig(card) !== sig) return;                     // pages changed meanwhile
+                    rcState[key] = { sig: sig, status: (res && res.status) || 'error', detected: (res && res.detected) || '', message: (res && res.message) || '', card: (res && res.card) || null };
+                    applyRcState(card);
                 })
                 .catch(function () {
-                    rcState[input.id] = { sig: sig, status: 'error', detected: '', message: 'The Report Card could not be checked right now. Please choose the file again.' };
-                    applyRcState(input);
+                    rcState[key] = { sig: sig, status: 'error', detected: '', message: 'The Report Card could not be checked right now. Please replace a page to try again.', card: null };
+                    applyRcState(card);
                 });
         }
-        /** '' when the Report Card LRN is verified for this card; otherwise the message to show. */
-        function reportCardLrnProblem(card) {
-            var input = card.querySelector('.doc-file-input');
-            var file = input && input.files && input.files[0];
-            if (!file) return '';
-            var s = rcState[input.id];
-            if (!s || s.sig !== fileSig(file)) { checkReportCardLrn(input); return 'Checking the LRN on your Report Card… please wait.'; }
-            if (s.status === 'checking') return 'Checking the LRN on your Report Card… please wait.';
-            applyRcState(input);
-            return s.status === 'verified' ? '' : (s.message || 'LRN could not be verified. Please upload a clear and readable Report Card.');
+        /** '' when the Report Card is complete and verified; otherwise the message to show. */
+        function reportCardProblem(card) {
+            var missing = Array.prototype.slice.call(card.querySelectorAll('.doc-file-input[data-required="1"]'))
+                .filter(function (i) { return !(i.files && i.files.length); })
+                .map(function (i) { return i.getAttribute('data-page-label'); });
+            if (missing.length) return 'Please upload ' + missing.join(' and ') + ' of your Report Card.';
+            var s = rcState[rcKey(card)];
+            if (!s || s.sig !== rcSig(card)) { checkReportCard(card); return 'Checking your Report Card… please wait.'; }
+            if (s.status === 'checking') return 'Checking your Report Card… please wait.';
+            applyRcState(card);
+            return s.status === 'verified' ? '' : (s.message || RC_MSG.unreadable);
         }
-        // Editing the LRN in Step 2 re-checks every chosen Report Card at once.
+        // Editing the LRN in Step 2 re-checks every Report Card at once.
         ['f_lrn', 'v_lrn'].forEach(function (id) {
             var el = document.getElementById(id);
             if (el) el.addEventListener('input', function () {
-                document.querySelectorAll('.doc-card[data-doc-key="form138"] .doc-file-input').forEach(function (inp) {
-                    if (rcState[inp.id]) applyRcState(inp);
-                });
+                document.querySelectorAll('.doc-card[data-doc-key="form138"]').forEach(function (c) { if (rcState[rcKey(c)]) applyRcState(c); });
             });
         });
 
@@ -2673,9 +2775,13 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
         function updateDocCardUI(input) {
             var card = input.closest('.doc-card');
             if (!card) return;
-            var emptyState = card.querySelector('.doc-empty-state');
-            var fileState = card.querySelector('.doc-file-state');
+            var scope = input.closest('.doc-slot') || card;
+            var emptyState = scope.querySelector('.doc-empty-state');
+            var fileState = scope.querySelector('.doc-file-state');
             var file = input.files && input.files[0];
+            if (scope !== card) scope.classList.toggle('has-file', !!file);
+            var anyFile = Array.prototype.slice.call(card.querySelectorAll('.doc-file-input')).some(function (i) { return i.files && i.files.length; });
+            card.classList.toggle('has-file', anyFile);
             if (file) {
                 card.classList.add('has-file');
                 if (emptyState) emptyState.style.display = 'none';
@@ -2688,7 +2794,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                     if (metaEl) metaEl.textContent = ext + ' • ' + fmtBytes(file.size);
                 }
             } else {
-                card.classList.remove('has-file');
+                if (!anyFile) card.classList.remove('has-file');
                 if (emptyState) emptyState.style.display = 'flex';
                 if (fileState) fileState.style.display = 'none';
             }
@@ -2710,7 +2816,8 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                     rInput.value = '';
                     updateDocCardUI(rInput);
                     clearDocError(rInput.closest('.doc-card'));
-                    setCardLrnStatus(rInput.closest('.doc-card'), '', '');
+                    var rCard = rInput.closest('.doc-card');
+                    if (rCard && rCard.getAttribute('data-doc-key') === 'form138') applyRcState(rCard);
                 }
                 return;
             }
@@ -2744,7 +2851,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             }
             clearDocError(card);
             updateDocCardUI(input);
-            if (card && card.getAttribute('data-doc-key') === 'form138') checkReportCardLrn(input);
+            if (card && card.getAttribute('data-doc-key') === 'form138') checkReportCard(card);
         });
 
         // Shared preview modal (image lightbox / PDF viewer) for both the
@@ -2870,12 +2977,12 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             var hasFiles = false;
             var activeGroup = activeDocGroup();
             if (activeGroup) {
-                activeGroup.querySelectorAll('.doc-card').forEach(function(card) {
-                    var input = card.querySelector('.doc-file-input');
+                activeGroup.querySelectorAll('.doc-card .doc-file-input').forEach(function(input) {
+                    var card = input.closest('.doc-card');
                     var file = input && input.files && input.files[0];
                     if (!file) return;
                     hasFiles = true;
-                    var label = card.querySelector('h6').textContent;
+                    var label = card.querySelector('h6').textContent + (input.getAttribute('data-page-label') ? ' — ' + input.getAttribute('data-page-label') : '');
                     var isRequired = card.classList.contains('required');
                     var row = document.createElement('div');
                     row.className = 'doc-review-row';

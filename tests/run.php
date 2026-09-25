@@ -45,6 +45,13 @@ check('make-up activity is a make-up', aiIsAtRiskMakeup(['source_prompt' => 'Mak
 check('review activity is NOT a make-up', !aiIsAtRiskMakeup(['source_prompt' => 'Review activity for Quiz 2']));
 check('ordinary Ask AI quiz is NOT a make-up', !aiIsAtRiskMakeup(['source_prompt' => 'Quiz from chat']));
 
+section('Report Card LRN');
+require_once 'includes/enrollment_lrn_card.php';
+check('spaces and dashes are removed', oeNormalizeLrn('1234-5678 9012') === '123456789012');
+check('11 digits is not an LRN', oeNormalizeLrn('12345678901') === '');
+check('13 digits is not an LRN', oeNormalizeLrn('1234567890123') === '');
+check('Report Card pages: 2 required + 1 optional', count(array_filter(oeReportCardPages(), fn($p) => $p['required'])) === 2 && count(oeReportCardPages()) === 3);
+
 section('MAPEH components');
 $four = ['Music', 'Arts', 'Physical Education', 'Health'];
 check('no old tags -> the four components', gh_effectiveComponents($four, ['WW' => [['component' => 'Music']]]) === $four);

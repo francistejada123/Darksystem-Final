@@ -1273,6 +1273,12 @@ function geminiHttpAttemptGenerateContent($systemInstruction, $inputText, $respo
     if ($mime !== '' && $data !== '') {
         $parts[] = ['inline_data' => ['mime_type' => $mime, 'data' => $data]];
     }
+    // More pages of the same document (e.g. a 2-3 page Report Card), read together.
+    foreach ((is_array($filePart) ? ($filePart['extra'] ?? []) : []) as $extra) {
+        if (!empty($extra['mime_type']) && !empty($extra['data'])) {
+            $parts[] = ['inline_data' => ['mime_type' => (string) $extra['mime_type'], 'data' => (string) $extra['data']]];
+        }
+    }
 
     $payload = [
         'system_instruction' => ['parts' => [['text' => (string) $systemInstruction]]],
