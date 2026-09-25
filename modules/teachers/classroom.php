@@ -29,7 +29,9 @@ require_once __DIR__ . '/../../includes/classroom_monitoring_helpers.php'; // on
 require_once __DIR__ . '/../../includes/classwork_helpers.php';   // assessment types -> WW / PT / QA, Your Work submissions, scores
 require_once __DIR__ . '/../../includes/ai_assessment_items.php'; // aiAssessmentEnsureItem(), aiAssessmentClassMeta()
 require_once __DIR__ . '/../../includes/classwork_comment_helpers.php'; // class + private comments on classwork
+require_once __DIR__ . '/../../includes/classroom_post_manage.php';      // (...) menu: edit / delete / move a post or classwork
 classworkEnsureSchema();
+cpmEnsureSchema();
 
 if (!defined('BASE_URL')) {
     define('BASE_URL', '/watdahel/');
@@ -226,6 +228,174 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         header('Location: classroom.php?' . $redirect_qs . '&tab=classwork&open=' . $aid . '#cw-' . $aid);
         exit;
+    }
+
+    // ---- (...) menu on a post / classwork: Edit, Delete, Move to another class ----
+    $pm_action = (string) ($_POST['form_action'] ?? '');
+    if (in_array($pm_action, ['pm_edit_post', 'pm_delete_post', 'pm_move_post', 'pm_edit_classwork', 'pm_delete_classwork', 'pm_move_classwork'], true)) {
+        require_once __DIR__ . '/../../includes/student_email_notify.php';
+        $pm_back = '&tab=' . (($_POST['return_tab'] ?? '') === 'classwork' ? 'classwork#classwork' : 'stream#stream');
+        $pm_done = function ($msg, $ok = true) use ($redirect_qs, $pm_back) {
+            $_SESSION[$ok ? 'success_message' : 'error_message'] = $msg;
+            header('Location: classroom.php?' . $redirect_qs . $pm_back);
+            exit;
+        };
+        // "Email sent to 3 of 3 student(s)." for an update / move notice
+        $pm_notify = function (array $studentIds, array $info) {
+            if (!$studentIds) return ' No students to email.';
+            senNotifyStudents($studentIds, $info + ['send_now' => true]);
+            $r = senLastResult();
+            $bad = (int) $r['failed'] + (int) $r['no_email'];
+            return ' Email sent to ' . (int) $r['sent'] . ' of ' . count($studentIds) . ' student(s).' . ($bad ? ' ' . $bad . ' failed' . ($r['reason'] !== '' ? ': ' . $r['reason'] : '.') : '');
+        };
+        $pm_target = explode('|', (string) ($_POST['target_class'] ?? ''), 2);
+        $pm_to_section = (int) ($pm_target[0] ?? 0);
+        $pm_to_subject = (string) ($pm_target[1] ?? '');
+
+        if (in_array($pm_action, ['pm_edit_post', 'pm_delete_post', 'pm_move_post'], true)) {
+            $pm_post = getRecord("SELECT * FROM class_stream_posts WHERE post_id = ? AND teacher_id = ? AND section_id = ? AND subject_code = ? AND is_deleted = 0",
+                [(int) ($_POST['post_id'] ?? 0), $teacher_id, $post_section_id, $post_subject_code]);
+            if (!$pm_post) $pm_done('That post could not be found (only the teacher who posted it can change it).', false);
+            $pid = (int) $pm_post['post_id'];
+
+            if ($pm_action === 'pm_delete_post') {
+                executeQuery("UPDATE class_stream_posts SET is_deleted = 1 WHERE post_id = ?", [$pid]);
+                logActivity($teacher_id, 'Classroom', 'Deleted announcement', "Post #$pid, subject $post_subject_code, section #$post_section_id");
+                $pm_done('The post was deleted. Students no longer see it.');
+            }
+            if ($pm_action === 'pm_move_post') {
+                if (!cpmOwnsClass($teacher_id, $pm_post['school_year_id'], $pm_to_section, $pm_to_subject)) $pm_done('Choose one of your own classes to move the post to.', false);
+                executeQuery("UPDATE class_stream_posts SET section_id = ?, subject_code = ? WHERE post_id = ?", [$pm_to_section, $pm_to_subject, $pid]);
+                $cls = getRecord("SELECT sec.section_name, sub.subject_name FROM sections sec, subjects sub WHERE sec.section_id = ? AND sub.subject_code = ?", [$pm_to_section, $pm_to_subject]);
+                logActivity($teacher_id, 'Classroom', 'Moved announcement', "Post #$pid from section #$post_section_id $post_subject_code to section #$pm_to_section $pm_to_subject");
+                $note = '';
+                if (!empty($_POST['notify'])) {
+                    $note = $pm_notify(array_column(classroomSectionStudents($pm_to_section, $pm_post['school_year_id']), 'student_id'), [
+                        'key' => 'announce:' . $pid . ':moved' . $pm_to_section, 'subject_code' => $pm_to_subject, 'teacher_id' => $teacher_id,
+                        'title' => 'Announcement', 'kind' => 'Announcement', 'announcement' => $pm_post['body'],
+                        'link' => 'modules/students/portal/subject.php?subject=' . rawurlencode($pm_to_subject),
+                    ]);
+                }
+                $pm_done('The post was moved to ' . ($cls['subject_name'] ?? $pm_to_subject) . ' – ' . ($cls['section_name'] ?? 'the other section') . '.' . $note);
+            }
+            // edit
+            $body = trim((string) ($_POST['body'] ?? ''));
+            if (mb_strlen($body) > 5000) $pm_done('That announcement is too long (max 5000 characters).', false);
+            $link = trim((string) ($_POST['link_url'] ?? ''));
+            $link = ($link !== '' && filter_var($link, FILTER_VALIDATE_URL)) ? $link : '';
+            cpmRemoveAttachments('stream', $pid, (array) ($_POST['remove_attachments'] ?? []));
+            executeQuery("DELETE FROM class_stream_attachments WHERE post_id = ? AND attachment_type = 'link'", [$pid]);
+            if ($link !== '') {
+                insertRecord("INSERT INTO class_stream_attachments (post_id, original_filename, attachment_type, external_url) VALUES (?, ?, 'link', ?)", [$pid, $link, $link]);
+            }
+            cpmSaveUploads('new_attachments', 'stream', $pid);
+            $left = getRecord("SELECT COUNT(*) AS n FROM class_stream_attachments WHERE post_id = ?", [$pid]);
+            if ($body === '' && !(int) $left['n']) $pm_done('The post needs some text, a link or a file. Nothing else was changed except the attachments.', false);
+            executeQuery("UPDATE class_stream_posts SET body = ? WHERE post_id = ?", [$body, $pid]);
+            logActivity($teacher_id, 'Classroom', 'Edited announcement', "Post #$pid, subject $post_subject_code, section #$post_section_id");
+            $note = '';
+            if (!empty($_POST['notify'])) {
+                $files = array_column(getRecords("SELECT original_filename FROM class_stream_attachments WHERE post_id = ?", [$pid]), 'original_filename');
+                $note = $pm_notify(array_column(classroomSectionStudents($post_section_id, $pm_post['school_year_id']), 'student_id'), [
+                    'key' => 'announce:' . $pid . ':u' . time(), 'subject_code' => $post_subject_code, 'teacher_id' => $teacher_id,
+                    'title' => 'Announcement', 'kind' => 'Announcement', 'announcement' => $body, 'attachments' => $files, 'updated' => true,
+                    'link' => 'modules/students/portal/subject.php?subject=' . rawurlencode($post_subject_code),
+                ]);
+            }
+            $pm_done('The post was updated.' . $note);
+        }
+
+        // ---- classwork ----
+        $pm_cw = getRecord("SELECT * FROM classwork_assignments WHERE assignment_id = ? AND teacher_id = ? AND section_id = ? AND subject_code = ? AND status <> 'Deleted'",
+            [(int) ($_POST['assignment_id'] ?? 0), $teacher_id, $post_section_id, $post_subject_code]);
+        if (!$pm_cw) $pm_done('That classwork could not be found (only the teacher who posted it can change it).', false);
+        $aid = (int) $pm_cw['assignment_id'];
+        $links = cpmClassworkLinks($pm_cw);
+
+        if ($pm_action === 'pm_delete_classwork') {
+            executeQuery("UPDATE classwork_assignments SET status = 'Deleted' WHERE assignment_id = ?", [$aid]);
+            $kept = [];
+            if ($links['submitted'] || $links['files']) $kept[] = $links['submitted'] . ' turned-in work';
+            if ($links['scored'] || $links['item_scores']) $kept[] = max($links['scored'], $links['item_scores']) . ' score(s)';
+            $itemNote = '';
+            if (!empty($pm_cw['assessment_item_id'])) {
+                if (!empty($_POST['remove_item']) && !$links['item_scores'] && !$links['scored']) {
+                    executeQuery("DELETE FROM assessment_items WHERE item_id = ? AND teacher_id = ?", [(int) $pm_cw['assessment_item_id'], $teacher_id]);
+                    $itemNote = ' Its item in Manage Assessment Items was removed too (it had no scores).';
+                } else {
+                    $itemNote = ' Its item stays in Manage Assessment Items' . (($links['item_scores'] || $links['scored']) ? ' with the scores' : '') . ' — remove it there if it is not needed.';
+                }
+            }
+            logActivity($teacher_id, 'Classroom', 'Deleted classwork', "Assignment #$aid ({$pm_cw['title']}), subject $post_subject_code, section #$post_section_id" . ($kept ? '; kept: ' . implode(', ', $kept) : ''));
+            $pm_done('"' . html_entity_decode($pm_cw['title'], ENT_QUOTES, 'UTF-8') . '" was deleted from the classroom; students no longer see it.'
+                . ($kept ? ' Kept (not deleted): ' . implode(', ', $kept) . '.' : '') . $itemNote);
+        }
+
+        if ($pm_action === 'pm_move_classwork') {
+            if ($links['submitted'] || $links['files'] || $links['scored'] || $links['item_scores']) {
+                $pm_done('This classwork cannot be moved: students already turned in work or have scores. Delete it and post it again in the right class if needed.', false);
+            }
+            if (!cpmOwnsClass($teacher_id, $pm_cw['school_year_id'], $pm_to_section, $pm_to_subject)) $pm_done('Choose one of your own classes to move the classwork to.', false);
+            $item = !empty($pm_cw['assessment_item_id']) ? getRecord("SELECT * FROM assessment_items WHERE item_id = ?", [(int) $pm_cw['assessment_item_id']]) : null;
+            if ($item && $pm_to_subject !== $pm_cw['subject_code'] && trim((string) $item['component']) !== '') {
+                $pm_done('This classwork belongs to the "' . $item['component'] . '" component of ' . $pm_cw['subject_code'] . ', so it cannot move to another subject. Post it again in the other subject instead.', false);
+            }
+            executeQuery("UPDATE classwork_assignments SET section_id = ?, subject_code = ? WHERE assignment_id = ?", [$pm_to_section, $pm_to_subject, $aid]);
+            if ($item) {
+                executeQuery("UPDATE assessment_items SET section_id = ?, subject_code = ? WHERE item_id = ?", [$pm_to_section, $pm_to_subject, (int) $item['item_id']]);
+            }
+            executeQuery("DELETE FROM classwork_assignment_students WHERE assignment_id = ?", [$aid]);
+            $new_roster = classroomSectionStudents($pm_to_section, $pm_cw['school_year_id']);
+            foreach ($new_roster as $st) {
+                executeQuery("INSERT IGNORE INTO classwork_assignment_students (assignment_id, student_id, status, assigned_at) VALUES (?, ?, 'Assigned', NOW())", [$aid, (int) $st['student_id']]);
+            }
+            $cls = getRecord("SELECT sec.section_name, sub.subject_name FROM sections sec, subjects sub WHERE sec.section_id = ? AND sub.subject_code = ?", [$pm_to_section, $pm_to_subject]);
+            logActivity($teacher_id, 'Classroom', 'Moved classwork', "Assignment #$aid from section #$post_section_id $post_subject_code to section #$pm_to_section $pm_to_subject");
+            $note = '';
+            if (!empty($_POST['notify'])) {
+                $pm_cw['subject_code'] = $pm_to_subject;
+                $note = $pm_notify(array_column($new_roster, 'student_id'), [
+                    'key' => 'classwork:' . $aid . ':moved' . $pm_to_section, 'subject_code' => $pm_to_subject, 'teacher_id' => $teacher_id,
+                    'title' => $pm_cw['title'], 'kind' => $pm_cw['category'], 'grading' => classworkGradingCategory($pm_cw['category']),
+                    'deadline' => $pm_cw['due_date'], 'instruction' => $pm_cw['instructions'], 'topic' => $pm_cw['topic'] ?? '',
+                    'link' => 'modules/students/portal/subject.php?subject=' . rawurlencode($pm_to_subject) . '&cw=' . $aid,
+                ]);
+            }
+            $pm_done('"' . html_entity_decode($pm_cw['title'], ENT_QUOTES, 'UTF-8') . '" was moved to ' . ($cls['subject_name'] ?? $pm_to_subject) . ' – ' . ($cls['section_name'] ?? 'the other section')
+                . ' and assigned to its ' . count($new_roster) . ' student(s).' . $note);
+        }
+
+        // edit classwork
+        $title = trim((string) ($_POST['title'] ?? ''));
+        $instructions = trim((string) ($_POST['instructions'] ?? ''));
+        if ($title === '' || $instructions === '') $pm_done('A classwork needs a title and instructions.', false);
+        $title = mb_substr($title, 0, 200);
+        $instructions = mb_substr($instructions, 0, 12000);
+        $topic = mb_substr(trim((string) ($_POST['topic'] ?? '')), 0, 200);
+        $due_raw = trim((string) ($_POST['due_date'] ?? ''));
+        $due = ($due_raw !== '' && strtotime($due_raw) !== false) ? date('Y-m-d H:i:s', strtotime($due_raw)) : null;
+        $lock = (!empty($_POST['lock_after_due']) && $due !== null) ? 1 : 0;
+        executeQuery(
+            "UPDATE classwork_assignments SET title = ?, instructions = ?, topic = ?, due_date = ?, lock_after_due = ? WHERE assignment_id = ?",
+            [$title, $instructions, $topic !== '' ? $topic : null, $due, $lock, $aid]
+        );
+        if (!empty($pm_cw['assessment_item_id']) && $title !== html_entity_decode($pm_cw['title'], ENT_QUOTES, 'UTF-8')) {
+            // keep the Manage Assessment Items name the same as the classwork
+            executeQuery("UPDATE assessment_items SET item_name = ? WHERE item_id = ? AND teacher_id = ?", [$title, (int) $pm_cw['assessment_item_id'], $teacher_id]);
+        }
+        cpmRemoveAttachments('classwork', $aid, (array) ($_POST['remove_attachments'] ?? []));
+        cpmSaveUploads('new_attachments', 'classwork', $aid);
+        logActivity($teacher_id, 'Classroom', 'Edited classwork', "Assignment #$aid ($title), subject $post_subject_code, section #$post_section_id");
+        $note = '';
+        if (!empty($_POST['notify'])) {
+            $note = $pm_notify(array_column(getRecords("SELECT student_id FROM classwork_assignment_students WHERE assignment_id = ?", [$aid]), 'student_id'), [
+                'key' => 'classwork:' . $aid . ':u' . time(), 'subject_code' => $post_subject_code, 'teacher_id' => $teacher_id,
+                'title' => $title, 'kind' => $pm_cw['category'], 'grading' => classworkGradingCategory($pm_cw['category']),
+                'deadline' => $due, 'instruction' => $instructions, 'topic' => $topic, 'updated' => true,
+                'link' => 'modules/students/portal/subject.php?subject=' . rawurlencode($post_subject_code) . '&cw=' . $aid,
+            ]);
+        }
+        $pm_done('"' . $title . '" was updated.' . $note);
     }
 
     // ---- Classwork comments: class (everyone) or private (teacher + one student) ----
@@ -601,7 +771,7 @@ if ($authorized) {
         "SELECT ca.*,
                 (SELECT COUNT(*) FROM classwork_assignment_students cs WHERE cs.assignment_id = ca.assignment_id) AS student_count
          FROM classwork_assignments ca
-         WHERE ca.teacher_id = ? AND ca.section_id = ? AND ca.subject_code = ? AND ca.school_year_id = ?
+         WHERE ca.teacher_id = ? AND ca.section_id = ? AND ca.subject_code = ? AND ca.school_year_id = ? AND ca.status <> 'Deleted'
          ORDER BY ca.created_at DESC",
         [$teacher_id, $section_id, $subject_code, $school_year_id]
     );
@@ -654,6 +824,70 @@ if ($authorized) {
 }
 
 $csrf_token = generateCSRFToken();
+
+// (...) menu data: what each post / classwork holds, how many students were emailed,
+// and what is connected to it (turned-in work, scores) -- read by the Edit / Move /
+// Delete / View Details dialogs.
+$pm_emailed = [];
+$pm_classes = [];
+if ($authorized && in_array($tab, ['stream', 'classwork'], true)) {
+    $pm_keys = array_merge(
+        array_map(function ($p) { return 'announce:' . (int) $p['post_id']; }, $stream_posts),
+        array_map(function ($c) { return 'classwork:' . (int) $c['assignment_id']; }, $classwork_items)
+    );
+    if ($pm_keys) {
+        require_once __DIR__ . '/../../includes/student_email_notify.php';
+        senEnsureSchema();
+        $ph = implode(',', array_fill(0, count($pm_keys), '?'));
+        foreach (getRecords("SELECT notify_key, COUNT(*) AS n FROM student_email_notifications WHERE status = 'Sent' AND notify_key IN ($ph) GROUP BY notify_key", $pm_keys) as $r) {
+            $pm_emailed[$r['notify_key']] = (int) $r['n'];
+        }
+    }
+    foreach (cpmTeacherClasses($teacher_id, $school_year_id) as $c) {
+        if ((int) $c['section_id'] === (int) $section_id && $c['subject_code'] === $subject_code) continue;
+        $pm_classes[] = ['value' => (int) $c['section_id'] . '|' . $c['subject_code'], 'label' => $c['subject_name'] . ' – ' . $c['section_name'] . ' (' . $c['grade_level'] . ')'];
+    }
+}
+$pm_post_data = function ($post) use ($pm_emailed) {
+    $atts = [];
+    $link = '';
+    foreach ($post['attachments'] ?? [] as $a) {
+        if ($a['attachment_type'] === 'link') { $link = (string) $a['external_url']; continue; }
+        $atts[] = ['id' => (int) $a['attachment_id'], 'name' => $a['original_filename']];
+    }
+    return ['kind' => 'post', 'id' => (int) $post['post_id'], 'body' => (string) $post['body'], 'link' => $link, 'attachments' => $atts,
+            'created' => date('M j, Y g:i A', strtotime($post['created_at'])),
+            'updated' => ($post['updated_at'] ?? '') && strtotime($post['updated_at']) > strtotime($post['created_at']) + 5 ? date('M j, Y g:i A', strtotime($post['updated_at'])) : '',
+            'emailed' => $pm_emailed['announce:' . (int) $post['post_id']] ?? 0];
+};
+$pm_cw_data = function ($item) use ($pm_emailed) {
+    $atts = [];
+    foreach ($item['attachments'] ?? [] as $a) {
+        $atts[] = ['id' => (int) $a['attachment_id'], 'name' => $a['original_filename'] ?: $a['external_url']];
+    }
+    $links = cpmClassworkLinks($item);
+    return ['kind' => 'classwork', 'id' => (int) $item['assignment_id'], 'title' => html_entity_decode((string) $item['title'], ENT_QUOTES, 'UTF-8'),
+            'instructions' => (string) $item['instructions'], 'topic' => (string) ($item['topic'] ?? ''), 'category' => (string) $item['category'],
+            'due' => !empty($item['due_date']) ? date('Y-m-d\TH:i', strtotime($item['due_date'])) : '',
+            'due_label' => !empty($item['due_date']) ? date('M j, Y g:i A', strtotime($item['due_date'])) : 'No due date',
+            'lock' => !empty($item['lock_after_due']), 'attachments' => $atts,
+            'created' => date('M j, Y g:i A', strtotime($item['assigned_at'] ?? $item['created_at'])),
+            'emailed' => $pm_emailed['classwork:' . (int) $item['assignment_id']] ?? 0,
+            'has_item' => !empty($item['assessment_item_id']), 'links' => $links,
+            'movable' => !($links['submitted'] || $links['files'] || $links['scored'] || $links['item_scores'])];
+};
+// The (...) button + menu (teacher only -- this page is the Teacher Portal).
+$pm_menu = function (array $data) {
+    return '<div class="dropdown pm-menu" data-pm="' . htmlspecialchars(json_encode($data, JSON_UNESCAPED_UNICODE), ENT_QUOTES) . '">'
+        . '<button type="button" class="pm-dots" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Post options" title="Options"><i class="fas fa-ellipsis-vertical"></i></button>'
+        . '<ul class="dropdown-menu dropdown-menu-end">'
+        . '<li><button type="button" class="dropdown-item" data-pm-do="edit"><i class="fas fa-pen me-2"></i>Edit Post</button></li>'
+        . '<li><button type="button" class="dropdown-item" data-pm-do="move"><i class="fas fa-right-left me-2"></i>Move to another class / section</button></li>'
+        . '<li><button type="button" class="dropdown-item" data-pm-do="details"><i class="fas fa-circle-info me-2"></i>View Details</button></li>'
+        . '<li><hr class="dropdown-divider"></li>'
+        . '<li><button type="button" class="dropdown-item text-danger" data-pm-do="delete"><i class="fas fa-trash me-2"></i>Delete Post</button></li>'
+        . '</ul></div>';
+};
 include '../../includes/header.php';
 ?>
 
@@ -661,6 +895,20 @@ include '../../includes/header.php';
     /* Online quizzes/activities (Classwork) and student comments (Stream) */
     .cr-pills { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
     .cw-mail-line { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:8px; font-size:12px; color:#64748b; }
+    /* (...) post menu */
+    .pm-menu { margin-left:auto; }
+    .pm-dots { border:0; background:transparent; width:32px; height:32px; border-radius:50%; color:var(--gc-muted, #667085); }
+    .pm-dots:hover, .pm-menu.show .pm-dots { background:var(--surface-muted, #f1f3f4); color:var(--gc-text, #14213D); }
+    .pm-menu .dropdown-menu { font-size:13.5px; min-width:230px; }
+    .pm-cw-meta { position:relative; padding-right:36px; }
+    .pm-cw-meta .pm-menu { position:absolute; top:-6px; right:-6px; }
+    .pm-work-wrap { position:relative; }
+    .pm-work-wrap > .pm-menu { position:absolute; top:12px; right:12px; }
+    .pm-work-wrap > .gc-post-work { padding-right:52px; }
+    .pm-modal .pm-att { display:flex; gap:8px; align-items:center; font-size:13px; padding:4px 0; }
+    .pm-modal .pm-att span { font-weight:600; }
+    .pm-modal .pm-note { font-size:12px; color:var(--gc-muted, #667085); background:var(--surface-muted, #f8fafc); border-radius:8px; padding:8px 10px; }
+    .pm-modal .pm-warn { font-size:13px; color:#92400e; background:#fef3c7; border:1px solid #fcd34d; border-radius:8px; padding:8px 10px; }
     .cw-work-panel + .cw-mail-line { margin-top:10px; padding-top:8px; border-top:1px solid var(--gc-line, #e5e7eb); }
     .cw-list { display:flex; flex-direction:column; }
     .cw-toggle-card { cursor:pointer; transition:box-shadow .15s ease, border-color .15s ease; }
@@ -1351,6 +1599,7 @@ include '../../includes/header.php';
                         <div class="gc-post-name"><?php echo htmlspecialchars($gc_teacher_name); ?></div>
                         <div class="gc-post-date"><?php echo date('M j, Y · g:i A', strtotime($post['created_at'])); ?></div>
                     </div>
+                    <?php echo $pm_menu($pm_post_data($post)); ?>
                 </div>
                 <?php if ($post['body'] !== ''): ?>
                     <div class="post-body"><?php echo nl2br(htmlspecialchars($post['body'])); ?></div>
@@ -1374,13 +1623,16 @@ include '../../includes/header.php';
                 <?php endif; ?>
             </div>
             <?php else: $w = $f['data']; $w_title = $f['kind'] === 'work' ? $w['title'] : $w['title']; ?>
-            <a class="stream-post gc-post gc-post-work" href="<?php echo $gc_classwork_url; ?>">
+            <div class="pm-work-wrap">
+            <a class="stream-post gc-post gc-post-work" href="<?php echo $gc_classwork_url; ?><?php echo $f['kind'] === 'classwork' ? '&amp;open=' . (int) $w['assignment_id'] : ''; ?>">
                 <span class="gc-work-icon"><i class="fas <?php echo $f['kind'] === 'work' ? 'fa-clipboard-list' : 'fa-file-lines'; ?>"></i></span>
                 <div>
                     <div class="gc-post-name"><?php echo htmlspecialchars($gc_teacher_name); ?> posted a new assignment: <?php echo htmlspecialchars($w_title); ?></div>
                     <div class="gc-post-date"><?php echo date('M j, Y · g:i A', strtotime($f['time'])); ?><?php if ($f['kind'] === 'work' && $w['window']): ?> · <?php echo htmlspecialchars($w['window']); ?><?php endif; ?></div>
                 </div>
             </a>
+            <?php if ($f['kind'] === 'classwork') echo $pm_menu($pm_cw_data($w)); ?>
+            </div>
             <?php endif; ?>
         <?php endforeach; endif; ?>
         </div><!-- /.gc-main -->
@@ -1477,7 +1729,8 @@ include '../../includes/header.php';
                             <?php $cw_unseen = (int) ($cw_comments[(int) $item['assignment_id']]['unseen'] ?? 0); if ($cw_unseen): ?><span class="cw-new-cmt"><i class="fas fa-comment-dots"></i> <?php echo $cw_unseen; ?> new</span><?php endif; ?>
                         </h6>
                     </div>
-                    <div class="text-end text-muted" style="font-size:12px;">
+                    <div class="text-end text-muted pm-cw-meta" style="font-size:12px;">
+                        <?php echo $pm_menu($pm_cw_data($item)); ?>
                         Assigned <?php echo date('M j, Y g:i A', strtotime($item['assigned_at'] ?? $item['created_at'])); ?><br>
                         <?php if (!empty($item['due_date'])): ?>Due <?php echo date('M j, Y g:i A', strtotime($item['due_date'])); ?><?php echo !empty($item['lock_after_due']) ? ' · <i class="fas fa-lock"></i> closed after due' : ''; ?><br><?php else: ?>No due date<br><?php endif; ?>
                         <i class="fas fa-users me-1"></i><?php echo count($item['students']); ?> student(s)
@@ -1782,7 +2035,7 @@ include '../../includes/header.php';
         });
         document.querySelectorAll('#classwork .cw-toggle-card').forEach(function (card) {
             card.addEventListener('click', function (e) {
-                if (e.target.closest('a, button, input, select, textarea, label, form')) return;
+                if (e.target.closest('a, button, input, select, textarea, label, form, .pm-menu')) return;
                 if (window.getSelection && String(window.getSelection()).length) return;
                 openFor(card);
             });
@@ -1801,6 +2054,216 @@ include '../../includes/header.php';
     <?php endif; ?>
 
     <?php if ($tab === 'stream' || $tab === 'classwork'): ?>
+    <!-- (...) menu dialogs: Edit / Move / Delete / View Details -->
+    <div class="modal fade pm-modal" id="pmEditModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <form method="post" enctype="multipart/form-data">
+                    <div class="modal-header"><h5 class="modal-title"><i class="fas fa-pen me-2"></i><span class="pm-title">Edit Post</span></h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+                    <div class="modal-body">
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
+                        <input type="hidden" name="section_id" value="<?php echo (int) $section_id; ?>">
+                        <input type="hidden" name="subject_code" value="<?php echo htmlspecialchars($subject_code); ?>">
+                        <input type="hidden" name="school_year_id" value="<?php echo (int) $school_year_id; ?>">
+                        <input type="hidden" name="term" value="<?php echo htmlspecialchars($term); ?>">
+                        <input type="hidden" name="return_tab" value="<?php echo htmlspecialchars($tab); ?>">
+                        <input type="hidden" name="form_action" class="pm-action">
+                        <input type="hidden" name="post_id" class="pm-post-id">
+                        <input type="hidden" name="assignment_id" class="pm-cw-id">
+                        <div class="pm-only-post">
+                            <label class="form-label small mb-1">Announcement</label>
+                            <textarea class="form-control mb-2" name="body" rows="5" maxlength="5000"></textarea>
+                            <label class="form-label small mb-1">Link (optional)</label>
+                            <input type="url" class="form-control form-control-sm mb-2" name="link_url" placeholder="https://…">
+                        </div>
+                        <div class="pm-only-cw">
+                            <label class="form-label small mb-1">Title</label>
+                            <input type="text" class="form-control mb-2" name="title" maxlength="200">
+                            <label class="form-label small mb-1">Topic</label>
+                            <input type="text" class="form-control form-control-sm mb-2" name="topic" maxlength="200">
+                            <label class="form-label small mb-1">Instructions</label>
+                            <textarea class="form-control mb-2" name="instructions" rows="6" maxlength="12000"></textarea>
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-6">
+                                    <label class="form-label small mb-1">Due date &amp; time</label>
+                                    <input type="datetime-local" class="form-control form-control-sm" name="due_date">
+                                </div>
+                                <div class="col-md-6 d-flex align-items-end">
+                                    <label class="small" style="display:flex;gap:6px;align-items:center;"><input type="checkbox" class="form-check-input mt-0" name="lock_after_due" value="1"> Close after the due date</label>
+                                </div>
+                            </div>
+                            <div class="pm-note"><i class="fas fa-circle-info me-1"></i>Points and assessment type stay the same (they are part of Grade Management). To change the subject or section, use <strong>Move to another class / section</strong>.</div>
+                        </div>
+                        <label class="form-label small mb-1 mt-2">Attached files</label>
+                        <div class="pm-atts mb-2"></div>
+                        <input type="file" class="form-control form-control-sm" name="new_attachments[]" multiple>
+                        <div class="pm-notify mt-3">
+                            <label style="display:flex;gap:8px;align-items:flex-start;"><input type="checkbox" class="form-check-input mt-1" name="notify" value="1">
+                                <span><strong>Notify students about this update</strong><br><small class="text-muted pm-notify-text"></small></span></label>
+                        </div>
+                    </div>
+                    <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Save changes</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade pm-modal" id="pmMoveModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="post">
+                    <div class="modal-header"><h5 class="modal-title"><i class="fas fa-right-left me-2"></i>Move to another class / section</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+                    <div class="modal-body">
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
+                        <input type="hidden" name="section_id" value="<?php echo (int) $section_id; ?>">
+                        <input type="hidden" name="subject_code" value="<?php echo htmlspecialchars($subject_code); ?>">
+                        <input type="hidden" name="school_year_id" value="<?php echo (int) $school_year_id; ?>">
+                        <input type="hidden" name="term" value="<?php echo htmlspecialchars($term); ?>">
+                        <input type="hidden" name="return_tab" value="<?php echo htmlspecialchars($tab); ?>">
+                        <input type="hidden" name="form_action" class="pm-action">
+                        <input type="hidden" name="post_id" class="pm-post-id">
+                        <input type="hidden" name="assignment_id" class="pm-cw-id">
+                        <p class="small mb-2">Now in: <strong><?php echo htmlspecialchars($class['subject_name'] . ' – ' . $class['section_name']); ?></strong></p>
+                        <?php if (!$pm_classes): ?>
+                            <div class="pm-warn">You have no other class this school year to move it to.</div>
+                        <?php else: ?>
+                            <label class="form-label small mb-1">Move to</label>
+                            <select class="form-select mb-2" name="target_class" required>
+                                <?php foreach ($pm_classes as $c): ?><option value="<?php echo htmlspecialchars($c['value']); ?>"><?php echo htmlspecialchars($c['label']); ?></option><?php endforeach; ?>
+                            </select>
+                        <?php endif; ?>
+                        <div class="pm-warn pm-move-block" hidden></div>
+                        <div class="pm-note pm-move-info" hidden></div>
+                        <label class="mt-2" style="display:flex;gap:8px;align-items:flex-start;"><input type="checkbox" class="form-check-input mt-1" name="notify" value="1"> <span><strong>Email the students of the new class</strong><br><small class="text-muted">Only if you tick this.</small></span></label>
+                    </div>
+                    <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary pm-move-btn" <?php echo $pm_classes ? '' : 'disabled'; ?>>Move</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade pm-modal" id="pmDeleteModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="post">
+                    <div class="modal-header"><h5 class="modal-title">Delete this post?</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+                    <div class="modal-body">
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
+                        <input type="hidden" name="section_id" value="<?php echo (int) $section_id; ?>">
+                        <input type="hidden" name="subject_code" value="<?php echo htmlspecialchars($subject_code); ?>">
+                        <input type="hidden" name="school_year_id" value="<?php echo (int) $school_year_id; ?>">
+                        <input type="hidden" name="term" value="<?php echo htmlspecialchars($term); ?>">
+                        <input type="hidden" name="return_tab" value="<?php echo htmlspecialchars($tab); ?>">
+                        <input type="hidden" name="form_action" class="pm-action">
+                        <input type="hidden" name="post_id" class="pm-post-id">
+                        <input type="hidden" name="assignment_id" class="pm-cw-id">
+                        <p class="mb-2">This post will be removed from the classroom stream and will no longer be visible to students.</p>
+                        <div class="pm-warn pm-del-warn" hidden></div>
+                        <label class="pm-del-item mt-2" style="display:none;gap:8px;align-items:flex-start;"><input type="checkbox" class="form-check-input mt-1" name="remove_item" value="1"> <span>Also remove its item from <strong>Manage Assessment Items</strong> (it has no scores yet)</span></label>
+                    </div>
+                    <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-danger"><i class="fas fa-trash me-1"></i>Delete Post</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade pm-modal" id="pmDetailsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title"><i class="fas fa-circle-info me-2"></i>Post details</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+                <div class="modal-body"><table class="table table-sm mb-0 pm-details"></table></div>
+                <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button></div>
+            </div>
+        </div>
+    </div>
+    <script>
+    (function () {
+        var CLASS_LABEL = <?php echo json_encode($class['subject_name'] . ' – ' . $class['section_name']); ?>;
+        function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+        function prep(modalId, data, action) {
+            var m = document.getElementById(modalId);
+            m.querySelector('.pm-action').value = action;
+            m.querySelector('.pm-post-id').value = data.kind === 'post' ? data.id : '';
+            m.querySelector('.pm-cw-id').value = data.kind === 'classwork' ? data.id : '';
+            return m;
+        }
+        function show(m) { bootstrap.Modal.getOrCreateInstance(m).show(); }
+        document.addEventListener('click', function (e) {
+            var btn = e.target.closest('[data-pm-do]');
+            if (!btn) return;
+            e.preventDefault();
+            e.stopPropagation();
+            var data = JSON.parse(btn.closest('.pm-menu').getAttribute('data-pm'));
+            var isPost = data.kind === 'post';
+            var what = btn.getAttribute('data-pm-do');
+            if (what === 'edit') {
+                var m = prep('pmEditModal', data, isPost ? 'pm_edit_post' : 'pm_edit_classwork');
+                m.querySelector('.pm-title').textContent = isPost ? 'Edit Post' : 'Edit ' + data.category;
+                m.querySelector('.pm-only-post').hidden = !isPost;
+                m.querySelector('.pm-only-cw').hidden = isPost;
+                var f = m.querySelector('form');
+                f.elements['body'].value = isPost ? data.body : '';
+                f.elements['link_url'].value = isPost ? data.link : '';
+                f.elements['title'].value = isPost ? '' : data.title;
+                f.elements['topic'].value = isPost ? '' : data.topic;
+                f.elements['instructions'].value = isPost ? '' : data.instructions;
+                f.elements['due_date'].value = isPost ? '' : data.due;
+                f.elements['lock_after_due'].checked = !isPost && data.lock;
+                f.elements['title'].required = f.elements['instructions'].required = !isPost;
+                f.querySelector('input[type=file]').value = '';
+                m.querySelector('.pm-atts').innerHTML = data.attachments.length
+                    ? data.attachments.map(function (a) { return '<label class="pm-att"><input type="checkbox" name="remove_attachments[]" value="' + a.id + '"> Remove <span>' + esc(a.name) + '</span></label>'; }).join('')
+                    : '<div class="small text-muted">No attached files. Add new ones below.</div>';
+                // Only offered when students were already emailed about this post.
+                m.querySelector('.pm-notify').hidden = !data.emailed;
+                f.elements['notify'].checked = false;
+                m.querySelector('.pm-notify-text').textContent = data.emailed ? data.emailed + ' student(s) were emailed about this post. Tick this to send them an "Updated" email. Nothing is sent if you leave it unticked.' : '';
+                show(m);
+            } else if (what === 'move') {
+                var mm = prep('pmMoveModal', data, isPost ? 'pm_move_post' : 'pm_move_classwork');
+                var blocked = !isPost && !data.movable;
+                var block = mm.querySelector('.pm-move-block');
+                block.hidden = !blocked;
+                block.innerHTML = blocked ? '<i class="fas fa-triangle-exclamation me-1"></i>This classwork cannot be moved: ' + data.links.submitted + ' student(s) turned in work and/or ' + Math.max(data.links.scored, data.links.item_scores) + ' have scores. Moving it would separate that work from the class. Delete it and post it again in the right class if needed.' : '';
+                var info = mm.querySelector('.pm-move-info');
+                info.hidden = isPost || blocked;
+                info.innerHTML = '<i class="fas fa-circle-info me-1"></i>It will be assigned to the students of the new class' + (data.has_item ? ', and its item in Manage Assessment Items moves with it' : '') + '. Nobody has turned in work yet, so nothing is lost.';
+                var mb = mm.querySelector('.pm-move-btn');
+                if (mb) mb.disabled = blocked || !mm.querySelector('select');
+                show(mm);
+            } else if (what === 'delete') {
+                var dm = prep('pmDeleteModal', data, isPost ? 'pm_delete_post' : 'pm_delete_classwork');
+                var w = dm.querySelector('.pm-del-warn');
+                var parts = [];
+                if (!isPost) {
+                    if (data.has_item) parts.push('This post is connected to an assessment (Manage Assessment Items). Deleting the classroom post will not automatically delete existing scores or submissions.');
+                    if (data.links.submitted || data.links.files) parts.push(data.links.submitted + ' student(s) already turned in work — it is kept.');
+                    if (data.links.scored || data.links.item_scores) parts.push(Math.max(data.links.scored, data.links.item_scores) + ' score(s) are recorded — they are kept in Grade Management.');
+                }
+                w.hidden = !parts.length;
+                w.innerHTML = parts.map(function (p) { return '<div><i class="fas fa-triangle-exclamation me-1"></i>' + esc(p) + '</div>'; }).join('');
+                var canRemoveItem = !isPost && data.has_item && !data.links.scored && !data.links.item_scores;
+                dm.querySelector('.pm-del-item').style.display = canRemoveItem ? 'flex' : 'none';
+                dm.querySelector('input[name=remove_item]').checked = false;
+                show(dm);
+            } else if (what === 'details') {
+                var rows = [['Type', isPost ? 'Announcement' : data.category], ['Class', CLASS_LABEL], ['Posted', data.created]];
+                if (isPost) {
+                    if (data.updated) rows.push(['Last edited', data.updated]);
+                    rows.push(['Text', data.body || '—']);
+                    if (data.link) rows.push(['Link', data.link]);
+                } else {
+                    rows.push(['Title', data.title], ['Topic', data.topic || '—'], ['Due', data.due_label + (data.lock ? ' (closed after due)' : '')],
+                        ['Assigned to', data.links.roster + ' student(s)'], ['Turned in', data.links.submitted + ' student(s)'],
+                        ['Scored', Math.max(data.links.scored, data.links.item_scores) + ' student(s)'],
+                        ['In Grade Management', data.has_item ? 'Yes (Manage Assessment Items)' : 'No (not graded)']);
+                }
+                rows.push(['Files', data.attachments.length ? data.attachments.map(function (a) { return a.name; }).join(', ') : '—'], ['Emails sent', data.emailed + ' student(s)']);
+                document.querySelector('#pmDetailsModal .pm-details').innerHTML = rows.map(function (r) {
+                    return '<tr><th style="width:36%">' + esc(r[0]) + '</th><td style="white-space:pre-line">' + esc(r[1]) + '</td></tr>';
+                }).join('');
+                show(document.getElementById('pmDetailsModal'));
+            }
+        }, true);
+    })();
+    </script>
     <!-- New Assignment modal (opened from the Stream or the Classwork tab) -->
     <?php $cw_meta = aiAssessmentClassMeta($teacher_id, $section_id, $subject_code, $school_year_id) ?: ['has_exam' => false, 'required_subtypes' => [], 'is_multi' => false, 'components' => []]; ?>
     <div class="modal fade" id="newAssignmentModal" tabindex="-1" aria-hidden="true">

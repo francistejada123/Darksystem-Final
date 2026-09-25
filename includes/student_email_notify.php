@@ -86,7 +86,8 @@ function senEnabled()
  *                    send_now (optional: send right away and report sent / failed, instead of after the reply),
  *                    announcement (optional: the full text of a Stream announcement -- the email is then
  *                    "New Announcement - English 7" with the message instead of an assessment summary),
- *                    attachments (optional: names of attached files / links, shown in the email)
+ *                    attachments (optional: names of attached files / links, shown in the email),
+ *                    updated (optional: the post was edited -- "Updated: ..." email; use a new key per update)
  * @return int emails queued now
  */
 function senNotifyStudents(array $studentIds, array $info)
@@ -143,7 +144,7 @@ function senNotifyStudents(array $studentIds, array $info)
             };
             $body = '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1f2937;max-width:560px;">'
                 . '<p>Hi ' . $e(trim((string) $s['first_name'])) . ',</p>'
-                . '<p>Your teacher has posted ' . $article . ' new <strong>' . $e($postedAs) . '</strong> for <strong>' . $e($subjectName) . '</strong> titled '
+                . '<p>' . (!empty($info['updated']) ? 'Your teacher has <strong>updated</strong> the <strong>' . $e($postedAs) . '</strong>' : 'Your teacher has posted ' . $article . ' new <strong>' . $e($postedAs) . '</strong>') . ' for <strong>' . $e($subjectName) . '</strong> titled '
                 . '&lsquo;<strong>' . $e($title) . '</strong>&rsquo;. Due date: <strong>' . $e($deadline !== '' ? $deadline : 'no due date') . '</strong>. '
                 . 'Please log in to your EGradePro Student Portal to view the complete instructions and submit your work.</p>'
                 . '<table cellpadding="6" style="border-collapse:collapse;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;">'
@@ -168,7 +169,7 @@ function senNotifyStudents(array $studentIds, array $info)
                 $mailSubject = mb_substr("New Announcement - {$subjectName}", 0, 250);
                 $body = '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1f2937;max-width:560px;">'
                     . '<p>Hi ' . $e(trim((string) $s['first_name'])) . ',</p>'
-                    . '<p>Your teacher <strong>' . $e($teacherName) . '</strong> posted a new announcement in <strong>' . $e($subjectName) . '</strong>:</p>'
+                    . '<p>Your teacher <strong>' . $e($teacherName) . '</strong> ' . (!empty($info['updated']) ? '<strong>updated</strong> an announcement' : 'posted a new announcement') . ' in <strong>' . $e($subjectName) . '</strong>:</p>'
                     . ($annText !== '' ? '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #2563eb;border-radius:8px;padding:12px 14px;white-space:normal;">' . nl2br($e(mb_strimwidth($annText, 0, 3000, '…'))) . '</div>' : '')
                     . ($files ? '<p style="margin-top:12px;"><strong>Attached:</strong><br>' . implode('<br>', array_map(function ($f) use ($e) { return '&bull; ' . $e($f); }, array_slice($files, 0, 10))) . '</p>' : '')
                     . '<p style="color:#64748b;font-size:12px;">Posted ' . $e($posted) . '</p>'
@@ -177,6 +178,7 @@ function senNotifyStudents(array $studentIds, array $info)
                     . '<p style="color:#64748b;font-size:12px;">This is an automatic message from ' . $e($school) . ' EGradePro. Please do not reply.</p>'
                     . '</div>';
             }
+            if (!empty($info['updated'])) $mailSubject = mb_substr('Updated: ' . $mailSubject, 0, 250);
             $stmt = executeQuery(
                 "INSERT IGNORE INTO student_email_notifications (student_id, notify_key, email, subject, body) VALUES (?, ?, ?, ?, ?)",
                 [(int) $s['student_id'], $key, $to, $mailSubject, $body]

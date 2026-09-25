@@ -4,6 +4,7 @@
 // Student-side file access for Classroom classwork:
 //   ?type=attachment&id=  the teacher's file on an assignment given to me
 //   ?type=mine&id=        a file I attached to my own work
+//   ?type=stream&id=      a file / link on a Stream announcement of my class
 // &download=1 forces a download instead of opening it in the browser.
 
 session_start();
@@ -24,7 +25,18 @@ classworkEnsureSchema();
 $student_id = (int) $_SESSION['student_id'];
 $id = (int) ($_GET['id'] ?? 0);
 
-if (($_GET['type'] ?? '') === 'mine') {
+if (($_GET['type'] ?? '') === 'stream') {
+    // only announcements of a class this student is enrolled in (and not deleted)
+    $row = getRecord(
+        "SELECT a.original_filename, a.stored_filename, a.mime_type, a.attachment_type, a.external_url
+         FROM class_stream_attachments a
+         INNER JOIN class_stream_posts p ON p.post_id = a.post_id AND p.is_deleted = 0
+         INNER JOIN enrollments e ON e.section_id = p.section_id AND e.school_year_id = p.school_year_id AND e.student_id = ? AND e.enrollment_status = 'Approved'
+         WHERE a.attachment_id = ?",
+        [$student_id, $id]
+    );
+    $dir = classroomUploadDirFor('stream');
+} elseif (($_GET['type'] ?? '') === 'mine') {
     $row = getRecord("SELECT original_filename, stored_filename, mime_type, 'file' AS attachment_type, NULL AS external_url FROM classwork_submission_files WHERE file_id = ? AND student_id = ?", [$id, $student_id]);
     $dir = CLASSWORK_SUBMISSION_DIR;
 } else {

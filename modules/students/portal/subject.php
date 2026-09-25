@@ -105,6 +105,18 @@ $cw_open_id = (int) ($_GET['cw'] ?? 0);
 if ($cw_open_id && !in_array($cw_open_id, array_map('intval', array_column($cw_items, 'assignment_id')), true)) {
     $cw_open_id = 0;
 }
+// The teacher's Stream announcements for this class (deleted ones never show; edits show as they are now).
+$class_announcements = getRecords(
+    "SELECT * FROM class_stream_posts WHERE section_id = ? AND subject_code = ? AND school_year_id = ? AND is_deleted = 0 ORDER BY created_at DESC LIMIT 20",
+    [(int) $class['section_id'], $class['subject_code'], (int) $class['school_year_id']]
+);
+$class_ann_atts = [];
+if ($class_announcements) {
+    $ann_ids = array_map('intval', array_column($class_announcements, 'post_id'));
+    foreach (getRecords("SELECT * FROM class_stream_attachments WHERE post_id IN (" . implode(',', array_fill(0, count($ann_ids), '?')) . ") ORDER BY attachment_id", $ann_ids) as $att) {
+        $class_ann_atts[(int) $att['post_id']][] = $att;
+    }
+}
 // Class comments + this student's private comments with the teacher (open classwork only).
 require_once '../../../includes/classwork_comment_helpers.php';
 $cw_cmts = $cw_open_id ? (cwcForAssignments([$cw_open_id], $student_id)[$cw_open_id] ?? ['class' => [], 'private' => []]) : ['class' => [], 'private' => []];
@@ -500,6 +512,13 @@ $page_title = $class['subject_name'];
         .msg-comment-form { display: flex; gap: 8px; align-items: flex-end; }
         .msg-comment-form textarea { flex: 1; font-size: 13px; border: 1px solid var(--portal-border); border-radius: 18px; padding: 7px 14px; resize: vertical; min-height: 36px; }
         .msg-comment-form button { border: none; background: var(--portal-primary); color: #fff; border-radius: 50%; width: 36px; height: 36px; flex-shrink: 0; }
+        .ann-card { border: 1px solid var(--portal-border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; background: #fff; }
+        .ann-head { display: flex; gap: 10px; align-items: center; margin-bottom: 6px; }
+        .ann-head strong { display: block; font-size: 13.5px; }
+        .ann-head small { color: var(--portal-gray); font-size: 12px; }
+        .ann-icon { width: 34px; height: 34px; border-radius: 50%; background: #e8f0fe; color: #1a73e8; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .ann-body { font-size: 14px; line-height: 1.6; color: #374151; }
+        .ann-file { display: inline-flex; gap: 6px; align-items: center; margin: 8px 8px 0 0; padding: 5px 10px; border: 1px solid var(--portal-border); border-radius: 8px; font-size: 12.5px; text-decoration: none; }
         .cw-cmts { margin-top: 16px; border-top: 1px solid var(--portal-border); padding-top: 12px; }
         .cw-cmts-head { font-size: 13.5px; font-weight: 700; color: var(--portal-primary); margin-bottom: 8px; }
         .cw-cmts-none { font-size: 12.5px; color: var(--portal-gray); margin-bottom: 8px; }
@@ -611,6 +630,26 @@ $page_title = $class['subject_name'];
                 <div class="flash-banner success"><i class="fas fa-check-circle me-1"></i>Your answer was submitted.</div>
             <?php elseif ($submit_error !== ''): ?>
                 <div class="flash-banner error"><i class="fas fa-exclamation-circle me-1"></i><?php echo htmlspecialchars($submit_error); ?></div>
+            <?php endif; ?>
+
+            <?php if ($class_announcements && !$cw_open_id && !$act_open_id): ?>
+                <div class="mb-4" id="stream">
+                    <h3 class="lm-section-title"><i class="fas fa-bullhorn"></i> Class announcements</h3>
+                    <?php foreach (array_slice($class_announcements, 0, 5) as $ann): ?>
+                        <div class="ann-card">
+                            <div class="ann-head"><span class="ann-icon"><i class="fas fa-bullhorn"></i></span>
+                                <span><strong><?php echo htmlspecialchars($teacher_name ?: 'Your teacher'); ?></strong><small><?php echo date('M j, Y g:i A', strtotime($ann['created_at'])); ?><?php echo (strtotime($ann['updated_at']) > strtotime($ann['created_at']) + 5) ? ' · edited' : ''; ?></small></span>
+                            </div>
+                            <?php if (trim((string) $ann['body']) !== ''): ?><div class="ann-body"><?php echo nl2br(htmlspecialchars($ann['body'])); ?></div><?php endif; ?>
+                            <?php foreach ($class_ann_atts[(int) $ann['post_id']] ?? [] as $att): ?>
+                                <a class="ann-file" href="classwork_file.php?type=stream&id=<?php echo (int) $att['attachment_id']; ?>" target="_blank" rel="noopener">
+                                    <i class="fas <?php echo $att['attachment_type'] === 'link' ? 'fa-link' : classroomMimeIcon($att['mime_type'], $att['original_filename']); ?>"></i>
+                                    <?php echo htmlspecialchars($att['attachment_type'] === 'link' ? mb_strimwidth((string) $att['external_url'], 0, 60, '…') : $att['original_filename']); ?>
+                                </a>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
             <?php endif; ?>
 
             <?php if (!empty($cw_items) || !empty($act_msgs)): ?>
