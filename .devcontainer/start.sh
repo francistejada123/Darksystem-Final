@@ -3,6 +3,32 @@
 # (APP_URL) for email links, and the mail settings from Codespaces Secrets.
 cd "$(dirname "$0")/.."
 
+# Secrets pasted from Notepad often carry an invisible Enter / spaces at the end:
+# clean them before anything uses them.
+clean() { printf '%s' "$1" | tr -d '\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'; }
+for n in MAIL_PASSWORD MAIL_USERNAME GEMINI_API_KEY GOOGLE_OAUTH_CLIENT_ID GOOGLE_OAUTH_CLIENT_SECRET GOOGLE_REFRESH_TOKEN; do
+  export "$n=$(clean "${!n}")"
+done
+export MAIL_PASSWORD="${MAIL_PASSWORD// /}"
+
+# Config files read the (cleaned) keys from the environment.
+cat > config/gemini_config.php <<'PHP'
+<?php
+// Written by .devcontainer/start.sh from the Codespaces secret GEMINI_API_KEY.
+if (!defined('GEMINI_API_KEY')) define('GEMINI_API_KEY', trim((string) getenv('GEMINI_API_KEY')));
+if (!defined('GEMINI_MODEL')) define('GEMINI_MODEL', getenv('GEMINI_MODEL') ?: 'gemini-3.1-flash-lite');
+if (!defined('GEMINI_API_URL')) define('GEMINI_API_URL', 'https://generativelanguage.googleapis.com/v1beta/interactions');
+PHP
+cat > config/google_config.php <<'PHP'
+<?php
+// Written by .devcontainer/start.sh from Codespaces secrets.
+define('GOOGLE_OAUTH_CLIENT_ID', trim((string) getenv('GOOGLE_OAUTH_CLIENT_ID')));
+define('GOOGLE_OAUTH_CLIENT_SECRET', trim((string) getenv('GOOGLE_OAUTH_CLIENT_SECRET')));
+define('GOOGLE_OAUTH_REDIRECT_URI', trim((string) (getenv('APP_URL') ?: 'http://localhost/watdahel')) . '/modules/ai/google/oauth_callback.php');
+define('GOOGLE_REFRESH_TOKEN', trim((string) getenv('GOOGLE_REFRESH_TOKEN')));
+PHP
+[ -f config/email.php ] || cp config/email.example.php config/email.php
+
 service mariadb start >/dev/null 2>&1 || true
 
 # Serve the app at /watdahel/ (BASE_URL) with index.php as the folder page; / goes there too.
@@ -19,7 +45,10 @@ Alias /watdahel "${APP_DIR}"
 RedirectMatch 302 ^/$ /watdahel/
 CONF
 a2enconf egradepro-app >/dev/null 2>&1 || true
-apache2ctl start >/dev/null 2>&1 || apache2ctl restart >/dev/null 2>&1 || true
+# full stop/start so Apache (PHP) gets the cleaned keys from this shell
+apache2ctl stop >/dev/null 2>&1 || true
+sleep 1
+apache2ctl start >/dev/null 2>&1 || true
 
 if [ -n "$CODESPACE_NAME" ]; then
   APP_URL="https://${CODESPACE_NAME}-80.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-app.github.dev}/watdahel"
