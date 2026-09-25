@@ -320,6 +320,7 @@ $page_title = 'Student Dashboard';
             .main-content { margin-left: var(--sidebar-width, 240px) !important; width: calc(100% - var(--sidebar-width, 240px)) !important; max-width: calc(100% - var(--sidebar-width, 240px)) !important; flex: 0 0 auto !important; }
         }
     </style>
+    <?php include __DIR__ . '/../../../includes/pwa_head.php'; ?>
 </head>
 <body>
 <?php if ($login_success): ?>

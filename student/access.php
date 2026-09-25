@@ -41,6 +41,7 @@ http_response_code(403);
         body { background: #eef2f7; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
         .box { max-width: 520px; margin: 80px auto; background: #fff; border-radius: 16px; box-shadow: 0 10px 40px rgba(13, 71, 161, .12); padding: 32px 28px; text-align: center; }
     </style>
+    <?php include __DIR__ . '/../includes/pwa_head.php'; ?>
 </head>
 <body>
     <div class="box">

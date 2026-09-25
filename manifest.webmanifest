@@ -1,0 +1,22 @@
+{
+  "name": "EGradePro Student Portal",
+  "short_name": "EGradePro",
+  "description": "Student Portal and Online Enrollment of Imelda Integrated Secondary School",
+  "id": "./student_login.php",
+  "start_url": "./student_login.php?source=app",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#0d47a1",
+  "icons": [
+    { "src": "static/images/app/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "static/images/app/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "static/images/app/icon-192-maskable.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "static/images/app/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Online Enrollment", "url": "./online_enrollment.php", "icons": [{ "src": "static/images/app/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Track my Enrollment", "url": "./enrollment_status.php", "icons": [{ "src": "static/images/app/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

@@ -181,6 +181,7 @@ $page_title = 'My Grades';
             .main-content { margin-left: var(--sidebar-width, 240px) !important; width: calc(100% - var(--sidebar-width, 240px)) !important; max-width: calc(100% - var(--sidebar-width, 240px)) !important; flex: 0 0 auto !important; }
         }
     </style>
+    <?php include __DIR__ . '/../../../includes/pwa_head.php'; ?>
 </head>
 <body>
 <script>document.body.classList.add('sidebar-collapsed');</script>

@@ -73,6 +73,7 @@ $status_meta = [
         html[data-theme="dark"] h3, html[data-theme="dark"] h4, html[data-theme="dark"] h6 { color: var(--ink); }
         html[data-theme="dark"] .text-muted { color: var(--text-muted) !important; }
     </style>
+    <?php include __DIR__ . '/includes/pwa_head.php'; ?>
 </head>
 
 <body>

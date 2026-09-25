@@ -47,3 +47,10 @@ RedirectMatch 404 ^/watdahel/(tests|database|vendor|src|node_modules)(/|$)
     php_flag display_errors Off
     php_flag log_errors On
 </IfModule>
+
+# Student app (installable web app)
+AddType application/manifest+json .webmanifest
+<Files "sw.js">
+    Header set Service-Worker-Allowed "/watdahel/"
+    Header set Cache-Control "no-cache"
+</Files>

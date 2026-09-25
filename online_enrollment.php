@@ -964,6 +964,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             .theme-toggle-btn.theme-toggle-flip .theme-toggle-icon-moon { animation: none !important; }
         }
     </style>
+    <?php include __DIR__ . '/includes/pwa_head.php'; ?>
 </head>
 <body>
 

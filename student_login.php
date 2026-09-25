@@ -300,6 +300,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-color: rgba(255,255,255,0.2);
         }
     </style>
+    <?php include __DIR__ . '/includes/pwa_head.php'; ?>
 </head>
 <body>
     <div class="login-container">
