@@ -234,6 +234,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // ---- Create a classwork assignment (Classwork tab) ----
     if (($_POST['form_action'] ?? '') === 'create_classwork') {
+        $cw_back = ($_POST['return_tab'] ?? '') === 'stream' ? '&tab=stream#stream' : '&tab=classwork#classwork';
         $title = trim((string) ($_POST['title'] ?? ''));
         // The assessment TYPE decides the grading category (Written Works /
         // Performance Task / Examination) -- never online vs. offline.
@@ -252,7 +253,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $format_in = (string) ($_POST['generate_format'] ?? '');
         if (!in_array($format_in, classworkOutputFormats($category), true)) {
             $_SESSION['error_message'] = '"' . (CLASSWORK_OUTPUT_LABELS[$format_in] ?? $format_in) . '" is not available for a ' . $category . '. Please choose one of the listed file options.';
-            header('Location: classroom.php?' . $redirect_qs . '&tab=classwork#classwork');
+            header('Location: classroom.php?' . $redirect_qs . $cw_back);
             exit;
         }
         $generate_format = $format_in !== '' ? $format_in : null;
@@ -262,7 +263,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $quiz_questions = aiSanitizeQuizQuestions(json_decode((string) ($_POST['ai_quiz_questions'] ?? ''), true) ?: []);
             if (!$quiz_questions) {
                 $_SESSION['error_message'] = 'The Google Form is built from the AI quiz questions. Generate the quiz with AI (from the attached lesson), review it, click "Use this content", then assign.';
-                header('Location: classroom.php?' . $redirect_qs . '&tab=classwork#classwork');
+                header('Location: classroom.php?' . $redirect_qs . $cw_back);
                 exit;
             }
         }
@@ -283,13 +284,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $used_nonces = $_SESSION['cw_nonces_used'] ?? [];
         if ($cw_nonce !== '' && in_array($cw_nonce, $used_nonces, true)) {
             $_SESSION['success_message'] = 'This assignment was already posted (it was not posted twice).';
-            header('Location: classroom.php?' . $redirect_qs . '&tab=classwork#classwork');
+            header('Location: classroom.php?' . $redirect_qs . $cw_back);
             exit;
         }
 
         if ($title === '' || $instructions === '') {
             $_SESSION['error_message'] = 'Please provide a title and instructions/content for this assignment.';
-            header('Location: classroom.php?' . $redirect_qs . '&tab=classwork#classwork');
+            header('Location: classroom.php?' . $redirect_qs . $cw_back);
             exit;
         }
         if (mb_strlen($title) > 200) $title = mb_substr($title, 0, 200);
@@ -302,7 +303,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($grading_category !== null) {
             if ($max_points <= 0) {
                 $_SESSION['error_message'] = 'Enter the total points (highest possible score) for this ' . $category . '.';
-                header('Location: classroom.php?' . $redirect_qs . '&tab=classwork#classwork');
+                header('Location: classroom.php?' . $redirect_qs . $cw_back);
                 exit;
             }
             $ensured = aiAssessmentEnsureItem(
@@ -311,7 +312,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             );
             if (empty($ensured['success'])) {
                 $_SESSION['error_message'] = 'Not assigned: ' . $ensured['error'];
-                header('Location: classroom.php?' . $redirect_qs . '&tab=classwork#classwork');
+                header('Location: classroom.php?' . $redirect_qs . $cw_back);
                 exit;
             }
             $item = $ensured['item'];
@@ -341,7 +342,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         if (!$assignment_id) {
             $_SESSION['error_message'] = 'Could not save the assignment. Please try again.';
-            header('Location: classroom.php?' . $redirect_qs . '&tab=classwork#classwork');
+            header('Location: classroom.php?' . $redirect_qs . $cw_back);
             exit;
         }
 
@@ -472,7 +473,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['success_message'] = '"' . $title . '" was assigned to ' . count($roster) . ' student(s) of ' . ($post_class['section_name'] ?? 'this section') . '.' . $cw_file_note
             . ' An email is being sent to each student with a registered email (see the status on the assignment card).'
             . ($item ?' Saved in Manage Assessment Items as "' . html_entity_decode($item['item_name'], ENT_QUOTES, 'UTF-8') . '" under ' . CLASSWORK_GRADING_LABELS[$grading_category] . ' (' . rtrim(rtrim(number_format($max_points, 2), '0'), '.') . ' pts).' : ' Not graded (learning material).');
-        header('Location: classroom.php?' . $redirect_qs . '&tab=classwork#classwork');
+        header('Location: classroom.php?' . $redirect_qs . $cw_back);
         exit;
     }
 }
@@ -582,16 +583,10 @@ include '../../includes/header.php';
     .cw-quiz-review li { margin-bottom:6px; }
     .cw-quiz-review .ok { color:#15803d; font-weight:600; }
     .cw-format-hint { font-size:11px; color:#64748b; margin-top:3px; }
-    .cw-answer-key { margin-top:8px; font-size:12.5px; }
-    .cw-answer-key summary { cursor:pointer; color:#1d4ed8; font-weight:600; }
-    .cw-answer-key ol { margin:8px 0 0; padding-left:20px; }
-    .cw-answer-key li { margin-bottom:6px; }
-    .cw-answer-key .cw-key-ans { color:#15803d; font-weight:600; }
-    .cw-answer-key .cw-key-text { margin-top:6px; white-space:normal; }
-    .gc-composer-row { display:flex; align-items:center; gap:10px; }
-    .gc-composer-row .gc-composer-toggle { flex:1 1 auto; }
-    .gc-composer.is-open .gc-composer-row { display:none; }
-    .gc-btn-create.gc-btn-sm { padding:7px 16px; font-size:13px; white-space:nowrap; text-decoration:none; }
+    .gc-composer-line { display:flex; align-items:flex-start; gap:12px; margin-bottom:16px; }
+    .gc-composer-line > .gc-composer { flex:1 1 auto; min-width:0; margin-bottom:0; }
+    .gc-composer-line > .gc-btn-create { flex:0 0 auto; margin-top:12px; white-space:nowrap; }
+    @media (max-width: 575px) { .gc-composer-line { flex-direction:column-reverse; align-items:stretch; } .gc-composer-line > .gc-btn-create { margin-top:0; justify-content:center; } }
     .cr-pill { display:inline-block; border-radius:99px; padding:2px 9px; font-size:11px; font-weight:600; background:#F2F4F7; color:#475467; }
     .cr-pill.upcoming { background:#EAF2FE; color:#1D4ED8; }
     .cr-pill.active { background:#FEF3E6; color:#B54708; }
@@ -1094,14 +1089,12 @@ include '../../includes/header.php';
             </div>
         </aside>
         <div class="gc-main">
+        <div class="gc-composer-line">
         <div class="stream-post gc-composer" id="gcComposer">
-            <div class="gc-composer-row">
-                <button type="button" class="gc-composer-toggle" id="gcComposerToggle">
-                    <span class="gc-avatar"><?php echo htmlspecialchars($gc_teacher_initials); ?></span>
-                    <span>Announce something to your class</span>
-                </button>
-                <a class="gc-btn-create gc-btn-sm" href="<?php echo $gc_classwork_url; ?>&amp;create=1" title="New assignment, quiz or material"><i class="fas fa-plus"></i> Create</a>
-            </div>
+            <button type="button" class="gc-composer-toggle" id="gcComposerToggle">
+                <span class="gc-avatar"><?php echo htmlspecialchars($gc_teacher_initials); ?></span>
+                <span>Announce something to your class</span>
+            </button>
             <form method="post" enctype="multipart/form-data" class="gc-composer-form">
                 <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
                 <input type="hidden" name="form_action" value="post_announcement">
@@ -1132,6 +1125,10 @@ include '../../includes/header.php';
                     <button type="submit" class="announcement-post-button"><i class="fas fa-paper-plane me-1"></i> Post</button>
                 </div>
             </form>
+        </div>
+        <button type="button" class="gc-btn-create" data-bs-toggle="modal" data-bs-target="#newAssignmentModal" title="New assignment, quiz or material">
+            <i class="fas fa-plus"></i> Create
+        </button>
         </div>
 
         <script>
@@ -1363,25 +1360,10 @@ include '../../includes/header.php';
                         <?php if (!empty($item['google_form_edit_url'])): ?>
                             <a class="attachment-chip" href="<?php echo htmlspecialchars($item['google_form_edit_url']); ?>" target="_blank" rel="noopener"><i class="fas fa-pen"></i> Edit Google Form (teacher only)</a>
                         <?php endif; ?>
-                    </div>
-                <?php endif; ?>
-                <?php $cw_key_q = !empty($item['quiz_questions_json']) ? (json_decode($item['quiz_questions_json'], true) ?: []) : []; ?>
-                <?php if ($cw_key_q || trim((string) ($item['answer_key'] ?? '')) !== ''): ?>
-                    <details class="cw-answer-key">
-                        <summary><i class="fas fa-key me-1"></i>Answer key (teacher only)</summary>
-                        <?php if ($cw_key_q): ?>
-                            <ol>
-                                <?php foreach ($cw_key_q as $q): $ci = (int) ($q['correct_index'] ?? 0); ?>
-                                    <li>
-                                        <?php echo htmlspecialchars($q['question'] ?? ''); ?>
-                                        <div class="cw-key-ans"><i class="fas fa-check"></i> <?php echo chr(65 + $ci); ?>. <?php echo htmlspecialchars($q['choices'][$ci] ?? ''); ?> <span class="text-muted">(<?php echo (int) ($q['points'] ?? 1); ?> pt)</span></div>
-                                    </li>
-                                <?php endforeach; ?>
-                            </ol>
-                        <?php else: ?>
-                            <div class="cw-key-text"><?php echo nl2br(htmlspecialchars($item['answer_key'])); ?></div>
+                        <?php if (!empty($item['quiz_questions_json']) || trim((string) ($item['answer_key'] ?? '')) !== ''): ?>
+                            <a class="attachment-chip" href="classwork_answer_key.php?id=<?php echo (int) $item['assignment_id']; ?>" target="_blank"><i class="fas fa-file-pdf" style="color:#dc2626;"></i> Answer Key.pdf <span class="text-muted">(teacher only)</span></a>
                         <?php endif; ?>
-                    </details>
+                    </div>
                 <?php endif; ?>
                 <?php if (!empty($item['quiz_questions_json']) && empty($item['google_form_id'])): ?>
                     <form method="post" class="cw-mail-line cw-mail-bad">
@@ -1502,8 +1484,10 @@ include '../../includes/header.php';
             </div>
         <?php endforeach; endif; ?>
     </div>
+    <?php endif; ?>
 
-    <!-- New Assignment modal -->
+    <?php if ($tab === 'stream' || $tab === 'classwork'): ?>
+    <!-- New Assignment modal (opened from the Stream or the Classwork tab) -->
     <?php $cw_meta = aiAssessmentClassMeta($teacher_id, $section_id, $subject_code, $school_year_id) ?: ['has_exam' => false, 'required_subtypes' => [], 'is_multi' => false, 'components' => []]; ?>
     <div class="modal fade" id="newAssignmentModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-scrollable">
@@ -1524,6 +1508,7 @@ include '../../includes/header.php';
                         <input type="hidden" name="ai_resource_type" id="cwAiResourceType" value="">
                         <input type="hidden" name="ai_teacher_answer_key" id="cwAiAnswerKey" value="">
                         <input type="hidden" name="ai_quiz_questions" id="cwAiQuizQuestions" value="">
+                        <input type="hidden" name="return_tab" value="<?php echo $tab === 'stream' ? 'stream' : 'classwork'; ?>">
                         <input type="hidden" name="cw_nonce" id="cwNonce" value="<?php echo bin2hex(random_bytes(12)); ?>">
 
 
