@@ -1751,6 +1751,7 @@ document.addEventListener('DOMContentLoaded', function () {
                       (isTask ? '; you score it yourself in Manage Assessment Items (at-risk make-up: ' + MAKEUP_PCT + '% of the points).'
                               : '; when you confirm their submitted score it is recorded to that item at <b>' + MAKEUP_PCT + '% of the points</b> (at-risk make-up).')) +
                 (res.lesson_used ? ' Based on the lesson material attached to it' : ' Based on the topic') + (rc.topic ? ' (' + esc(rc.topic) + ')' : '') + '.</div>' +
+                (!rc.topic && !res.lesson_used ? '<div class="argm-warn"><i class="fas fa-circle-info me-1"></i>This assessment has no Topic or lesson file in Manage Assessment Items, so the AI used the usual lesson of the subject for ' + esc(rc.term || 'the term') + '. Add a Topic there for an exact make-up.</div>' : '') +
                 '<label class="arg-msg-label"><span>Title</span></label><input type="text" class="form-control argm-doc-title" maxlength="150">' +
                 '<label class="arg-msg-label mt-2"><span>' + (isTask ? 'Task instructions &amp; rubric' : 'Activity') + ' (review and edit)</span></label>' +
                 '<textarea class="form-control argm-doc-body" rows="12"></textarea>' +

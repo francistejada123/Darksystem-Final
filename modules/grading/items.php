@@ -443,6 +443,8 @@ include '../../includes/header.php';
     .mai-row-form .mai-in { height: 34px; font-size: 13.5px; }
     .mai-in-name { font-weight: 700; }
     .mai-in-topic { color: var(--mai-muted); }
+    .mai-in-topic.mai-topic-missing { border-color: #F5D3A6; background: #FFFBF3; }
+    .mai-in-topic.mai-topic-missing::placeholder { color: #B45309; }
     .mai-in-small { width: auto; flex-shrink: 0; }
     .mai-hps-in { display: flex; align-items: center; gap: 4px; flex-shrink: 0; margin: 0; }
     .mai-hps-in .mai-in { width: 72px; text-align: right; font-family: 'IBM Plex Mono', monospace; }
@@ -696,7 +698,9 @@ $mai_meta = [
                                 <label class="mai-hps-in"><input type="number" name="highest_score" class="mai-in" value="<?php echo rtrim(rtrim($item['highest_score'], '0'), '.'); ?>" step="0.01" min="0.01" aria-label="HPS"><span>pts</span></label>
                             </div>
                             <div class="mai-row-bottom">
-                                <input type="text" name="topic" class="mai-in mai-in-topic" value="<?php echo htmlspecialchars($item['topic'] ?? ''); ?>" placeholder="Topic / Lesson / Competency" title="Topic / Lesson / Competency (optional)" maxlength="150">
+                                <?php $mai_no_topic = trim((string) ($item['topic'] ?? '')) === '' && empty($materials_by_item_js[$item['item_id']] ?? []); ?>
+                                <input type="text" name="topic" class="mai-in mai-in-topic<?php echo $mai_no_topic ? ' mai-topic-missing' : ''; ?>" value="<?php echo htmlspecialchars($item['topic'] ?? ''); ?>" placeholder="<?php echo $mai_no_topic ? 'Add a topic — AI make-ups use it' : 'Topic / Lesson / Competency'; ?>"
+                                       title="<?php echo $mai_no_topic ? 'No topic or lesson file yet: AI make-ups and reviews for this item will use the usual lesson of the subject for the term instead of its exact topic.' : 'Topic / Lesson / Competency (optional)'; ?>" maxlength="150">
                                 <?php if ($is_multi): ?>
                                     <select name="component" class="mai-in mai-in-small">
                                         <?php if (!empty($item['component']) && !in_array($item['component'], $components, true)): ?>
