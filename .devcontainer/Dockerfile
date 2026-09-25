@@ -1,5 +1,5 @@
-# EGradePro in GitHub Codespaces: PHP 8.0 + Apache (same PHP as XAMPP) + MariaDB
-FROM php:8.0-apache
+# EGradePro in GitHub Codespaces: PHP 8.2 + Apache + MariaDB (Debian bookworm; the PHP 8.0 image is no longer updated)
+FROM php:8.2-apache-bookworm
 
 RUN apt-get update \
  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
