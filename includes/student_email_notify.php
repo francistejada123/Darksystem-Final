@@ -51,14 +51,7 @@ function senEnsureSchema()
  */
 function senAppUrl($path)
 {
-    $row = getRecord("SELECT setting_value FROM system_settings WHERE setting_key = 'portal_public_url'");
-    $base = trim((string) ($row['setting_value'] ?? ''));
-    if ($base === '' || !preg_match('#^https?://#i', $base)) {
-        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        $https = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
-        $base = ($https ? 'https' : 'http') . '://' . $host . (defined('BASE_URL') ? BASE_URL : '/');
-    }
-    return rtrim($base, '/') . '/' . ltrim((string) $path, '/');
+    return appUrl($path); // includes/mail_config.php: APP_URL > portal_public_url setting > this host
 }
 
 /** What the last senNotifyStudents() call did: queued now / students with no registered email. */

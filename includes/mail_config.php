@@ -152,3 +152,24 @@ function mailSendOne($to, $subject, $html)
         return ['success' => false, 'error' => $reason];
     }
 }
+
+/**
+ * Full URL of a page of this system, for links in emails. APP_URL (.env /
+ * environment, e.g. https://egradepro.yourdomain.com or
+ * http://192.168.1.10/watdahel for testing on a phone) wins; then the
+ * "portal_public_url" setting; then the address this request came in on.
+ */
+function appUrl($path = '')
+{
+    $base = (string) mailEnv('APP_URL');
+    if ($base === '' || !preg_match('#^https?://#i', $base)) {
+        $row = getRecord("SELECT setting_value FROM system_settings WHERE setting_key = 'portal_public_url'");
+        $base = trim((string) ($row['setting_value'] ?? ''));
+    }
+    if ($base === '' || !preg_match('#^https?://#i', $base)) {
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $https = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+        $base = ($https ? 'https' : 'http') . '://' . $host . (defined('BASE_URL') ? BASE_URL : '/');
+    }
+    return rtrim($base, '/') . '/' . ltrim((string) $path, '/');
+}
