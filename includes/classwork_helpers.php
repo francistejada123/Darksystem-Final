@@ -92,7 +92,7 @@ function classworkEnsureSchema()
     static $done = false;
     if ($done) return;
     $done = true;
-    if (schemaIsReady('classwork_v3')) return;
+    if (schemaIsReady('classwork_v4')) return;
     $cols = function ($table) {
         return array_column(getRecords(
             "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?",
@@ -110,6 +110,7 @@ function classworkEnsureSchema()
         'google_form_id'     => "ADD COLUMN google_form_id VARCHAR(100) DEFAULT NULL COMMENT 'Google Form made from the AI quiz questions'",
         'google_form_edit_url' => "ADD COLUMN google_form_edit_url VARCHAR(500) DEFAULT NULL COMMENT 'Teacher-only edit link (students get the responder link as an attachment)'",
         'quiz_questions_json'  => "ADD COLUMN quiz_questions_json MEDIUMTEXT DEFAULT NULL COMMENT 'The reviewed AI questions the Google Form was built from'",
+        'topic'                => "ADD COLUMN topic VARCHAR(200) DEFAULT NULL COMMENT 'Lesson topic (shown in the student email)'",
     ];
     foreach ($adds as $col => $ddl) {
         if ($a && !in_array($col, $a, true)) {
@@ -148,7 +149,7 @@ function classworkEnsureSchema()
             KEY idx_csf (assignment_id, student_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
     );
-    schemaMarkReady('classwork_v3');
+    schemaMarkReady('classwork_v4');
 }
 
 /** Save one student upload under classwork_submissions (same validation as every classroom upload). */
@@ -287,6 +288,7 @@ function classworkRecordScore($teacherId, $assignmentId, $studentId, $score, $fe
  * message reaches them: a student_support_messages row, which lights the
  * "New" badge on the class card and the portal bell.
  */
+/** @return array ['queued' => emails queued now, 'no_email' => students without a registered email] */
 function classworkNotifyStudents(array $assignment, array $studentIds, $teacherId)
 {
     $due = !empty($assignment['due_date']) ? date('M j, Y g:i A', strtotime($assignment['due_date'])) : 'no due date';
@@ -310,9 +312,13 @@ function classworkNotifyStudents(array $assignment, array $studentIds, $teacherI
             'title' => $assignment['title'], 'kind' => $assignment['category'] ?: 'Classwork',
             'deadline' => $assignment['due_date'] ?? null,
             'instruction' => $assignment['instructions'] ?? '',
+            'grading' => classworkGradingCategory($assignment['category'] ?? ''),
+            'topic' => $assignment['topic'] ?? '',
             'link' => 'modules/students/portal/subject.php?subject=' . rawurlencode((string) $assignment['subject_code']) . '&cw=' . (int) $assignment['assignment_id'],
         ]);
+        return senLastResult();
     }
+    return ['queued' => 0, 'no_email' => 0];
 }
 
 /**

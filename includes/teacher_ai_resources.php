@@ -1329,11 +1329,15 @@ function teacherAiSendResource($teacherId, array $req)
     }
     if (!empty($emailIds)) {
         require_once __DIR__ . '/student_email_notify.php';
+        $taiItem = !empty($linkedTask['item_id']) ? getRecord("SELECT category, topic FROM assessment_items WHERE item_id = ?", [(int) $linkedTask['item_id']]) : null;
         senNotifyStudents($emailIds, [
             'key' => 'tai_send:' . (int) $sendId,
             'subject_code' => $subjectCode, 'teacher_id' => (int) $teacherId,
             'title' => $res['title'], 'kind' => aiResourceTypeLabel($res['resource_type']),
             'deadline' => $linkedTask['end_at'] ?? null,
+            'grading' => $taiItem['category'] ?? null,
+            'topic' => ($linkedTask['topic'] ?? '') !== '' ? $linkedTask['topic'] : ($taiItem['topic'] ?? ''),
+            'link' => 'modules/students/portal/subject.php?subject=' . rawurlencode((string) $subjectCode),
         ]);
     }
     if ($sent > 0) {

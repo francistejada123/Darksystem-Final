@@ -368,6 +368,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $used_nonces[] = $cw_nonce;
             $_SESSION['cw_nonces_used'] = array_slice($used_nonces, -30);
         }
+        $topic = mb_substr(trim((string) ($_POST['topic'] ?? '')), 0, 200);
+        if ($assignment_id && $topic !== '') {
+            executeQuery("UPDATE classwork_assignments SET topic = ? WHERE assignment_id = ?", [$topic, (int) $assignment_id]);
+        }
         if ($assignment_id && $quiz_questions) {
             executeQuery("UPDATE classwork_assignments SET quiz_questions_json = ? WHERE assignment_id = ?",
                 [json_encode($quiz_questions, JSON_UNESCAPED_UNICODE), (int) $assignment_id]);
@@ -498,15 +502,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // "New" badge on each student's class card + portal bell.
-        classworkNotifyStudents(
-            ['assignment_id' => (int) $assignment_id, 'title' => $title, 'category' => $category, 'due_date' => $due_date, 'subject_code' => $post_subject_code, 'school_year_id' => $post_sy_id, 'instructions' => $instructions],
+        $cw_mailed = classworkNotifyStudents(
+            ['assignment_id' => (int) $assignment_id, 'title' => $title, 'category' => $category, 'due_date' => $due_date, 'subject_code' => $post_subject_code, 'school_year_id' => $post_sy_id, 'instructions' => $instructions, 'topic' => $topic],
             array_column($roster, 'student_id'),
             $teacher_id
         );
 
         logActivity($teacher_id, 'Classroom', 'Posted classwork', "Assignment #$assignment_id ($category, $title), subject $post_subject_code, section #$post_section_id");
-        $_SESSION['success_message'] = '"' . $title . '" was assigned to ' . count($roster) . ' student(s) of ' . ($post_class['section_name'] ?? 'this section') . '.' . $cw_file_note
-            . ' An email is being sent to each student with a registered email (see the status on the assignment card).'
+        $_SESSION['success_message'] = 'Assessment posted successfully: "' . $title . '" was assigned to ' . count($roster) . ' student(s) of ' . ($post_class['section_name'] ?? 'this section') . '.' . $cw_file_note
+            . ((int) ($cw_mailed['queued'] ?? 0) > 0 ? ' Email notifications are being sent to ' . (int) $cw_mailed['queued'] . ' student(s)' . (senEnabled() ? '' : ' (email sending is switched off in Settings)') . '.' : '')
+            . ((int) ($cw_mailed['no_email'] ?? 0) > 0 ? ' ' . (int) $cw_mailed['no_email'] . ' student(s) have no registered email, so they only see it in the Student Portal.' : '')
+            . ' The email status is shown at the bottom of the assignment card.'
             . ($item ?' Saved in Manage Assessment Items as "' . html_entity_decode($item['item_name'], ENT_QUOTES, 'UTF-8') . '" under ' . CLASSWORK_GRADING_LABELS[$grading_category] . ' (' . rtrim(rtrim(number_format($max_points, 2), '0'), '.') . ' pts).' : ' Not graded (learning material).');
         header('Location: classroom.php?' . $redirect_qs . $cw_back);
         exit;
@@ -1797,6 +1803,8 @@ include '../../includes/header.php';
                             </div>
                         </div>
                         <div class="cw-grading-line" id="cwGradingLine"></div>
+                        <label class="form-label small mb-1">Topic <span class="text-muted">(optional — shown in the students' email)</span></label>
+                        <input type="text" class="form-control form-control-sm mb-2" name="topic" id="cwTopic" maxlength="200" placeholder="e.g. Philippine Poetry: elements of a poem">
 
                         <label class="form-label small mb-1">Instructions</label>
                         <textarea class="form-control mb-2" name="instructions" id="cwInstructions" rows="6" required maxlength="12000" placeholder="e.g. Identify and observe the characteristics/elements of Philippine poetry. Then generate the full activity with AI below, or write it yourself."></textarea>
@@ -1986,6 +1994,8 @@ include '../../includes/header.php';
                 document.getElementById('cwAiGenerated').value = '1';
                 document.getElementById('cwAiResourceType').value = data.resource_type || '';
                 document.getElementById('cwAiAnswerKey').value = data.teacher_answer_key || '';
+                var tp = document.getElementById('cwTopic');
+                if (tp && !tp.value.trim() && data.lesson_topic) tp.value = data.lesson_topic;
                 quizQEl.value = qs.length ? JSON.stringify(qs) : '';
                 // The assessment type stays exactly what the teacher selected;
                 // a file type the AI suggests is used only if it fits that type.

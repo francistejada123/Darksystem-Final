@@ -29,6 +29,17 @@ foreach ($settings as $setting) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
         $errors[] = 'Invalid security token.';
+    } elseif (($_POST['form_action'] ?? '') === 'retry_failed_notifications') {
+        // Queue every failed / not-sent student notification again (one email per student per post, never duplicated).
+        require_once '../../includes/student_email_notify.php';
+        senEnsureSchema();
+        $n = executeQuery("UPDATE student_email_notifications SET status = 'Queued', error = NULL WHERE status IN ('Failed','Skipped')");
+        $n = $n ? $n->rowCount() : 0;
+        if ($n > 0) senScheduleDispatch();
+        logActivity($_SESSION['user_id'], 'Settings', 'Retried student email notifications', "$n email(s) queued again");
+        $_SESSION['success_message'] = $n ? "Sending $n email(s) again. Refresh in a minute to see the result." : 'There are no failed emails to send again.';
+        header('Location: email.php#notification-status');
+        exit;
     } else {
         $smtp_host = sanitize($_POST['smtp_host'] ?? '');
         $smtp_port = sanitize($_POST['smtp_port'] ?? '');
@@ -65,6 +76,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $csrf_token = generateCSRFToken();
+
+// Student email notifications (new classwork / tasks): status for the admin.
+require_once '../../includes/student_email_notify.php';
+senEnsureSchema();
+$sen_counts = [];
+foreach (getRecords("SELECT status, COUNT(*) AS n FROM student_email_notifications GROUP BY status") as $r) $sen_counts[$r['status']] = (int) $r['n'];
+$sen_rows = getRecords(
+    "SELECT n.*, TRIM(CONCAT(s.last_name, ', ', s.first_name)) AS student_name
+       FROM student_email_notifications n
+       LEFT JOIN students s ON s.student_id = n.student_id
+      ORDER BY n.id DESC LIMIT 50"
+);
+
 include '../../includes/header.php';
 ?>
 
@@ -153,6 +177,51 @@ include '../../includes/header.php';
                 </button>
             </div>
         </form>
+    </div>
+</div>
+
+<div class="card shadow-sm rounded-3 mt-4" id="notification-status">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <h5 class="mb-0"><i class="fas fa-paper-plane text-primary me-2"></i>Student email notifications</h5>
+            <?php if (!empty($sen_counts['Failed']) || !empty($sen_counts['Skipped'])): ?>
+                <form method="POST" class="m-0">
+                    <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
+                    <input type="hidden" name="form_action" value="retry_failed_notifications">
+                    <button type="submit" class="btn btn-sm btn-outline-primary"><i class="fas fa-rotate-right me-1"></i>Send failed emails again</button>
+                </form>
+            <?php endif; ?>
+        </div>
+        <p class="text-muted small mb-2">One email per student each time a teacher posts new work, sent to the email from the student's enrollment. A failed email never stops the post; it stays here until it is sent again.</p>
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <span class="badge bg-success">Sent: <?php echo (int) ($sen_counts['Sent'] ?? 0); ?></span>
+            <span class="badge bg-secondary">Sending: <?php echo (int) ($sen_counts['Queued'] ?? 0); ?></span>
+            <span class="badge bg-danger">Failed: <?php echo (int) ($sen_counts['Failed'] ?? 0); ?></span>
+            <span class="badge bg-warning text-dark">Not sent: <?php echo (int) ($sen_counts['Skipped'] ?? 0); ?></span>
+        </div>
+        <?php if (!$sen_rows): ?>
+            <p class="text-muted mb-0">No student emails yet.</p>
+        <?php else: ?>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0" style="font-size:13px;">
+                <thead><tr><th>Date</th><th>Student</th><th>Email</th><th>Subject</th><th>Status</th></tr></thead>
+                <tbody>
+                <?php foreach ($sen_rows as $r): ?>
+                    <tr>
+                        <td class="text-nowrap"><?php echo date('M j, g:i A', strtotime($r['created_at'])); ?></td>
+                        <td><?php echo htmlspecialchars($r['student_name'] ?: ('#' . $r['student_id'])); ?></td>
+                        <td><?php echo htmlspecialchars($r['email']); ?></td>
+                        <td><?php echo htmlspecialchars($r['subject']); ?></td>
+                        <td>
+                            <span class="badge <?php echo ['Sent' => 'bg-success', 'Queued' => 'bg-secondary', 'Failed' => 'bg-danger', 'Skipped' => 'bg-warning text-dark'][$r['status']] ?? 'bg-secondary'; ?>"><?php echo $r['status'] === 'Skipped' ? 'Not sent' : ($r['status'] === 'Queued' ? 'Sending' : $r['status']); ?></span>
+                            <?php if (!empty($r['error'])): ?><div class="text-danger small"><?php echo htmlspecialchars(mb_strimwidth($r['error'], 0, 140, '…')); ?></div><?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
 

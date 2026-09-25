@@ -396,10 +396,14 @@ function aim_sendTaskToClass($task_id, $teacher_id, $student_ids = null, $notify
     // caller (Teacher AI send) already emails them for the same work.
     if ($notify && $roster) {
         require_once __DIR__ . '/student_email_notify.php';
+        $taskItem = getRecord("SELECT category, topic FROM assessment_items WHERE item_id = ?", [(int) $task['item_id']]);
         senNotifyStudents(array_column($roster, 'student_id'), [
             'key' => 'task:' . (int) $task['task_id'],
             'subject_code' => $task['subject_code'], 'teacher_id' => (int) $teacher_id,
             'title' => $task['title'], 'kind' => $task['assessment_type'], 'deadline' => $task['end_at'],
+            'grading' => $taskItem['category'] ?? null,
+            'topic' => ($task['topic'] ?? '') !== '' ? $task['topic'] : ($taskItem['topic'] ?? ''),
+            'link' => 'modules/students/portal/subject.php?subject=' . rawurlencode((string) $task['subject_code']),
         ]);
     }
     return ['total' => count($roster), 'added' => $added];
