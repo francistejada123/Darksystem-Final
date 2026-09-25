@@ -61,7 +61,7 @@ function classworkEnsureSchema()
     static $done = false;
     if ($done) return;
     $done = true;
-    if (schemaIsReady('classwork_v1')) return;
+    if (schemaIsReady('classwork_v2')) return;
     $cols = function ($table) {
         return array_column(getRecords(
             "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?",
@@ -75,6 +75,7 @@ function classworkEnsureSchema()
         'max_points'         => "ADD COLUMN max_points DECIMAL(6,2) DEFAULT NULL",
         'assigned_at'        => "ADD COLUMN assigned_at DATETIME DEFAULT NULL",
         'answer_key'         => "ADD COLUMN answer_key TEXT DEFAULT NULL COMMENT 'Teacher-only answer key / rubric the AI checks against'",
+        'lock_after_due'     => "ADD COLUMN lock_after_due TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = no turn-in after the due date (teacher choice)'",
     ];
     foreach ($adds as $col => $ddl) {
         if ($a && !in_array($col, $a, true)) {
@@ -113,7 +114,7 @@ function classworkEnsureSchema()
             KEY idx_csf (assignment_id, student_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
     );
-    schemaMarkReady('classwork_v1');
+    schemaMarkReady('classwork_v2');
 }
 
 /** Save one student upload under classwork_submissions (same validation as every classroom upload). */

@@ -28,7 +28,7 @@ $assignment_id = (int) ($_POST['assignment_id'] ?? 0);
 $action = (string) ($_POST['action'] ?? '');
 
 $row = getRecord(
-    "SELECT cs.*, ca.subject_code, ca.title, ca.due_date, ca.teacher_id, ca.status AS assignment_status
+    "SELECT cs.*, ca.subject_code, ca.title, ca.due_date, ca.teacher_id, ca.status AS assignment_status, ca.lock_after_due
      FROM classwork_assignment_students cs
      INNER JOIN classwork_assignments ca ON ca.assignment_id = cs.assignment_id
      WHERE cs.assignment_id = ? AND cs.student_id = ?",
@@ -47,6 +47,11 @@ if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
     $go(['submit_error' => 'Invalid security token. Please try again.']);
 }
 $graded = $row['status'] === 'Reviewed' && $row['score'] !== null;
+// The teacher closed this classwork after its due date: no more files or turn-in.
+$closed = !empty($row['lock_after_due']) && !empty($row['due_date']) && date('Y-m-d H:i:s') > $row['due_date'];
+if ($closed && in_array($action, ['add_files', 'turn_in', 'unsubmit'], true)) {
+    $go(['submit_error' => 'This classwork is closed: your teacher does not accept work after the due date. Message your teacher if you need help.']);
+}
 $turnedIn = in_array($row['status'], ['Submitted', 'Reviewed'], true);
 
 if ($action === 'add_files') {

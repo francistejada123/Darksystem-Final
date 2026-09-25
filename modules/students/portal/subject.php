@@ -618,6 +618,8 @@ $page_title = $class['subject_name'];
                         $cw_done = in_array($cw['my_status'], ['Submitted', 'Reviewed'], true);
                         $cw_graded = $cw_state['key'] === 'graded';
                         $cw_myfiles = $cw_files_mine[(int) $cw['assignment_id'] . '|' . (int) $student_id] ?? [];
+                        // Closed by the teacher after the due date: no more turn-in.
+                        $cw_closed = !empty($cw['lock_after_due']) && !empty($cw['due_date']) && date('Y-m-d H:i:s') > $cw['due_date'];
                         $cw_fmt = function ($n) { return rtrim(rtrim(number_format((float) $n, 2), '0'), '.'); };
                         if ($cw_open_id && (int) $cw['assignment_id'] !== $cw_open_id) continue;
                         if ($act_open_id) continue;
@@ -672,6 +674,8 @@ $page_title = $class['subject_name'];
                                 <?php endif; ?>
                                 <?php if ($cw_done && !empty($cw['submitted_at'])): ?>
                                     <div class="yw-note">Turned in <?php echo htmlspecialchars(date('M j, Y g:i A', strtotime($cw['submitted_at']))); ?></div>
+                                <?php elseif ($cw_state['key'] === 'missing' && $cw_closed): ?>
+                                    <div class="yw-note yw-warn"><i class="fas fa-lock me-1"></i>Closed — your teacher does not accept work after the due date.</div>
                                 <?php elseif ($cw_state['key'] === 'missing'): ?>
                                     <div class="yw-note yw-warn">The due date has passed. You can still turn it in — it will be marked late.</div>
                                 <?php endif; ?>
@@ -679,7 +683,7 @@ $page_title = $class['subject_name'];
                                 <?php foreach ($cw_myfiles as $mf): ?>
                                     <div class="yw-myfile">
                                         <a href="classwork_file.php?type=mine&id=<?php echo (int) $mf['file_id']; ?>" target="_blank" rel="noopener"><i class="fas <?php echo classroomMimeIcon($mf['mime_type'], $mf['original_filename']); ?>"></i> <?php echo htmlspecialchars($mf['original_filename']); ?></a>
-                                        <?php if (!$cw_done): ?>
+                                        <?php if (!$cw_done && !$cw_closed): ?>
                                             <form method="POST" action="classwork_action.php">
                                                 <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
                                                 <input type="hidden" name="assignment_id" value="<?php echo (int) $cw['assignment_id']; ?>">
@@ -691,7 +695,7 @@ $page_title = $class['subject_name'];
                                     </div>
                                 <?php endforeach; ?>
 
-                                <?php if (!$cw_done): ?>
+                                <?php if (!$cw_done && !$cw_closed): ?>
                                     <form method="POST" action="classwork_action.php" enctype="multipart/form-data" class="yw-add">
                                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
                                         <input type="hidden" name="assignment_id" value="<?php echo (int) $cw['assignment_id']; ?>">
@@ -706,7 +710,7 @@ $page_title = $class['subject_name'];
                                         <input type="hidden" name="action" value="turn_in">
                                         <button type="submit" class="yw-btn yw-btn-primary"><?php echo $cw_myfiles ? 'Turn In' : 'Mark as done'; ?></button>
                                     </form>
-                                <?php elseif (!$cw_graded): ?>
+                                <?php elseif (!$cw_graded && !$cw_closed): ?>
                                     <form method="POST" action="classwork_action.php">
                                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
                                         <input type="hidden" name="assignment_id" value="<?php echo (int) $cw['assignment_id']; ?>">

@@ -260,6 +260,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
              $ai_teacher_answer_key !== '' ? mb_substr($ai_teacher_answer_key, 0, 12000) : null]
         );
 
+        if ($assignment_id && !empty($_POST['lock_after_due']) && $due_date !== null) {
+            executeQuery("UPDATE classwork_assignments SET lock_after_due = 1 WHERE assignment_id = ?", [(int) $assignment_id]);
+        }
         if (!$assignment_id) {
             $_SESSION['error_message'] = 'Could not save the assignment. Please try again.';
             header('Location: classroom.php?' . $redirect_qs . '&tab=classwork#classwork');
@@ -1212,7 +1215,7 @@ include '../../includes/header.php';
                     </div>
                     <div class="text-end text-muted" style="font-size:12px;">
                         Assigned <?php echo date('M j, Y g:i A', strtotime($item['assigned_at'] ?? $item['created_at'])); ?><br>
-                        <?php if (!empty($item['due_date'])): ?>Due <?php echo date('M j, Y g:i A', strtotime($item['due_date'])); ?><br><?php else: ?>No due date<br><?php endif; ?>
+                        <?php if (!empty($item['due_date'])): ?>Due <?php echo date('M j, Y g:i A', strtotime($item['due_date'])); ?><?php echo !empty($item['lock_after_due']) ? ' · <i class="fas fa-lock"></i> closed after due' : ''; ?><br><?php else: ?>No due date<br><?php endif; ?>
                         <i class="fas fa-users me-1"></i><?php echo count($item['students']); ?> student(s)
                     </div>
                 </div>
@@ -1371,6 +1374,10 @@ include '../../includes/header.php';
                             <div class="col-md-4">
                                 <label class="form-label small mb-1">Due Date &amp; Time</label>
                                 <input type="datetime-local" class="form-control form-control-sm" name="due_date">
+                                <label class="form-check-label small mt-1" style="display:flex;gap:6px;align-items:center;">
+                                    <input type="checkbox" class="form-check-input mt-0" name="lock_after_due" value="1">
+                                    Close after the due date (no late turn-in)
+                                </label>
                             </div>
                             <div class="col-md-4" id="cwSubtypeWrap" style="display:none;">
                                 <label class="form-label small mb-1">Examination</label>
