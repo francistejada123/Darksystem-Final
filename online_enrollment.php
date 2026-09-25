@@ -18,6 +18,18 @@ $active_sy = getRecord("SELECT * FROM school_years WHERE is_active = 1");
 $grade_levels = getOnlineGradeLevels();
 $old = $_POST;
 
+// An application already submitted on this browser is remembered (session +
+// 30-day cookie): opening / refreshing this page goes straight to its
+// Enrollment Tracking page instead of the form. "?new=1" starts a new one.
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    if (isset($_GET['new'])) {
+        oeForgetSubmitted();
+    } elseif (($oe_mine = oeSubmittedRef()) !== null) {
+        header('Location: enrollment_status.php?ref=' . urlencode($oe_mine));
+        exit;
+    }
+}
+
 // ---------------------------------------------------------------------------
 // AJAX (Step 1/2): LRN check + learner lookup.
 //   New Student / Transferee -> is this LRN still free?
@@ -308,7 +320,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $errors[] = 'This LRN is already registered. Please contact the registrar instead.';
                 }
             }
-            $dupe_app = getRecord("SELECT reference_no FROM online_applications WHERE lrn = ? AND status IN ('Pending','Under Review')", [$lrn]);
+            oeEnsureCorrectionStatus();
+            $dupe_app = getRecord("SELECT reference_no FROM online_applications WHERE lrn = ? AND status IN ('Pending','Under Review','For Correction')", [$lrn]);
             if ($dupe_app) $errors[] = 'You already have a pending application (Ref. ' . $dupe_app['reference_no'] . ').';
         }
 
@@ -422,6 +435,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $success_ref = $reference_no;
                     $old = [];
                     if ($lrn !== '') unset($_SESSION['oe_verified'][$lrn]);
+                    // Saved: go to its tracking page (a refresh there never re-submits the form).
+                    oeRememberSubmitted($reference_no);
+                    header('Location: enrollment_status.php?ref=' . urlencode($reference_no) . '&submitted=1');
+                    exit;
                 } else {
                     $errors[] = 'We could not save your application. Please try again.';
                 }

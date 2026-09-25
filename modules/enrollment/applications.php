@@ -40,13 +40,14 @@ $applications = getRecords("
     FROM online_applications a
     LEFT JOIN students st ON st.student_id = a.student_id
     WHERE $where
-    ORDER BY FIELD(a.status,'Pending','Under Review','Approved','Rejected'), a.created_at DESC
+    ORDER BY FIELD(a.status,'Pending','Under Review','For Correction','Approved','Rejected'), a.created_at DESC
 ", $params);
 
 $counts = getRecord("
     SELECT
       SUM(status = 'Pending') AS pending,
       SUM(status = 'Under Review') AS reviewing,
+      SUM(status = 'For Correction') AS correction,
       SUM(status = 'Approved') AS approved,
       SUM(status = 'Rejected') AS rejected
     FROM online_applications
@@ -80,6 +81,7 @@ include '../../includes/header.php';
         $cards = [
             ['Pending', intval($counts['pending'] ?? 0), '#B7791F', '#fef9e7', 'fa-hourglass-half'],
             ['Under Review', intval($counts['reviewing'] ?? 0), '#667085', '#f3f4f6', 'fa-magnifying-glass'],
+            ['For Correction', intval($counts['correction'] ?? 0), '#B45309', '#FFF4E5', 'fa-pen-to-square'],
             ['Approved', intval($counts['approved'] ?? 0), '#238863', '#e8f5e9', 'fa-circle-check'],
             ['Rejected', intval($counts['rejected'] ?? 0), '#C94A4A', '#fdecea', 'fa-circle-xmark'],
         ];
@@ -102,7 +104,7 @@ include '../../includes/header.php';
             <input type="text" name="search" placeholder="Search reference no., LRN or name" value="<?php echo htmlspecialchars($search); ?>" style="flex: 1; min-width: 200px;">
             <select name="status">
                 <option value="">All Status</option>
-                <?php foreach (['Pending', 'Under Review', 'Approved', 'Rejected'] as $s): ?>
+                <?php foreach (['Pending', 'Under Review', 'For Correction', 'Approved', 'Rejected'] as $s): ?>
                     <option value="<?php echo $s; ?>" <?php echo $status === $s ? 'selected' : ''; ?>><?php echo $s; ?></option>
                 <?php endforeach; ?>
             </select>
@@ -146,7 +148,7 @@ include '../../includes/header.php';
                             </td>
                         </tr>
                     <?php else: foreach ($applications as $a):
-                        $badge = ['Pending' => 'pending', 'Under Review' => 'review', 'Approved' => 'approved', 'Rejected' => 'rejected'][$a['status']] ?? 'pending'; ?>
+                        $badge = ['Pending' => 'pending', 'Under Review' => 'review', 'For Correction' => 'correction', 'Approved' => 'approved', 'Rejected' => 'rejected'][$a['status']] ?? 'pending'; ?>
                         <tr>
                             <td><span class="ref-code"><?php echo htmlspecialchars($a['reference_no']); ?></span></td>
                             <td>

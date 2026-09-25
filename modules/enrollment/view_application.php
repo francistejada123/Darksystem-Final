@@ -17,6 +17,7 @@ if (!hasAnyRole(['Administrator', 'Registrar', 'Enrollment Officer'])) {
 }
 
 $application_id = intval($_GET['id'] ?? 0);
+oeEnsureCorrectionStatus();
 $application = getRecord("SELECT * FROM online_applications WHERE application_id = ?", [$application_id]);
 
 if (!$application) {
@@ -76,7 +77,7 @@ $csrf_token = generateCSRFToken();
 
 include '../../includes/header.php';
 
-$badge = ['Pending' => 'pending', 'Under Review' => 'review', 'Approved' => 'approved', 'Rejected' => 'rejected'][$application['status']] ?? 'pending';
+$badge = ['Pending' => 'pending', 'Under Review' => 'review', 'For Correction' => 'correction', 'Approved' => 'approved', 'Rejected' => 'rejected'][$application['status']] ?? 'pending';
 $full_name = trim($application['last_name'] . ', ' . $application['first_name'] . ' ' . $application['middle_name'] . ' ' . $application['suffix']);
 ?>
 
@@ -105,7 +106,7 @@ $ar_size = function ($bytes) {
     if ($bytes >= 1024) return round($bytes / 1024) . ' KB';
     return $bytes > 0 ? $bytes . ' B' : '';
 };
-$ar_can_decide = in_array($application['status'], ['Pending', 'Under Review'], true);
+$ar_can_decide = in_array($application['status'], ['Pending', 'Under Review', 'For Correction'], true);
 ?>
 
 <style>
@@ -149,6 +150,7 @@ $ar_can_decide = in_array($application['status'], ['Pending', 'Under Review'], t
 .app-review .status-review { background: #dff3fb; color: #0b6a8a; }
 .app-review .status-approved { background: #EAF7F1; color: #238863; }
 .app-review .status-rejected { background: #FDEEEE; color: #C94A4A; }
+.app-review .status-correction { background: #FFF4E5; color: #B45309; }
 
 .app-review .content-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
 .app-review .ar-card + .ar-card { margin-top: 18px; }
@@ -423,9 +425,12 @@ html[data-theme="dark"] .ar-actionbar .btn-reject:hover { background: rgba(217,4
 <!-- Sticky action bar -->
 <div class="ar-actionbar">
     <span class="app-id">Application ID: <strong><?php echo htmlspecialchars($application['reference_no']); ?></strong></span>
-    <span class="status-badge status-<?php echo $badge; ?>" style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;<?php echo ['pending' => 'background:#FFF7E6;color:#B7791F', 'review' => 'background:#dff3fb;color:#0b6a8a', 'approved' => 'background:#EAF7F1;color:#238863', 'rejected' => 'background:#FDEEEE;color:#C94A4A'][$badge]; ?>"><?php echo htmlspecialchars($application['status']); ?></span>
+    <span class="status-badge status-<?php echo $badge; ?>" style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;<?php echo ['pending' => 'background:#FFF7E6;color:#B7791F', 'review' => 'background:#dff3fb;color:#0b6a8a', 'approved' => 'background:#EAF7F1;color:#238863', 'rejected' => 'background:#FDEEEE;color:#C94A4A', 'correction' => 'background:#FFF4E5;color:#B45309'][$badge]; ?>"><?php echo htmlspecialchars($application['status']); ?></span>
     <span class="spacer"></span>
     <?php if ($ar_can_decide): ?>
+        <button type="submit" form="arDecisionForm" name="action" value="correction" class="btn-reject" style="color:#B45309;border-color:#F5C77E;" onclick="var r=document.getElementById('arRemarks');if(!r.value.trim()){r.focus();r.placeholder='Write what the applicant needs to correct or submit, then click For Correction again.';return false;}return appConfirm(this, 'Mark this application For Correction? The applicant will see your remarks on the tracking page.', {okText: 'For Correction'})">
+            <i class="fas fa-pen-to-square" style="color:inherit"></i> For Correction
+        </button>
         <button type="submit" form="arDecisionForm" name="action" value="reject" class="btn-reject" onclick="return appConfirm(this, 'Reject this application? The remarks are sent to the applicant.', {danger: true, okText: 'Reject'})">
             <i class="fas fa-triangle-exclamation"></i> Reject Application
         </button>

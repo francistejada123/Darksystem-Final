@@ -6,7 +6,13 @@ session_start();
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/includes/enrollment_helpers_online.php';
 
+oeEnsureCorrectionStatus();
 $ref = sanitize($_GET['ref'] ?? $_POST['ref'] ?? '');
+// Opened without a reference (refresh / reopened browser): the application submitted here.
+if ($ref === '' && ($mine = oeSubmittedRef()) !== null) {
+    $ref = $mine;
+}
+$just_submitted = isset($_GET['submitted']);
 $application = null;
 $documents = [];
 $approved_lrn = null;
@@ -28,11 +34,13 @@ if ($ref !== '') {
     }
 }
 
+// status => [label shown to the applicant, colour, icon, message]
 $status_meta = [
-    'Pending' => ['warning', 'fa-hourglass-half', 'Your application is queued for review by the registrar.'],
-    'Under Review' => ['info', 'fa-magnifying-glass', 'The registrar is currently checking your documents.'],
-    'Approved' => ['success', 'fa-circle-check', 'Congratulations! Your enrollment has been approved.'],
-    'Rejected' => ['danger', 'fa-circle-xmark', 'Your application was not approved. See the remarks below.'],
+    'Pending' => ['Submitted', 'primary', 'fa-paper-plane', 'Application successfully received.'],
+    'Under Review' => ['Under Review', 'info', 'fa-magnifying-glass', 'Application is currently being checked.'],
+    'For Correction' => ['For Correction / Incomplete Requirements', 'warning', 'fa-pen-to-square', 'Please correct your details or submit the missing requirements. See the remarks below.'],
+    'Approved' => ['Approved', 'success', 'fa-circle-check', 'Enrollment has been approved.'],
+    'Rejected' => ['Not Approved', 'danger', 'fa-circle-xmark', 'Application was not approved. The reason is shown below.'],
 ];
 ?>
 <!DOCTYPE html>
@@ -90,12 +98,24 @@ $status_meta = [
 
         <?php if ($application): ?>
             <?php $m = $status_meta[$application['status']] ?? $status_meta['Pending']; ?>
+            <?php if ($just_submitted): ?>
+                <div class="alert alert-success"><i class="fas fa-circle-check me-1"></i><strong>Application submitted!</strong> Save your tracking number below. You can come back to this page any time to see your status.</div>
+            <?php endif; ?>
             <div class="card-x text-center">
-                <i class="fas <?php echo $m[1]; ?> text-<?php echo $m[0]; ?>" style="font-size:56px"></i>
-                <h4 class="mt-3 fw-bold">Application <?php echo htmlspecialchars($application['status']); ?></h4>
-                <p class="text-muted"><?php echo $m[2]; ?></p>
-                <span class="badge bg-<?php echo $m[0]; ?> px-3 py-2"><?php echo htmlspecialchars($application['reference_no']); ?></span>
+                <i class="fas <?php echo $m[2]; ?> text-<?php echo $m[1]; ?>" style="font-size:56px"></i>
+                <h4 class="mt-3 fw-bold"><?php echo htmlspecialchars($m[0]); ?></h4>
+                <p class="text-muted"><?php echo $m[3]; ?></p>
+                <div class="small text-muted mb-1">Application / Tracking Number</div>
+                <span class="badge bg-<?php echo $m[1]; ?> px-3 py-2" style="font-size:15px;letter-spacing:.5px"><?php echo htmlspecialchars($application['reference_no']); ?></span>
             </div>
+
+            <?php if ($application['status'] === 'Approved'): ?>
+                <div class="card-x text-center" style="border:2px solid #198754">
+                    <h5 class="fw-bold text-success mb-2"><i class="fas fa-user-graduate me-2"></i>Enrollment Approved</h5>
+                    <p class="mb-3">Your enrollment application has been approved. You may now access your EGradePro Student Portal.</p>
+                    <a href="student_login.php" class="btn btn-success px-4"><i class="fas fa-right-to-bracket me-1"></i>Go to Student Login</a>
+                </div>
+            <?php endif; ?>
 
             <div class="card-x">
                 <h6 class="fw-bold mb-3">Application Details</h6>
@@ -106,20 +126,22 @@ $status_meta = [
                             <div class="small text-muted">Click your LRN to show your QR code.</div>
                         </td></tr>
                     <?php endif; ?>
-                    <tr><th width="40%">Applicant</th><td><?php echo htmlspecialchars($application['last_name'] . ', ' . $application['first_name'] . ' ' . $application['middle_name']); ?></td></tr>
+                    <tr><th width="40%">Applicant Name</th><td><?php echo htmlspecialchars($application['last_name'] . ', ' . $application['first_name'] . ' ' . $application['middle_name']); ?></td></tr>
+                    <tr><th>Tracking Number</th><td><?php echo htmlspecialchars($application['reference_no']); ?></td></tr>
                     <tr><th>Grade Level</th><td><?php echo htmlspecialchars($application['grade_level']); ?><?php echo $application['strand'] ? ' — ' . htmlspecialchars($application['strand']) : ''; ?></td></tr>
                     <tr><th>Applicant Type</th><td><?php echo htmlspecialchars($application['application_type']); ?></td></tr>
                     <tr><th>Date Submitted</th><td><?php echo formatDate($application['created_at'], 'M d, Y h:i A'); ?></td></tr>
+                    <tr><th>Current Status</th><td><span class="badge bg-<?php echo $m[1]; ?>"><?php echo htmlspecialchars($m[0]); ?></span></td></tr>
                     <tr><th>Documents Uploaded</th><td><?php echo count($documents); ?> file(s)</td></tr>
                     <?php if (!empty($application['remarks'])): ?>
-                        <tr><th>Registrar's Remarks</th><td><?php echo nl2br(htmlspecialchars($application['remarks'])); ?></td></tr>
+                        <tr><th><?php echo $application['status'] === 'Rejected' ? 'Reason' : 'Remarks from the Enrollment Officer'; ?></th><td><?php echo nl2br(htmlspecialchars($application['remarks'])); ?></td></tr>
                     <?php endif; ?>
                 </table>
             </div>
         <?php endif; ?>
 
         <div class="text-center">
-            <a href="online_enrollment.php" class="btn btn-outline-primary btn-sm"><i class="fas fa-file-pen me-1"></i>New online application</a>
+            <a href="online_enrollment.php?new=1" class="btn btn-outline-primary btn-sm" onclick="return confirm('Start a new application for another learner? Your current application stays saved; keep its tracking number.');"><i class="fas fa-file-pen me-1"></i>New application for another learner</a>
         </div>
     </div>
     <script src="static/js/theme.js"></script>

@@ -658,3 +658,45 @@ function lookupLearnerForApplication($applicant_type, $lrn, $birth_date, $sy_id)
                 ? 'Record found. Your saved details are shown below — change only what is different.'
                 : 'Welcome back! We found your old record. Please review every detail and update whatever changed.'];
 }
+
+/**
+ * 'For Correction' = the registrar needs the applicant to correct details or
+ * upload missing requirements (remarks say what). Added once to the status list.
+ */
+function oeEnsureCorrectionStatus()
+{
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    if (schemaIsReady('online_app_status_v2')) return;
+    executeQuery("ALTER TABLE online_applications MODIFY status ENUM('Pending','Under Review','For Correction','Approved','Rejected') DEFAULT 'Pending'");
+    schemaMarkReady('online_app_status_v2');
+}
+
+/** Cookie that remembers a submitted application on this browser (30 days). */
+const OE_SUBMITTED_COOKIE = 'oe_ref';
+
+/** Remember the application this browser just submitted (session + cookie). */
+function oeRememberSubmitted($ref)
+{
+    $_SESSION['oe_submitted_ref'] = $ref;
+    setcookie(OE_SUBMITTED_COOKIE, $ref, [
+        'expires' => time() + 30 * 86400, 'path' => defined('BASE_URL') ? BASE_URL : '/',
+        'httponly' => true, 'samesite' => 'Lax', 'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+    ]);
+}
+
+/** Forget it (the applicant chose to start a new application). */
+function oeForgetSubmitted()
+{
+    unset($_SESSION['oe_submitted_ref']);
+    setcookie(OE_SUBMITTED_COOKIE, '', ['expires' => time() - 3600, 'path' => defined('BASE_URL') ? BASE_URL : '/']);
+}
+
+/** Reference number of the application submitted on this browser, if it still exists. */
+function oeSubmittedRef()
+{
+    $ref = (string) ($_SESSION['oe_submitted_ref'] ?? ($_COOKIE[OE_SUBMITTED_COOKIE] ?? ''));
+    if ($ref === '' || !preg_match('/^[A-Za-z0-9-]{4,20}$/', $ref)) return null;
+    return getRecord("SELECT reference_no FROM online_applications WHERE reference_no = ?", [$ref]) ? $ref : null;
+}

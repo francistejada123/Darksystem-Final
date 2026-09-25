@@ -34,6 +34,7 @@ $application_id = intval($_POST['application_id'] ?? 0);
 $action = $_POST['action'] ?? '';
 $remarks = sanitize($_POST['remarks'] ?? '');
 
+oeEnsureCorrectionStatus();
 $app = getRecord("SELECT * FROM online_applications WHERE application_id = ?", [$application_id]);
 if (!$app) {
     $_SESSION['error_message'] = 'Application not found.';
@@ -41,8 +42,28 @@ if (!$app) {
     exit;
 }
 
-if (!in_array($app['status'], ['Pending', 'Under Review'], true)) {
+if (!in_array($app['status'], ['Pending', 'Under Review', 'For Correction'], true)) {
     $_SESSION['error_message'] = 'This application was already processed.';
+    header('Location: applications.php');
+    exit;
+}
+
+// ============================================================
+// FOR CORRECTION -- the applicant must correct details / submit missing
+// requirements; the remarks (required) say what. Shown on the tracking page.
+// ============================================================
+if ($action === 'correction') {
+    if (trim($remarks) === '') {
+        $_SESSION['error_message'] = 'Write in the remarks what the applicant needs to correct or submit.';
+        header('Location: view_application.php?id=' . $application_id);
+        exit;
+    }
+    executeQuery(
+        "UPDATE online_applications SET status = 'For Correction', remarks = ?, reviewed_by = ?, reviewed_at = NOW() WHERE application_id = ?",
+        [$remarks, $_SESSION['user_id'], $application_id]
+    );
+    logActivity($_SESSION['user_id'], 'online_enrollment', 'Online application marked For Correction', "Ref: {$app['reference_no']}");
+    $_SESSION['success_message'] = 'Application ' . $app['reference_no'] . ' is marked For Correction. The applicant sees your remarks on the tracking page.';
     header('Location: applications.php');
     exit;
 }
