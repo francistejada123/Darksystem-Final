@@ -575,18 +575,33 @@ include '../../includes/header.php';
     /* Online quizzes/activities (Classwork) and student comments (Stream) */
     .cr-pills { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
     .cw-mail-line { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:8px; font-size:12px; color:#64748b; }
-    .cr-students + .cw-mail-line { margin-top:10px; padding-top:8px; border-top:1px solid var(--gc-line, #e5e7eb); }
+    .cw-work-panel + .cw-mail-line { margin-top:10px; padding-top:8px; border-top:1px solid var(--gc-line, #e5e7eb); }
     .cw-list { display:flex; flex-direction:column; }
     .cw-toggle-card { cursor:pointer; transition:box-shadow .15s ease, border-color .15s ease; }
     .cw-toggle-card:hover { border-color:var(--gc-accent, #2563eb); box-shadow:0 1px 6px rgba(37,99,235,.12); }
     .cw-toggle-card table, .cw-toggle-card form { cursor:auto; }
-    .cw-toggle-card .cr-students > summary { display:none; }
-    .cw-toggle-card:not(.is-open) .gc-work-body::after { content:'Click to view student work'; display:block; margin-top:8px; font-size:12px; color:var(--gc-accent, #2563eb); font-weight:600; }
-    /* Opened: only the title/dates and the student work (with its AI check) show. */
-    .cw-toggle-card.is-open .gc-work-body > *:not(:first-child):not(.cr-students):not(.cw-ai-all) { display:none; }
-    .cw-toggle-card.is-open .gc-work-body::after { content:'Click the card again to go back'; display:block; margin-top:8px; font-size:12px; color:var(--text-muted, #667085); }
-    .cw-toggle-card.is-open .cr-students { margin-top:12px; }
-    .cw-toggle-card.is-open .cr-students table { margin-top:0; }
+    .cw-toggle-card .gc-work-body::after { content:'Click to view student work'; display:block; margin-top:8px; font-size:12px; color:var(--gc-accent, #2563eb); font-weight:600; }
+    /* Student work popup (same look as Student Details) */
+    #cwWorkModal .modal-content { border:0; border-radius:14px; overflow:hidden; }
+    #cwWorkModal .modal-header { border-bottom:1px solid var(--gc-line, #e5e7eb); padding:14px 20px; }
+    #cwWorkModal .modal-title { font-size:17px; font-weight:700; color:var(--gc-text, #14213D); }
+    #cwWorkModal .modal-title i { color:var(--gc-accent, #1a73e8); }
+    #cwWorkModal .modal-body { background:var(--surface-muted, #f5f7fb); padding:20px; }
+    #cwWorkModal .cr-students { margin:0; font-size:13.5px; }
+    .cwm-info { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px; margin-bottom:12px; }
+    .cwm-box { background:var(--gc-card, #fff); border:1px solid var(--gc-line, #e5e7eb); border-radius:10px; padding:14px; text-align:center; }
+    .cwm-label { font-size:12px; color:var(--gc-muted, #667085); }
+    .cwm-big { font-size:20px; font-weight:800; color:var(--gc-text, #14213D); margin:2px 0; }
+    .cwm-sub { font-size:12px; color:var(--gc-muted, #667085); }
+    .cwm-counts { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+    #cwWorkModal .cw-ai-all { margin:0 0 12px; }
+    .cwm-section { background:var(--gc-card, #fff); border:1px solid var(--gc-line, #e5e7eb); border-radius:10px; overflow:hidden; }
+    .cwm-section-head { padding:12px 16px; font-weight:700; font-size:15px; color:var(--gc-text, #14213D); border-bottom:1px solid var(--gc-line, #e5e7eb); }
+    .cwm-section-head i { color:var(--gc-accent, #1a73e8); margin-right:6px; }
+    #cwWorkModal .cwm-section table { margin:0; }
+    #cwWorkModal .cwm-section th { background:var(--surface-muted, #f8fafc); text-transform:uppercase; font-size:11.5px; letter-spacing:.03em; padding:10px 16px; }
+    #cwWorkModal .cwm-section td { padding:10px 16px; vertical-align:middle; }
+    #cwWorkModal .cwm-section .cw-note { margin:0; padding:10px 16px; border-top:1px solid var(--gc-line, #e5e7eb); }
     .cw-mail-line.cw-mail-bad { color:#b91c1c; }
     .cw-mail-line .cw-mail-fail { font-weight:600; color:#b91c1c; }
     .cw-mail-line .cw-mail-err { flex-basis:100%; font-size:11px; color:#b91c1c; }
@@ -1316,8 +1331,21 @@ include '../../includes/header.php';
                         <span class="cr-pill missing">Not submitted: <?php echo (int) ($ow['total'] - $ow['submitted']); ?></span>
                     <?php endif; ?>
                 </div>
-                <details class="cr-students">
-                    <summary>Student work</summary>
+                <div class="cw-work-panel cr-students" hidden data-title="<?php echo htmlspecialchars($ow['title']); ?>">
+                    <div class="cwm-info">
+                        <div class="cwm-box">
+                            <div class="cwm-label">Online</div>
+                            <div class="cwm-big"><?php echo htmlspecialchars($ow['type_label']); ?></div>
+                            <div class="cwm-sub"><?php echo htmlspecialchars($ow['format']); ?><?php if ($ow['item']): ?> · <?php echo htmlspecialchars($ow['item']); ?><?php endif; ?></div>
+                        </div>
+                        <div class="cwm-box">
+                            <div class="cwm-label">Class average</div>
+                            <div class="cwm-big"><?php echo $ow['avg_percent'] !== null ? (int) $ow['avg_percent'] . '%' : '—'; ?></div>
+                            <div class="cwm-sub"><?php echo $ow['window'] ? htmlspecialchars($ow['window']) : 'Sent ' . htmlspecialchars($ow['sent_at']); ?></div>
+                        </div>
+                    </div>
+                    <div class="cwm-section">
+                        <div class="cwm-section-head"><i class="fas fa-users"></i> Student Work</div>
                     <table>
                         <thead><tr><th>Student</th><th>Status</th><th>Score</th><th>Submitted</th></tr></thead>
                         <tbody>
@@ -1331,7 +1359,8 @@ include '../../includes/header.php';
                         <?php endforeach; ?>
                         </tbody>
                     </table>
-                </details>
+                    </div>
+                </div>
                 </div>
             </div>
         <?php endforeach; ?>
@@ -1342,7 +1371,7 @@ include '../../includes/header.php';
             $cw_grading = $item['grading_category'] ?? classworkGradingCategory($item['category']);
             $cw_open = (int) ($_GET['open'] ?? 0) === (int) $item['assignment_id'];
         ?>
-            <div class="classwork-card gc-work cw-toggle-card<?php echo $cw_open ? ' is-open' : ''; ?>" id="cw-<?php echo (int) $item['assignment_id']; ?>" style="order:<?php echo $cw_order($item['assigned_at'] ?? $item['created_at']); ?>">
+            <div class="classwork-card gc-work cw-toggle-card<?php echo $cw_open ? ' cw-auto-open' : ''; ?>" id="cw-<?php echo (int) $item['assignment_id']; ?>" style="order:<?php echo $cw_order($item['assigned_at'] ?? $item['created_at']); ?>">
                 <span class="gc-work-icon <?php echo $cw_grading === 'PT' ? 'is-pt' : ($cw_grading === 'QA' ? 'is-exam' : ($cw_grading ? '' : 'is-assignment')); ?>"><i class="fas <?php echo $cw_grading === 'PT' ? 'fa-star' : ($cw_grading === 'QA' ? 'fa-file-signature' : ($cw_grading ? 'fa-clipboard-list' : 'fa-book-open')); ?>"></i></span>
                 <div class="gc-work-body">
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
@@ -1400,7 +1429,27 @@ include '../../includes/header.php';
                     // Turned in with a file but not checked yet (e.g. the AI timed out at turn-in).
                     $cw_unchecked = $cw_grading ? count(array_filter($item['students'], function ($s) { return $s['status'] === 'Submitted' && $s['files']; })) : 0;
                 ?>
-                <?php if ($cw_unchecked): ?>
+                <div class="cw-work-panel cr-students" hidden data-title="<?php echo htmlspecialchars($item['title']); ?>">
+                    <div class="cwm-info">
+                        <div class="cwm-box">
+                            <div class="cwm-label">Assessment</div>
+                            <div class="cwm-big"><?php echo htmlspecialchars($item['category']); ?></div>
+                            <div class="cwm-sub"><?php echo htmlspecialchars($cw_grading ? CLASSWORK_GRADING_LABELS[$cw_grading] : 'Not graded'); ?><?php if (!empty($item['max_points'])): ?> · <?php echo rtrim(rtrim(number_format((float) $item['max_points'], 2), '0'), '.'); ?> pts<?php endif; ?></div>
+                        </div>
+                        <div class="cwm-box">
+                            <div class="cwm-label">Due</div>
+                            <div class="cwm-big"><?php echo !empty($item['due_date']) ? date('M j, Y', strtotime($item['due_date'])) : 'No due date'; ?></div>
+                            <div class="cwm-sub"><?php echo !empty($item['due_date']) ? date('g:i A', strtotime($item['due_date'])) . (!empty($item['lock_after_due']) ? ' · closed after due' : '') : '&nbsp;'; ?></div>
+                        </div>
+                    </div>
+                    <div class="cwm-counts">
+                        <span class="cr-pill upcoming">Assigned: <?php echo (int) $item['counts']['assigned']; ?></span>
+                        <span class="cr-pill completed">Turned in: <?php echo (int) $item['counts']['turned_in']; ?></span>
+                        <span class="cr-pill active">Submitted late: <?php echo (int) $item['counts']['late']; ?></span>
+                        <span class="cr-pill missing">Missing: <?php echo (int) $item['counts']['missing']; ?></span>
+                        <?php if ($cw_grading): ?><span class="cr-pill graded">Graded: <?php echo (int) $item['counts']['graded']; ?></span><?php endif; ?>
+                    </div>
+                    <?php if ($cw_unchecked): ?>
                     <form method="post" class="cw-ai-form cw-ai-all" onsubmit="var b=this.querySelector('button');if(b.disabled)return false;b.disabled=true;b.innerHTML='<i class=&quot;fas fa-spinner fa-spin&quot;></i> AI is checking…';">
                         <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
                         <input type="hidden" name="form_action" value="ai_check_classwork">
@@ -1412,8 +1461,8 @@ include '../../includes/header.php';
                         <button type="submit"><i class="fas fa-robot"></i> Check all turned-in work with AI (<?php echo $cw_unchecked; ?>)</button>
                     </form>
                 <?php endif; ?>
-                <details class="cr-students" <?php echo $cw_open ? 'open' : ''; ?>>
-                    <summary>Student work</summary>
+                    <div class="cwm-section">
+                        <div class="cwm-section-head"><i class="fas fa-users"></i> Student Work</div>
                     <table>
                         <thead><tr><th>Student</th><th>Status</th><th>Work</th><?php if ($cw_grading): ?><th>Score<?php echo !empty($item['max_points']) ? ' / ' . rtrim(rtrim(number_format((float) $item['max_points'], 2), '0'), '.') : ''; ?></th><?php endif; ?></tr></thead>
                         <tbody>
@@ -1470,7 +1519,8 @@ include '../../includes/header.php';
                     <?php if ($cw_grading && !empty($item['assessment_item_id'])): ?>
                         <p class="cw-note"><i class="fas fa-table-list me-1"></i>AI checks turned-in work first and records the score; open the student's file and change the score any time — your score always wins. Scores are saved to Manage Assessment Items → <?php echo htmlspecialchars(CLASSWORK_GRADING_LABELS[$cw_grading]); ?> only.</p>
                     <?php endif; ?>
-                </details>
+                    </div>
+                </div>
                 <?php $cw_mail = $cw_email_status[(int) $item['assignment_id']] ?? []; if ($cw_mail): ?>
                     <form method="post" class="cw-mail-line<?php echo !empty($cw_mail['Failed']) ? ' cw-mail-bad' : ''; ?>">
                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
@@ -1496,20 +1546,54 @@ include '../../includes/header.php';
         <?php endforeach; endif; ?>
         </div>
     </div>
+    <!-- Student work popup: a card's panel is moved in here while it is open. -->
+    <div class="modal fade" id="cwWorkModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+            <div class="modal-content cwm-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-clipboard-list me-2"></i><span id="cwWorkTitle"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="cwWorkBody"></div>
+            </div>
+        </div>
+    </div>
     <script>
-    // Click a card to show / hide its student work. Clicks on links, buttons,
-    // score boxes and the table itself never toggle the card.
-    document.querySelectorAll('#classwork .cw-toggle-card').forEach(function (card) {
-        var det = card.querySelector('details.cr-students');
-        if (!det) return;
-        det.open = card.classList.contains('is-open');
-        det.addEventListener('toggle', function () { card.classList.toggle('is-open', det.open); });
-        card.addEventListener('click', function (e) {
-            if (e.target.closest('a, button, input, select, textarea, label, form, table, summary, .cw-note')) return;
-            if (window.getSelection && String(window.getSelection()).length) return;
-            det.open = !det.open;
+    // Click a card to see its student work in a popup. Links and buttons on the
+    // card (files, Send again, ...) keep working as usual.
+    (function () {
+        var modalEl = document.getElementById('cwWorkModal');
+        var body = document.getElementById('cwWorkBody');
+        var current = null;   // {panel, home}
+        function openFor(card) {
+            var panel = card.querySelector('.cw-work-panel');
+            if (!panel || !window.bootstrap) return;
+            var home = document.createComment('cw-panel');
+            panel.parentNode.insertBefore(home, panel);
+            body.appendChild(panel);
+            panel.hidden = false;
+            current = { panel: panel, home: home };
+            document.getElementById('cwWorkTitle').textContent = panel.getAttribute('data-title') || 'Student work';
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        }
+        modalEl.addEventListener('hidden.bs.modal', function () {
+            if (!current) return;
+            current.panel.hidden = true;
+            current.home.parentNode.insertBefore(current.panel, current.home);
+            current.home.remove();
+            current = null;
         });
-    });
+        document.querySelectorAll('#classwork .cw-toggle-card').forEach(function (card) {
+            card.addEventListener('click', function (e) {
+                if (e.target.closest('a, button, input, select, textarea, label, form')) return;
+                if (window.getSelection && String(window.getSelection()).length) return;
+                openFor(card);
+            });
+        });
+        // After saving a score the same popup opens again.
+        var auto = document.querySelector('#classwork .cw-auto-open');
+        if (auto) window.addEventListener('load', function () { openFor(auto); });
+    })();
     </script>
     <?php endif; ?>
 
