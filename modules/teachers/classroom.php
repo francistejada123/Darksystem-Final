@@ -1259,9 +1259,6 @@ include '../../includes/header.php';
     <?php if ($tab === 'classwork'): ?>
     <div id="classwork">
         <div class="gc-cw-head">
-            <button type="button" class="gc-btn-create" data-bs-toggle="modal" data-bs-target="#newAssignmentModal">
-                <i class="fas fa-plus"></i> Create
-            </button>
             <span class="gc-cw-hint">Online quizzes and activities from Teacher AI show here automatically with each student's status.</span>
         </div>
 
