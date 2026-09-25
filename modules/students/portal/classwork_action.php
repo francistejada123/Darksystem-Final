@@ -145,6 +145,25 @@ if ($action === 'turn_in') {
     exit;
 }
 
+if ($action === 'comment') {
+    // Class comment (everyone in the class sees it) or a private comment to the teacher.
+    require_once __DIR__ . '/../../../includes/classwork_comment_helpers.php';
+    $vis = ($_POST['visibility'] ?? '') === 'private' ? 'private' : 'class';
+    if (!cwcAdd($assignment_id, $vis, $student_id, 'Student', $student_id, $_POST['body'] ?? '')) {
+        $go(['submit_error' => 'Write a comment first.']);
+    }
+    $name = getRecord("SELECT TRIM(CONCAT(first_name, ' ', last_name)) AS n FROM students WHERE student_id = ?", [$student_id]);
+    $sec = getRecord("SELECT section_id FROM classwork_assignments WHERE assignment_id = ?", [$assignment_id]);
+    executeQuery(
+        "INSERT INTO notifications (user_id, title, message, type, link, created_at) VALUES (?, ?, ?, 'info', ?, NOW())",
+        [(int) $row['teacher_id'], ($name['n'] ?? 'A student') . ($vis === 'private' ? ' sent you a private comment' : ' commented') . ' on ' . $row['title'],
+         mb_strimwidth(trim((string) ($_POST['body'] ?? '')), 0, 200, '…'),
+         BASE_URL . 'modules/teachers/classroom.php?section_id=' . (int) ($sec['section_id'] ?? 0) . '&subject_code=' . urlencode($row['subject_code'])
+            . '&tab=classwork&open=' . $assignment_id . ($vis === 'private' ? '&pc=' . $student_id : '&cwc=1') . '#cw-' . $assignment_id]
+    );
+    $go(['cw_msg' => $vis === 'private' ? 'Private comment sent to your teacher.' : 'Comment posted.']);
+}
+
 if ($action === 'unsubmit') {
     if ($graded) {
         $go(['submit_error' => 'This was already checked, so it can no longer be unsubmitted. Ask your teacher if you need to change it.']);

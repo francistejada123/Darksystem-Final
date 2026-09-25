@@ -105,6 +105,9 @@ $cw_open_id = (int) ($_GET['cw'] ?? 0);
 if ($cw_open_id && !in_array($cw_open_id, array_map('intval', array_column($cw_items, 'assignment_id')), true)) {
     $cw_open_id = 0;
 }
+// Class comments + this student's private comments with the teacher (open classwork only).
+require_once '../../../includes/classwork_comment_helpers.php';
+$cw_cmts = $cw_open_id ? (cwcForAssignments([$cw_open_id], $student_id)[$cw_open_id] ?? ['class' => [], 'private' => []]) : ['class' => [], 'private' => []];
 
 $csrf_token = generateCSRFToken();
 $submitted_flash = isset($_GET['submitted']);
@@ -497,6 +500,11 @@ $page_title = $class['subject_name'];
         .msg-comment-form { display: flex; gap: 8px; align-items: flex-end; }
         .msg-comment-form textarea { flex: 1; font-size: 13px; border: 1px solid var(--portal-border); border-radius: 18px; padding: 7px 14px; resize: vertical; min-height: 36px; }
         .msg-comment-form button { border: none; background: var(--portal-primary); color: #fff; border-radius: 50%; width: 36px; height: 36px; flex-shrink: 0; }
+        .cw-cmts { margin-top: 16px; border-top: 1px solid var(--portal-border); padding-top: 12px; }
+        .cw-cmts-head { font-size: 13.5px; font-weight: 700; color: var(--portal-primary); margin-bottom: 8px; }
+        .cw-cmts-none { font-size: 12.5px; color: var(--portal-gray); margin-bottom: 8px; }
+        .cw-cmts .msg-comment.student { margin-left: 0; }
+        .cw-private .msg-comment-form textarea { min-width: 0; }
 
         .empty-state { text-align: center; padding: 48px 20px; color: var(--portal-gray); }
         .empty-state i { font-size: 40px; margin-bottom: 12px; opacity: 0.3; }
@@ -659,6 +667,23 @@ $page_title = $class['subject_name'];
                                         <?php if ($att['attachment_type'] !== 'link'): ?><a href="classwork_file.php?type=attachment&id=<?php echo (int) $att['attachment_id']; ?>&download=1" class="btn-attach-action"><i class="fas fa-download me-1"></i>Download File</a><?php endif; ?>
                                     </div>
                                 <?php endforeach; ?>
+                                <div class="cw-cmts">
+                                    <div class="cw-cmts-head"><i class="fas fa-users me-1"></i>Class comments<?php echo $cw_cmts['class'] ? ' (' . count($cw_cmts['class']) . ')' : ''; ?></div>
+                                    <?php foreach ($cw_cmts['class'] as $c): ?>
+                                        <div class="msg-comment <?php echo $c['author_role'] === 'Teacher' ? 'teacher' : 'student'; ?>">
+                                            <b><?php echo htmlspecialchars($c['author_role'] === 'Teacher' ? 'Teacher ' . $c['author_name'] : ((int) $c['author_id'] === (int) $student_id ? 'You' : $c['author_name'])); ?><small><?php echo cwcWhen($c['created_at']); ?></small></b>
+                                            <span><?php echo htmlspecialchars($c['body']); ?></span>
+                                        </div>
+                                    <?php endforeach; ?>
+                                    <form method="POST" action="classwork_action.php" class="msg-comment-form">
+                                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
+                                        <input type="hidden" name="assignment_id" value="<?php echo (int) $cw['assignment_id']; ?>">
+                                        <input type="hidden" name="action" value="comment">
+                                        <input type="hidden" name="visibility" value="class">
+                                        <textarea name="body" rows="1" maxlength="2000" required placeholder="Add a class comment…"></textarea>
+                                        <button type="submit" title="Send"><i class="fas fa-paper-plane"></i></button>
+                                    </form>
+                                </div>
                             </div>
 
                             <aside class="yw-work">
@@ -721,6 +746,25 @@ $page_title = $class['subject_name'];
                                         <button type="submit" class="yw-btn yw-btn-outline">Unsubmit</button>
                                     </form>
                                 <?php endif; ?>
+                                <?php $cw_mine = $cw_cmts['private'][(int) $student_id] ?? []; ?>
+                                <div class="cw-cmts cw-private">
+                                    <div class="cw-cmts-head"><i class="fas fa-lock me-1"></i>Private comments</div>
+                                    <?php if (!$cw_mine): ?><div class="cw-cmts-none">Only you and your teacher can see these.</div><?php endif; ?>
+                                    <?php foreach ($cw_mine as $c): ?>
+                                        <div class="msg-comment <?php echo $c['author_role'] === 'Teacher' ? 'teacher' : 'student'; ?>">
+                                            <b><?php echo htmlspecialchars($c['author_role'] === 'Teacher' ? 'Teacher ' . $c['author_name'] : ((int) $c['author_id'] === (int) $student_id ? 'You' : $c['author_name'])); ?><small><?php echo cwcWhen($c['created_at']); ?></small></b>
+                                            <span><?php echo htmlspecialchars($c['body']); ?></span>
+                                        </div>
+                                    <?php endforeach; ?>
+                                    <form method="POST" action="classwork_action.php" class="msg-comment-form">
+                                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
+                                        <input type="hidden" name="assignment_id" value="<?php echo (int) $cw['assignment_id']; ?>">
+                                        <input type="hidden" name="action" value="comment">
+                                        <input type="hidden" name="visibility" value="private">
+                                        <textarea name="body" rows="1" maxlength="2000" required placeholder="Add a private comment…"></textarea>
+                                        <button type="submit" title="Send"><i class="fas fa-paper-plane"></i></button>
+                                    </form>
+                                </div>
                             </aside>
                         </div>
                     <?php endforeach; ?>

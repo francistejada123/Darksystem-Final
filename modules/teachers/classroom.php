@@ -28,6 +28,7 @@ require_once __DIR__ . '/../../includes/ai_document_generator.php'; // aiGenerat
 require_once __DIR__ . '/../../includes/classroom_monitoring_helpers.php'; // online quizzes/activities + student comments (read-only)
 require_once __DIR__ . '/../../includes/classwork_helpers.php';   // assessment types -> WW / PT / QA, Your Work submissions, scores
 require_once __DIR__ . '/../../includes/ai_assessment_items.php'; // aiAssessmentEnsureItem(), aiAssessmentClassMeta()
+require_once __DIR__ . '/../../includes/classwork_comment_helpers.php'; // class + private comments on classwork
 classworkEnsureSchema();
 
 if (!defined('BASE_URL')) {
@@ -199,6 +200,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['error_message'] = $errors ? implode(' ', array_unique($errors)) : 'Nothing to check yet.';
         }
         header('Location: classroom.php?' . $redirect_qs . '&tab=classwork&open=' . $aid . '#cw-' . $aid);
+        exit;
+    }
+
+    // ---- Classwork comments: class (everyone) or private (teacher + one student) ----
+    if (in_array(($_POST['form_action'] ?? ''), ['classwork_comment', 'classwork_comments_seen'], true)) {
+        $aid = (int) ($_POST['assignment_id'] ?? 0);
+        $owned = getRecord("SELECT assignment_id, title, subject_code, school_year_id FROM classwork_assignments WHERE assignment_id = ? AND teacher_id = ? AND section_id = ? AND subject_code = ?", [$aid, $teacher_id, $post_section_id, $post_subject_code]);
+        if ($_POST['form_action'] === 'classwork_comments_seen') {
+            if ($owned) cwcMarkSeen($aid);
+            header('Content-Type: application/json');
+            echo json_encode(['success' => (bool) $owned]);
+            exit;
+        }
+        $vis = ($_POST['visibility'] ?? '') === 'private' ? 'private' : 'class';
+        $sid = (int) ($_POST['student_id'] ?? 0);
+        $back = '&tab=classwork&open=' . $aid . ($vis === 'private' ? '&pc=' . $sid : '&cwc=1') . '#cw-' . $aid;
+        if (!$owned || ($vis === 'private' && !getRecord("SELECT 1 FROM classwork_assignment_students WHERE assignment_id = ? AND student_id = ?", [$aid, $sid]))) {
+            $_SESSION['error_message'] = 'That classwork could not be found.';
+        } elseif (!cwcAdd($aid, $vis, $vis === 'private' ? $sid : null, 'Teacher', $teacher_id, $_POST['body'] ?? '')) {
+            $_SESSION['error_message'] = 'Write a comment first.';
+        } else {
+            cwcMarkSeen($aid);
+            if ($vis === 'private') {
+                // The student's portal bell: the teacher answered privately.
+                executeQuery(
+                    "INSERT INTO student_support_messages
+                        (teacher_id, student_id, subject_code, school_year_id, support_type, final_message, source, status, is_seen, sent_at)
+                     VALUES (?, ?, ?, ?, 'Classwork', ?, 'classwork', 'Sent', 0, NOW())",
+                    [$teacher_id, $sid, $owned['subject_code'], (int) $owned['school_year_id'],
+                     'Your teacher left a private comment on "' . html_entity_decode($owned['title'], ENT_QUOTES, 'UTF-8') . '". Open it in Classwork to read and reply.']
+                );
+            }
+        }
+        header('Location: classroom.php?' . $redirect_qs . $back);
         exit;
     }
 
@@ -486,6 +521,7 @@ $classwork_items = [];
 $roster = [];
 $online_work = ['sent' => [], 'prepared' => []];
 $cw_email_status = [];
+$cw_comments = [];
 $student_comments = [];
 
 if ($authorized) {
@@ -557,6 +593,7 @@ if ($authorized) {
         }
         unset($c);
         $cw_email_status = classworkEmailStatus(array_column($classwork_items, 'assignment_id'));
+        $cw_comments = cwcForAssignments(array_column($classwork_items, 'assignment_id'));
     }
 
     $roster = classroomSectionStudents($section_id, $school_year_id);
@@ -586,22 +623,40 @@ include '../../includes/header.php';
     #cwWorkModal .modal-header { border-bottom:1px solid var(--gc-line, #e5e7eb); padding:14px 20px; }
     #cwWorkModal .modal-title { font-size:17px; font-weight:700; color:var(--gc-text, #14213D); }
     #cwWorkModal .modal-title i { color:var(--gc-accent, #1a73e8); }
-    #cwWorkModal .modal-body { background:var(--surface-muted, #f5f7fb); padding:20px; }
+    #cwWorkModal .modal-body { background:var(--surface-muted, #f5f7fb); padding:16px 18px; }
     #cwWorkModal .cr-students { margin:0; font-size:13.5px; }
-    .cwm-info { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px; margin-bottom:12px; }
-    .cwm-box { background:var(--gc-card, #fff); border:1px solid var(--gc-line, #e5e7eb); border-radius:10px; padding:14px; text-align:center; }
-    .cwm-label { font-size:12px; color:var(--gc-muted, #667085); }
-    .cwm-big { font-size:20px; font-weight:800; color:var(--gc-text, #14213D); margin:2px 0; }
-    .cwm-sub { font-size:12px; color:var(--gc-muted, #667085); }
-    .cwm-counts { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
-    #cwWorkModal .cw-ai-all { margin:0 0 12px; }
+    .cwm-meta { display:flex; flex-wrap:wrap; gap:6px 16px; font-size:13px; color:var(--gc-muted, #667085); margin-bottom:10px; }
+    .cwm-meta i { margin-right:3px; }
+    .cwm-counts { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
+    .cwm-tabs { display:flex; gap:4px; border-bottom:1px solid var(--gc-line, #e5e7eb); margin-bottom:12px; }
+    .cwm-tabs button { border:0; background:none; padding:8px 12px; font-size:13.5px; font-weight:600; color:var(--gc-muted, #667085); border-bottom:2px solid transparent; margin-bottom:-1px; }
+    .cwm-tabs button.active { color:var(--gc-accent, #1a73e8); border-bottom-color:var(--gc-accent, #1a73e8); }
+    .cwm-tabs button i { margin-right:5px; }
+    #cwWorkModal .cw-ai-all { margin:0 0 10px; }
     .cwm-section { background:var(--gc-card, #fff); border:1px solid var(--gc-line, #e5e7eb); border-radius:10px; overflow:hidden; }
-    .cwm-section-head { padding:12px 16px; font-weight:700; font-size:15px; color:var(--gc-text, #14213D); border-bottom:1px solid var(--gc-line, #e5e7eb); }
-    .cwm-section-head i { color:var(--gc-accent, #1a73e8); margin-right:6px; }
-    #cwWorkModal .cwm-section table { margin:0; }
-    #cwWorkModal .cwm-section th { background:var(--surface-muted, #f8fafc); text-transform:uppercase; font-size:11.5px; letter-spacing:.03em; padding:10px 16px; }
-    #cwWorkModal .cwm-section td { padding:10px 16px; vertical-align:middle; }
-    #cwWorkModal .cwm-section .cw-note { margin:0; padding:10px 16px; border-top:1px solid var(--gc-line, #e5e7eb); }
+    #cwWorkModal .cwm-section table { margin:0; width:100%; }
+    #cwWorkModal .cwm-section th { background:var(--surface-muted, #f8fafc); text-transform:uppercase; font-size:11px; letter-spacing:.03em; padding:8px 12px; }
+    #cwWorkModal .cwm-section td { padding:8px 12px; vertical-align:middle; }
+    #cwWorkModal .cwm-section .cwm-c { width:70px; text-align:center; }
+    #cwWorkModal .cwm-section .cw-note { margin:0; padding:8px 12px; font-size:12px; border-top:1px solid var(--gc-line, #e5e7eb); }
+    .cwm-empty { padding:22px; text-align:center; color:var(--gc-muted, #667085); font-size:13px; }
+    .cwm-empty i { margin-right:6px; }
+    .cwm-pc-btn { border:1px solid var(--gc-line, #e5e7eb); background:var(--gc-card, #fff); border-radius:16px; padding:3px 10px; font-size:12.5px; color:var(--gc-muted, #667085); }
+    .cwm-pc-btn:hover { color:var(--gc-accent, #1a73e8); border-color:var(--gc-accent, #1a73e8); }
+    .cwm-pc-btn.has-new { background:#fef3c7; border-color:#f59e0b; color:#92400e; font-weight:700; }
+    #cwWorkModal .cwm-pc-row td { background:var(--surface-muted, #f8fafc); padding:10px 12px; }
+    .cwm-thread-head { font-size:12px; font-weight:600; color:var(--gc-muted, #667085); margin-bottom:8px; }
+    .cwm-class-thread { padding:12px; }
+    .cwm-none { font-size:12.5px; color:var(--gc-muted, #667085); margin-bottom:8px; }
+    .cwm-cmt { font-size:13px; padding:7px 10px; border-radius:8px; margin-bottom:6px; background:var(--gc-card, #fff); border:1px solid var(--gc-line, #e5e7eb); }
+    .cwm-cmt.is-teacher { background:#eef4ff; border-color:#d6e4ff; }
+    .cwm-cmt b { font-size:12.5px; }
+    .cwm-cmt small { color:var(--gc-muted, #667085); margin-left:6px; font-size:11px; }
+    .cwm-cmt div { margin-top:2px; white-space:normal; }
+    .cwm-cmt-form { display:flex; gap:8px; align-items:flex-end; margin-top:8px; }
+    .cwm-cmt-form textarea { flex:1; font-size:13px; border:1px solid var(--gc-line, #d0d5dd); border-radius:18px; padding:7px 14px; resize:vertical; min-height:36px; background:var(--gc-card, #fff); color:var(--gc-text, #14213D); }
+    .cwm-cmt-form button { border:0; background:var(--gc-accent, #1a73e8); color:#fff; border-radius:50%; width:36px; height:36px; flex-shrink:0; }
+    .cw-new-cmt { display:inline-block; margin-left:8px; font-size:11px; font-weight:700; color:#92400e; background:#fef3c7; border-radius:10px; padding:1px 8px; vertical-align:middle; }
     .cw-mail-line.cw-mail-bad { color:#b91c1c; }
     .cw-mail-line .cw-mail-fail { font-weight:600; color:#b91c1c; }
     .cw-mail-line .cw-mail-err { flex-basis:100%; font-size:11px; color:#b91c1c; }
@@ -1332,20 +1387,12 @@ include '../../includes/header.php';
                     <?php endif; ?>
                 </div>
                 <div class="cw-work-panel cr-students" hidden data-title="<?php echo htmlspecialchars($ow['title']); ?>">
-                    <div class="cwm-info">
-                        <div class="cwm-box">
-                            <div class="cwm-label">Online</div>
-                            <div class="cwm-big"><?php echo htmlspecialchars($ow['type_label']); ?></div>
-                            <div class="cwm-sub"><?php echo htmlspecialchars($ow['format']); ?><?php if ($ow['item']): ?> · <?php echo htmlspecialchars($ow['item']); ?><?php endif; ?></div>
-                        </div>
-                        <div class="cwm-box">
-                            <div class="cwm-label">Class average</div>
-                            <div class="cwm-big"><?php echo $ow['avg_percent'] !== null ? (int) $ow['avg_percent'] . '%' : '—'; ?></div>
-                            <div class="cwm-sub"><?php echo $ow['window'] ? htmlspecialchars($ow['window']) : 'Sent ' . htmlspecialchars($ow['sent_at']); ?></div>
-                        </div>
+                    <div class="cwm-meta">
+                        <span><?php echo htmlspecialchars($ow['type_label']); ?> · <?php echo htmlspecialchars($ow['format']); ?><?php if ($ow['item']): ?> · <?php echo htmlspecialchars($ow['item']); ?><?php endif; ?></span>
+                        <span><i class="far fa-clock"></i> <?php echo $ow['window'] ? htmlspecialchars($ow['window']) : 'Sent ' . htmlspecialchars($ow['sent_at']); ?></span>
+                        <?php if ($ow['avg_percent'] !== null): ?><span>Class average <?php echo (int) $ow['avg_percent']; ?>%</span><?php endif; ?>
                     </div>
                     <div class="cwm-section">
-                        <div class="cwm-section-head"><i class="fas fa-users"></i> Student Work</div>
                     <table>
                         <thead><tr><th>Student</th><th>Status</th><th>Score</th><th>Submitted</th></tr></thead>
                         <tbody>
@@ -1377,7 +1424,9 @@ include '../../includes/header.php';
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
                     <div>
                         <span class="badge category-badge mb-1 cw-cat-<?php echo strtolower($cw_grading ?: 'none'); ?>"><?php echo htmlspecialchars($item['category']); ?> · <?php echo htmlspecialchars($cw_grading ? CLASSWORK_GRADING_LABELS[$cw_grading] : 'Not graded'); ?><?php if (!empty($item['max_points'])): ?> · <?php echo rtrim(rtrim(number_format((float) $item['max_points'], 2), '0'), '.'); ?> pts<?php endif; ?></span>
-                        <h6 class="mb-1"><?php echo htmlspecialchars($item['title']); ?></h6>
+                        <h6 class="mb-1"><?php echo htmlspecialchars($item['title']); ?>
+                            <?php $cw_unseen = (int) ($cw_comments[(int) $item['assignment_id']]['unseen'] ?? 0); if ($cw_unseen): ?><span class="cw-new-cmt"><i class="fas fa-comment-dots"></i> <?php echo $cw_unseen; ?> new</span><?php endif; ?>
+                        </h6>
                     </div>
                     <div class="text-end text-muted" style="font-size:12px;">
                         Assigned <?php echo date('M j, Y g:i A', strtotime($item['assigned_at'] ?? $item['created_at'])); ?><br>
@@ -1429,26 +1478,34 @@ include '../../includes/header.php';
                     // Turned in with a file but not checked yet (e.g. the AI timed out at turn-in).
                     $cw_unchecked = $cw_grading ? count(array_filter($item['students'], function ($s) { return $s['status'] === 'Submitted' && $s['files']; })) : 0;
                 ?>
-                <div class="cw-work-panel cr-students" hidden data-title="<?php echo htmlspecialchars($item['title']); ?>">
-                    <div class="cwm-info">
-                        <div class="cwm-box">
-                            <div class="cwm-label">Assessment</div>
-                            <div class="cwm-big"><?php echo htmlspecialchars($item['category']); ?></div>
-                            <div class="cwm-sub"><?php echo htmlspecialchars($cw_grading ? CLASSWORK_GRADING_LABELS[$cw_grading] : 'Not graded'); ?><?php if (!empty($item['max_points'])): ?> · <?php echo rtrim(rtrim(number_format((float) $item['max_points'], 2), '0'), '.'); ?> pts<?php endif; ?></div>
-                        </div>
-                        <div class="cwm-box">
-                            <div class="cwm-label">Due</div>
-                            <div class="cwm-big"><?php echo !empty($item['due_date']) ? date('M j, Y', strtotime($item['due_date'])) : 'No due date'; ?></div>
-                            <div class="cwm-sub"><?php echo !empty($item['due_date']) ? date('g:i A', strtotime($item['due_date'])) . (!empty($item['lock_after_due']) ? ' · closed after due' : '') : '&nbsp;'; ?></div>
-                        </div>
+                <?php
+                    $cw_aid = (int) $item['assignment_id'];
+                    $cw_cm = $cw_comments[$cw_aid] ?? ['class' => [], 'private' => [], 'unseen' => 0];
+                    $cw_hidden = '<input type="hidden" name="csrf_token" value="' . htmlspecialchars($csrf_token) . '">'
+                        . '<input type="hidden" name="section_id" value="' . (int) $section_id . '">'
+                        . '<input type="hidden" name="subject_code" value="' . htmlspecialchars($subject_code) . '">'
+                        . '<input type="hidden" name="school_year_id" value="' . (int) $school_year_id . '">'
+                        . '<input type="hidden" name="term" value="' . htmlspecialchars($term) . '">'
+                        . '<input type="hidden" name="assignment_id" value="' . $cw_aid . '">';
+                    $cw_cols = $cw_grading ? 5 : 4;
+                ?>
+                <div class="cw-work-panel cr-students" hidden data-title="<?php echo htmlspecialchars($item['title']); ?>" data-aid="<?php echo $cw_aid; ?>" data-unseen="<?php echo (int) $cw_cm['unseen']; ?>">
+                    <div class="cwm-meta">
+                        <span><?php echo htmlspecialchars($item['category']); ?> · <?php echo htmlspecialchars($cw_grading ? CLASSWORK_GRADING_LABELS[$cw_grading] : 'Not graded'); ?><?php if (!empty($item['max_points'])): ?> · <?php echo rtrim(rtrim(number_format((float) $item['max_points'], 2), '0'), '.'); ?> pts<?php endif; ?></span>
+                        <span><i class="far fa-clock"></i> <?php echo !empty($item['due_date']) ? 'Due ' . date('M j, Y g:i A', strtotime($item['due_date'])) . (!empty($item['lock_after_due']) ? ' · closed after due' : '') : 'No due date'; ?></span>
                     </div>
                     <div class="cwm-counts">
                         <span class="cr-pill upcoming">Assigned: <?php echo (int) $item['counts']['assigned']; ?></span>
                         <span class="cr-pill completed">Turned in: <?php echo (int) $item['counts']['turned_in']; ?></span>
-                        <span class="cr-pill active">Submitted late: <?php echo (int) $item['counts']['late']; ?></span>
+                        <span class="cr-pill active">Late: <?php echo (int) $item['counts']['late']; ?></span>
                         <span class="cr-pill missing">Missing: <?php echo (int) $item['counts']['missing']; ?></span>
                         <?php if ($cw_grading): ?><span class="cr-pill graded">Graded: <?php echo (int) $item['counts']['graded']; ?></span><?php endif; ?>
                     </div>
+                    <div class="cwm-tabs" role="tablist">
+                        <button type="button" class="active" data-cwtab="work"><i class="fas fa-users"></i> Student Work</button>
+                        <button type="button" data-cwtab="comments"><i class="fas fa-comments"></i> Class comments<?php echo $cw_cm['class'] ? ' (' . count($cw_cm['class']) . ')' : ''; ?></button>
+                    </div>
+                    <div class="cwm-pane" data-pane="work">
                     <?php if ($cw_unchecked): ?>
                     <form method="post" class="cw-ai-form cw-ai-all" onsubmit="var b=this.querySelector('button');if(b.disabled)return false;b.disabled=true;b.innerHTML='<i class=&quot;fas fa-spinner fa-spin&quot;></i> AI is checking…';">
                         <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
@@ -1462,11 +1519,16 @@ include '../../includes/header.php';
                     </form>
                 <?php endif; ?>
                     <div class="cwm-section">
-                        <div class="cwm-section-head"><i class="fas fa-users"></i> Student Work</div>
+                    <?php if (!$item['students']): ?>
+                        <div class="cwm-empty"><i class="fas fa-user-slash"></i> No students assigned yet.</div>
+                    <?php else: ?>
                     <table>
-                        <thead><tr><th>Student</th><th>Status</th><th>Work</th><?php if ($cw_grading): ?><th>Score<?php echo !empty($item['max_points']) ? ' / ' . rtrim(rtrim(number_format((float) $item['max_points'], 2), '0'), '.') : ''; ?></th><?php endif; ?></tr></thead>
+                        <thead><tr><th>Student</th><th>Status</th><th>Work</th><?php if ($cw_grading): ?><th>Score<?php echo !empty($item['max_points']) ? ' / ' . rtrim(rtrim(number_format((float) $item['max_points'], 2), '0'), '.') : ''; ?></th><?php endif; ?><th class="cwm-c">Private</th></tr></thead>
                         <tbody>
-                        <?php foreach ($item['students'] as $st): ?>
+                        <?php foreach ($item['students'] as $st):
+                            $cw_pc = $cw_cm['private'][(int) $st['student_id']] ?? [];
+                            $cw_pc_new = count(array_filter($cw_pc, function ($c) { return $c['author_role'] === 'Student' && !(int) $c['seen_by_teacher']; }));
+                        ?>
                             <tr>
                                 <td><?php echo htmlspecialchars($st['last_name'] . ', ' . $st['first_name']); ?></td>
                                 <td>
@@ -1512,13 +1574,61 @@ include '../../includes/header.php';
                                     <?php endif; ?>
                                 </td>
                                 <?php endif; ?>
+                                <td class="cwm-c">
+                                    <button type="button" class="cwm-pc-btn<?php echo $cw_pc_new ? ' has-new' : ''; ?>" data-sid="<?php echo (int) $st['student_id']; ?>" title="Private comments with this student">
+                                        <i class="far fa-comment"></i><?php echo $cw_pc ? ' ' . count($cw_pc) : ''; ?>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="cwm-pc-row" data-sid="<?php echo (int) $st['student_id']; ?>" hidden>
+                                <td colspan="<?php echo $cw_cols; ?>">
+                                    <div class="cwm-thread">
+                                        <div class="cwm-thread-head"><i class="fas fa-lock"></i> Private comments with <?php echo htmlspecialchars($st['first_name']); ?> — only you and this student can see these</div>
+                                        <?php if (!$cw_pc): ?><div class="cwm-none">No private comments yet.</div><?php endif; ?>
+                                        <?php foreach ($cw_pc as $c): ?>
+                                            <div class="cwm-cmt <?php echo $c['author_role'] === 'Teacher' ? 'is-teacher' : 'is-student'; ?>">
+                                                <b><?php echo htmlspecialchars($c['author_role'] === 'Teacher' ? 'You' : $c['author_name']); ?></b><small><?php echo cwcWhen($c['created_at']); ?></small>
+                                                <div><?php echo nl2br(htmlspecialchars($c['body'])); ?></div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                        <form method="post" class="cwm-cmt-form">
+                                            <?php echo $cw_hidden; ?>
+                                            <input type="hidden" name="form_action" value="classwork_comment">
+                                            <input type="hidden" name="visibility" value="private">
+                                            <input type="hidden" name="student_id" value="<?php echo (int) $st['student_id']; ?>">
+                                            <textarea name="body" rows="1" maxlength="2000" required placeholder="Add a private comment…"></textarea>
+                                            <button type="submit" title="Send"><i class="fas fa-paper-plane"></i></button>
+                                        </form>
+                                    </div>
+                                </td>
                             </tr>
                         <?php endforeach; ?>
                         </tbody>
                     </table>
-                    <?php if ($cw_grading && !empty($item['assessment_item_id'])): ?>
-                        <p class="cw-note"><i class="fas fa-table-list me-1"></i>AI checks turned-in work first and records the score; open the student's file and change the score any time — your score always wins. Scores are saved to Manage Assessment Items → <?php echo htmlspecialchars(CLASSWORK_GRADING_LABELS[$cw_grading]); ?> only.</p>
                     <?php endif; ?>
+                    <?php if ($cw_grading && !empty($item['assessment_item_id'])): ?>
+                        <p class="cw-note"><i class="fas fa-circle-info me-1"></i>AI checks turned-in work first; your score always wins. Saved to <?php echo htmlspecialchars(CLASSWORK_GRADING_LABELS[$cw_grading]); ?>.</p>
+                    <?php endif; ?>
+                    </div>
+                    </div>
+                    <div class="cwm-pane" data-pane="comments" hidden>
+                        <div class="cwm-section cwm-thread cwm-class-thread">
+                            <div class="cwm-thread-head"><i class="fas fa-users"></i> Class comments — everyone in the class can see these</div>
+                            <?php if (!$cw_cm['class']): ?><div class="cwm-none">No class comments yet.</div><?php endif; ?>
+                            <?php foreach ($cw_cm['class'] as $c): ?>
+                                <div class="cwm-cmt <?php echo $c['author_role'] === 'Teacher' ? 'is-teacher' : 'is-student'; ?>">
+                                    <b><?php echo htmlspecialchars($c['author_role'] === 'Teacher' ? 'You' : $c['author_name']); ?></b><small><?php echo cwcWhen($c['created_at']); ?></small>
+                                    <div><?php echo nl2br(htmlspecialchars($c['body'])); ?></div>
+                                </div>
+                            <?php endforeach; ?>
+                            <form method="post" class="cwm-cmt-form">
+                                <?php echo $cw_hidden; ?>
+                                <input type="hidden" name="form_action" value="classwork_comment">
+                                <input type="hidden" name="visibility" value="class">
+                                <textarea name="body" rows="1" maxlength="2000" required placeholder="Add a class comment…"></textarea>
+                                <button type="submit" title="Post"><i class="fas fa-paper-plane"></i></button>
+                            </form>
+                        </div>
                     </div>
                 </div>
                 <?php $cw_mail = $cw_email_status[(int) $item['assignment_id']] ?? []; if ($cw_mail): ?>
@@ -1548,7 +1658,7 @@ include '../../includes/header.php';
     </div>
     <!-- Student work popup: a card's panel is moved in here while it is open. -->
     <div class="modal fade" id="cwWorkModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
             <div class="modal-content cwm-content">
                 <div class="modal-header">
                     <h5 class="modal-title"><i class="fas fa-clipboard-list me-2"></i><span id="cwWorkTitle"></span></h5>
@@ -1565,8 +1675,10 @@ include '../../includes/header.php';
         var modalEl = document.getElementById('cwWorkModal');
         var body = document.getElementById('cwWorkBody');
         var current = null;   // {panel, home}
-        function openFor(card) {
-            var panel = card.querySelector('.cw-work-panel');
+        var card = null;
+        function openFor(c) {
+            card = c;
+            var panel = c.querySelector('.cw-work-panel');
             if (!panel || !window.bootstrap) return;
             var home = document.createComment('cw-panel');
             panel.parentNode.insertBefore(home, panel);
@@ -1575,7 +1687,43 @@ include '../../includes/header.php';
             current = { panel: panel, home: home };
             document.getElementById('cwWorkTitle').textContent = panel.getAttribute('data-title') || 'Student work';
             bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            // New student comments on this classwork are now seen.
+            if (panel.getAttribute('data-unseen') > 0) {
+                var fd = new FormData();
+                fd.append('form_action', 'classwork_comments_seen');
+                fd.append('assignment_id', panel.getAttribute('data-aid'));
+                ['csrf_token', 'section_id', 'subject_code', 'school_year_id', 'term'].forEach(function (n) {
+                    var i = panel.querySelector('input[name=' + n + ']'); if (i) fd.append(n, i.value);
+                });
+                fetch('classroom.php', { method: 'POST', body: fd }).catch(function () {});
+                panel.setAttribute('data-unseen', '0');
+                var badge = card.querySelector('.cw-new-cmt'); if (badge) badge.remove();
+            }
         }
+        function showTab(panel, name) {
+            panel.querySelectorAll('.cwm-tabs button').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-cwtab') === name); });
+            panel.querySelectorAll('.cwm-pane').forEach(function (p) { p.hidden = p.getAttribute('data-pane') !== name; });
+        }
+        function togglePrivate(panel, sid, force) {
+            var row = panel.querySelector('.cwm-pc-row[data-sid="' + sid + '"]');
+            if (!row) return;
+            row.hidden = force === undefined ? !row.hidden : !force;
+            if (!row.hidden) { var t = row.querySelector('textarea'); if (t) t.focus(); }
+        }
+        body.addEventListener('click', function (e) {
+            var panel = body.querySelector('.cw-work-panel');
+            var tab = e.target.closest('.cwm-tabs button');
+            if (tab && panel) { showTab(panel, tab.getAttribute('data-cwtab')); return; }
+            var pc = e.target.closest('.cwm-pc-btn');
+            if (pc && panel) { pc.classList.remove('has-new'); togglePrivate(panel, pc.getAttribute('data-sid')); }
+        });
+        // Enter sends a comment; Shift+Enter adds a new line.
+        body.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey && e.target.matches('.cwm-cmt-form textarea') && e.target.value.trim() !== '') {
+                e.preventDefault();
+                e.target.form.requestSubmit ? e.target.form.requestSubmit() : e.target.form.submit();
+            }
+        });
         modalEl.addEventListener('hidden.bs.modal', function () {
             if (!current) return;
             current.panel.hidden = true;
@@ -1592,7 +1740,13 @@ include '../../includes/header.php';
         });
         // After saving a score the same popup opens again.
         var auto = document.querySelector('#classwork .cw-auto-open');
-        if (auto) window.addEventListener('load', function () { openFor(auto); });
+        if (auto) window.addEventListener('load', function () {
+            openFor(auto);
+            var q = new URLSearchParams(location.search), panel = body.querySelector('.cw-work-panel');
+            if (!panel) return;
+            if (q.get('cwc')) showTab(panel, 'comments');
+            if (q.get('pc')) togglePrivate(panel, q.get('pc'), true);
+        });
     })();
     </script>
     <?php endif; ?>
