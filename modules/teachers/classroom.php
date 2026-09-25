@@ -580,8 +580,13 @@ include '../../includes/header.php';
     .cw-toggle-card { cursor:pointer; transition:box-shadow .15s ease, border-color .15s ease; }
     .cw-toggle-card:hover { border-color:var(--gc-accent, #2563eb); box-shadow:0 1px 6px rgba(37,99,235,.12); }
     .cw-toggle-card table, .cw-toggle-card form { cursor:auto; }
-    .cw-toggle-card .cr-students:not([open]) > summary { display:none; }
+    .cw-toggle-card .cr-students > summary { display:none; }
     .cw-toggle-card:not(.is-open) .gc-work-body::after { content:'Click to view student work'; display:block; margin-top:8px; font-size:12px; color:var(--gc-accent, #2563eb); font-weight:600; }
+    /* Opened: only the title/dates and the student work (with its AI check) show. */
+    .cw-toggle-card.is-open .gc-work-body > *:not(:first-child):not(.cr-students):not(.cw-ai-all) { display:none; }
+    .cw-toggle-card.is-open .gc-work-body::after { content:'Click the card again to go back'; display:block; margin-top:8px; font-size:12px; color:var(--text-muted, #667085); }
+    .cw-toggle-card.is-open .cr-students { margin-top:12px; }
+    .cw-toggle-card.is-open .cr-students table { margin-top:0; }
     .cw-mail-line.cw-mail-bad { color:#b91c1c; }
     .cw-mail-line .cw-mail-fail { font-weight:600; color:#b91c1c; }
     .cw-mail-line .cw-mail-err { flex-basis:100%; font-size:11px; color:#b91c1c; }
