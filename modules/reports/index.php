@@ -26,7 +26,8 @@ $base_url = '../../';
 $active_sy = getRecord("SELECT * FROM school_years WHERE is_active = 1");
 
 // Get sections for filtering
-$sections = getRecords("SELECT section_id, section_name, grade_level FROM sections WHERE is_active = 1 ORDER BY grade_level, section_name");
+$sections = getRecords("SELECT section_id, section_name, grade_level FROM sections WHERE is_active = 1
+                        ORDER BY CAST(REPLACE(grade_level, 'Grade ', '') AS UNSIGNED), section_name");
 
 // Get grade levels
 $grade_levels = ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
@@ -78,9 +79,27 @@ include '../../includes/header.php';
 .rep-page .accordion-body { background: var(--surface-elevated, var(--surface)); }
 .rep-page .table > :not(caption) > * > * { padding: 14px 16px; }
 .rep-page .table thead th { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600; color: var(--text-muted); vertical-align: middle; }
-.rep-page .table tbody td { font-size: 13.5px; vertical-align: middle; }
+.rep-page .table tbody td { font-size: 15px; vertical-align: middle; }
 .rep-page .table tbody td strong,
 .rep-page .table tfoot td { font-weight: 700; }
+/* ---- Bigger, easier-to-read text ---- */
+.rep-page .rep-title { font-size: 28px !important; }
+.rep-page .rep-card-title, .rep-page .card-header h5 { font-size: 20px !important; }
+.rep-page h5.mb-3, .rep-page h5.mb-0 { font-size: 18px !important; }
+.rep-page .rep-label { font-size: 15px !important; color: var(--ink) !important; }
+.rep-page .rep-input { font-size: 15.5px !important; height: 46px !important; }
+.rep-page .rep-hint { font-size: 14px !important; }
+.rep-page .rep-btn { font-size: 15.5px !important; height: 46px !important; }
+.rep-page .accordion-button { font-size: 17.5px !important; }
+.rep-page .table thead th { font-size: 12.5px !important; }
+.rep-page .table tbody td, .rep-page .table tfoot td { font-size: 15.5px !important; }
+.rep-page .table .badge { font-size: 14px !important; padding: 5px 10px; min-width: 30px; }
+.rep-page .list-group-item { font-size: 16px !important; }
+.rep-page .rep-tag, .rep-page .rep-pill { font-size: 14px !important; }
+.rep-page .rep-updated { font-size: 16px !important; }
+.rep-page .accordion-body p, .rep-page .accordion-body .text-muted { font-size: 15px; }
+.rep-page #reportSection optgroup { font-weight: 700; font-style: normal; color: #14213D; }
+.rep-page #reportSection option { font-weight: 400; color: #1f2937; }
 </style>
 
 <div class="row mt-4 rep-page">
@@ -256,13 +275,18 @@ include '../../includes/header.php';
                 <label class="rep-label">Section</label>
                 <select name="section_id" id="reportSection" class="form-select rep-input">
                     <option value="">All Sections</option>
-                    <?php foreach ($sections as $sec): ?>
+                    <?php $sec_group = null; foreach ($sections as $sec):
+                        if ($sec['grade_level'] !== $sec_group):
+                            if ($sec_group !== null) echo '</optgroup>';
+                            $sec_group = $sec['grade_level']; ?>
+                        <optgroup label="<?php echo htmlspecialchars($sec_group); ?>" data-grade="<?php echo htmlspecialchars($sec_group); ?>">
+                        <?php endif; ?>
                         <option value="<?php echo $sec['section_id']; ?>"
                                 data-grade="<?php echo htmlspecialchars($sec['grade_level']); ?>"
                                 <?php echo ($section_id === (int)$sec['section_id']) ? 'selected' : ''; ?>>
                             <?php echo htmlspecialchars($sec['section_name']); ?>
                         </option>
-                    <?php endforeach; ?>
+                    <?php endforeach; if ($sec_group !== null) echo '</optgroup>'; ?>
                 </select>
             </div>
             <div class="col-md-3">
@@ -635,6 +659,11 @@ function exportTable() {
         if (currentSectionValue && !currentStillValid) {
             sectionSelect.value = '';
         }
+        sectionSelect.querySelectorAll('optgroup').forEach(function (grp) {
+            var show = !selectedGrade || grp.dataset.grade === selectedGrade;
+            grp.hidden = !show;
+            grp.disabled = !show;
+        });
     }
 
     gradeSelect.addEventListener('change', filterSections);
