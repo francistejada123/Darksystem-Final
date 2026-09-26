@@ -15,8 +15,8 @@
         + '.ddb-btn i{font-size:12px;color:var(--text-muted,#667085);transition:transform .15s;flex:0 0 auto}'
         + '.ddb.open .ddb-btn{border-color:var(--primary,#5B5FEF);box-shadow:0 0 0 2px rgba(91,95,239,.12)}'
         + '.ddb.open .ddb-btn i{transform:rotate(180deg)}'
-        + '.ddb-list{display:none;position:absolute;left:0;top:calc(100% + 4px);min-width:100%;width:max-content;max-width:min(420px,90vw);z-index:1060;max-height:320px;overflow-y:auto;background:var(--surface,#fff);border:1px solid var(--border,#E4E7EC);border-radius:10px;box-shadow:0 12px 28px rgba(16,24,40,.16);padding:6px 0}'
-        + '.ddb.open .ddb-list{display:block}'
+        + '.ddb-list{display:none;position:fixed;left:0;top:0;width:max-content;max-width:min(420px,90vw);z-index:2000;max-height:320px;overflow-y:auto;background:var(--surface,#fff);border:1px solid var(--border,#E4E7EC);border-radius:10px;box-shadow:0 12px 28px rgba(16,24,40,.16);padding:6px 0}'
+        + '.ddb-list.open{display:block}'
         + '.ddb-group{padding:8px 14px 4px;font-size:12.5px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;color:var(--text-muted,#667085);position:sticky;top:-6px;background:var(--surface,#fff)}'
         + '.ddb-opt{display:block;width:100%;border:0;background:transparent;text-align:left;padding:8px 14px;font-size:15px;color:var(--ink,#14213D);cursor:pointer;white-space:nowrap}'
         + '.ddb-opt.in-group{padding-left:26px}'
@@ -48,7 +48,9 @@
         list.className = 'ddb-list';
         list.setAttribute('role', 'listbox');
         wrap.appendChild(btn);
-        wrap.appendChild(list);
+        // The list lives on <body> (position: fixed), so a card with overflow
+        // or an animated section below can never cover or cut it.
+        document.body.appendChild(list);
 
         function label() {
             var o = select.options[select.selectedIndex];
@@ -71,20 +73,30 @@
             });
             list.innerHTML = html;
         }
+        function place() {
+            var b = btn.getBoundingClientRect();
+            list.style.minWidth = b.width + 'px';
+            list.style.top = (b.bottom + 4) + 'px';
+            list.style.maxHeight = Math.max(120, Math.min(320, window.innerHeight - b.bottom - 16)) + 'px';
+            var w = list.offsetWidth;
+            list.style.left = Math.max(8, Math.min(b.left, window.innerWidth - w - 8)) + 'px';
+        }
+        function isOpen() { return list.classList.contains('open'); }
         function open() {
             draw();
+            // Too little room below the field: scroll the page up a bit first, then open below.
+            var room = window.innerHeight - btn.getBoundingClientRect().bottom;
+            if (room < 220) window.scrollBy({ top: 220 - room });
             wrap.classList.add('open');
+            list.classList.add('open');
             btn.setAttribute('aria-expanded', 'true');
+            place();
             var sel = list.querySelector('.selected');
             if (sel) list.scrollTop = Math.max(0, sel.offsetTop - 40);
-            // If the list would end below the window, scroll the page just enough to show it.
-            var r = list.getBoundingClientRect();
-            if (r.bottom > window.innerHeight - 8) window.scrollBy({ top: r.bottom - window.innerHeight + 16, behavior: 'smooth' });
-            // Keep it inside the window horizontally.
-            list.style.left = '0'; list.style.right = 'auto';
-            if (list.getBoundingClientRect().right > window.innerWidth - 8) { list.style.left = 'auto'; list.style.right = '0'; }
         }
-        function close() { wrap.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
+        function close() { wrap.classList.remove('open'); list.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
+        window.addEventListener('scroll', function () { if (isOpen()) place(); }, true);
+        window.addEventListener('resize', function () { if (isOpen()) place(); });
         function choose(v) {
             close();
             if (select.value !== v) {
@@ -94,24 +106,24 @@
             label();
             btn.focus();
         }
-        btn.addEventListener('click', function () { wrap.classList.contains('open') ? close() : open(); });
+        btn.addEventListener('click', function () { isOpen() ? close() : open(); });
         list.addEventListener('click', function (e) {
             var o = e.target.closest('.ddb-opt');
             if (o) choose(o.getAttribute('data-value'));
         });
-        document.addEventListener('click', function (e) { if (!wrap.contains(e.target)) close(); });
+        document.addEventListener('click', function (e) { if (!wrap.contains(e.target) && !list.contains(e.target)) close(); });
         wrap.addEventListener('keydown', function (e) {
             var opts = Array.prototype.slice.call(list.querySelectorAll('.ddb-opt'));
             var i = opts.indexOf(list.querySelector('.ddb-opt.focus'));
             if (e.key === 'Escape') { close(); btn.focus(); return; }
             if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
                 e.preventDefault();
-                if (!wrap.classList.contains('open')) { open(); return; }
+                if (!isOpen()) { open(); return; }
                 if (i < 0) i = opts.indexOf(list.querySelector('.ddb-opt.selected'));
                 i = e.key === 'ArrowDown' ? Math.min(opts.length - 1, i + 1) : Math.max(0, i - 1);
                 opts.forEach(function (o) { o.classList.remove('focus'); });
                 if (opts[i]) { opts[i].classList.add('focus'); opts[i].scrollIntoView({ block: 'nearest' }); }
-            } else if (e.key === 'Enter' && wrap.classList.contains('open') && i >= 0) {
+            } else if (e.key === 'Enter' && isOpen() && i >= 0) {
                 e.preventDefault();
                 choose(opts[i].getAttribute('data-value'));
             }
