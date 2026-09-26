@@ -99,6 +99,20 @@ include '../../includes/header.php';
 .rep-page .rep-updated { font-size: 16px !important; }
 .rep-page .accordion-body p, .rep-page .accordion-body .text-muted { font-size: 15px; }
 .rep-page #reportSection optgroup { font-weight: 700; font-style: normal; color: #14213D; }
+/* Section picker: always opens BELOW the field (the browser's own list opened upward when there was little room below) */
+.rep-page .sec-pick { position: relative; }
+.rep-page .sec-pick select { display: none; }
+.rep-page .sec-pick-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--surface); color: var(--ink); text-align: left; cursor: pointer; }
+.rep-page .sec-pick-btn i { font-size: 12px; color: var(--text-muted); transition: transform .15s; }
+.rep-page .sec-pick.open .sec-pick-btn { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(91,95,239,0.12); }
+.rep-page .sec-pick.open .sec-pick-btn i { transform: rotate(180deg); }
+.rep-page .sec-pick-list { display: none; position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 1060; max-height: 320px; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 12px 28px rgba(16,24,40,.16); padding: 6px 0; }
+.rep-page .sec-pick.open .sec-pick-list { display: block; }
+.rep-page .sec-pick-group { padding: 8px 14px 4px; font-size: 13px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; color: var(--text-muted); position: sticky; top: -6px; background: var(--surface); }
+.rep-page .sec-pick-opt { display: block; width: 100%; border: 0; background: transparent; text-align: left; padding: 9px 14px 9px 26px; font-size: 15.5px; color: var(--ink); cursor: pointer; }
+.rep-page .sec-pick-opt.all { padding-left: 14px; font-weight: 600; }
+.rep-page .sec-pick-opt:hover, .rep-page .sec-pick-opt.focus { background: var(--primary-soft, #EEF1FE); }
+.rep-page .sec-pick-opt.selected { background: var(--primary); color: #fff; }
 .rep-page #reportSection option { font-weight: 400; color: #1f2937; }
 </style>
 
@@ -668,6 +682,93 @@ function exportTable() {
 
     gradeSelect.addEventListener('change', filterSections);
     filterSections(); // initialize on page load
+})();
+
+// Section picker that always opens below the field. The real <select> stays in
+// the form (hidden) and keeps the value; this only draws the list, grouped by
+// Grade 7 ... Grade 12, and follows the Grade Level filter above.
+(function () {
+    var select = document.getElementById('reportSection');
+    var gradeSelect = document.getElementById('reportGradeLevel');
+    if (!select) return;
+    var wrap = document.createElement('div');
+    wrap.className = 'sec-pick';
+    select.parentNode.insertBefore(wrap, select);
+    wrap.appendChild(select);
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'form-select rep-input sec-pick-btn';
+    btn.setAttribute('aria-haspopup', 'listbox');
+    btn.setAttribute('aria-expanded', 'false');
+    var list = document.createElement('div');
+    list.className = 'sec-pick-list';
+    list.setAttribute('role', 'listbox');
+    wrap.appendChild(btn);
+    wrap.appendChild(list);
+    var label = document.querySelector('label[for="reportSection"]') || wrap.parentNode.querySelector('.rep-label');
+    if (label) { label.id = label.id || 'reportSectionLabel'; btn.setAttribute('aria-labelledby', label.id); }
+
+    function esc(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+    function current() { var o = select.options[select.selectedIndex]; return o ? o.text.trim() : 'All Sections'; }
+    function draw() {
+        btn.innerHTML = '<span>' + esc(current()) + '</span><i class="fas fa-chevron-down" aria-hidden="true"></i>';
+        var html = '';
+        Array.prototype.forEach.call(select.children, function (el) {
+            if (el.tagName === 'OPTION') {
+                html += '<button type="button" role="option" class="sec-pick-opt all' + (el.selected ? ' selected' : '') + '" data-value="' + esc(el.value) + '">' + esc(el.text.trim()) + '</button>';
+            } else if (el.tagName === 'OPTGROUP' && !el.hidden) {
+                html += '<div class="sec-pick-group">' + esc(el.label) + '</div>';
+                Array.prototype.forEach.call(el.children, function (o) {
+                    if (o.hidden || o.disabled) return;
+                    html += '<button type="button" role="option" class="sec-pick-opt' + (o.selected ? ' selected' : '') + '" data-value="' + esc(o.value) + '">' + esc(o.text.trim()) + '</button>';
+                });
+            }
+        });
+        list.innerHTML = html;
+    }
+    function open() {
+        draw();
+        wrap.classList.add('open');
+        btn.setAttribute('aria-expanded', 'true');
+        var sel = list.querySelector('.selected');
+        if (sel) list.scrollTop = Math.max(0, sel.offsetTop - 40);
+        // keep the whole list on screen: scroll the page a little if it would end below the window
+        var r = list.getBoundingClientRect();
+        if (r.bottom > window.innerHeight - 8) window.scrollBy({ top: r.bottom - window.innerHeight + 16, behavior: 'smooth' });
+    }
+    function close() { wrap.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
+    function choose(v) {
+        select.value = v;
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        close();
+        draw();
+        btn.focus();
+    }
+    btn.addEventListener('click', function () { wrap.classList.contains('open') ? close() : open(); });
+    list.addEventListener('click', function (e) {
+        var o = e.target.closest('.sec-pick-opt');
+        if (o) choose(o.getAttribute('data-value'));
+    });
+    document.addEventListener('click', function (e) { if (!wrap.contains(e.target)) close(); });
+    wrap.addEventListener('keydown', function (e) {
+        var opts = Array.prototype.slice.call(list.querySelectorAll('.sec-pick-opt'));
+        var i = opts.indexOf(list.querySelector('.sec-pick-opt.focus'));
+        if (e.key === 'Escape') { close(); btn.focus(); return; }
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (!wrap.classList.contains('open')) { open(); return; }
+            if (i < 0) i = opts.indexOf(list.querySelector('.sec-pick-opt.selected'));
+            i = e.key === 'ArrowDown' ? Math.min(opts.length - 1, i + 1) : Math.max(0, i - 1);
+            opts.forEach(function (o) { o.classList.remove('focus'); });
+            if (opts[i]) { opts[i].classList.add('focus'); opts[i].scrollIntoView({ block: 'nearest' }); }
+        } else if (e.key === 'Enter' && wrap.classList.contains('open') && i >= 0) {
+            e.preventDefault();
+            choose(opts[i].getAttribute('data-value'));
+        }
+    });
+    // The Grade Level filter hides other grades and may reset the section.
+    if (gradeSelect) gradeSelect.addEventListener('change', function () { setTimeout(draw, 0); });
+    draw();
 })();
 </script>
 
