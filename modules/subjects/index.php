@@ -162,17 +162,16 @@ if (!in_array($ut_grade, $ut_grade_options, true)) {
 }
 $unassigned_limit = 10;
 
+// Subjects per grade -- the grade cards show it whether or not a grade is selected.
+foreach (getRecords("SELECT grade_level, COUNT(*) AS total FROM subjects WHERE is_active = 1 GROUP BY grade_level") as $r) {
+    $subjects_by_grade_count[$r['grade_level']] = (int)$r['total'];
+}
+
 if (!$selected_grade) {
     $subj_overview['total'] = (int)(getRecord("SELECT COUNT(*) AS c FROM subjects WHERE is_active = 1")['c'] ?? 0);
     $subj_overview['jhs'] = (int)(getRecord("SELECT COUNT(*) AS c FROM subjects WHERE is_active = 1 AND grade_level IN ('Grade 7','Grade 8','Grade 9','Grade 10')")['c'] ?? 0);
     $subj_overview['shs'] = (int)(getRecord("SELECT COUNT(*) AS c FROM subjects WHERE is_active = 1 AND grade_level IN ('Grade 11','Grade 12')")['c'] ?? 0);
     $subj_overview['assigned'] = (int)(getRecord("SELECT COUNT(*) AS c FROM teacher_subjects WHERE school_year_id = ?", [$school_year_id])['c'] ?? 0);
-
-    $rows = getRecords("
-        SELECT grade_level, COUNT(*) AS total
-        FROM subjects WHERE is_active = 1 GROUP BY grade_level
-    ");
-    foreach ($rows as $r) { $subjects_by_grade_count[$r['grade_level']] = (int)$r['total']; }
 
     // Shared WHERE for both the count and the list, so the badge can never
     // disagree with the rows underneath it.
@@ -635,6 +634,27 @@ include '../../includes/header.php';
     .subj-page .slot-btn.is-occupied:hover, .subj-page .slot-btn.is-section:hover, .subj-page .slot-btn.is-break:hover, .subj-page .slot-btn.is-idle:hover { box-shadow: none; }
     .subj-page .slot-msg { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
     .subj-page .slot-msg.is-warn { color: var(--danger); }
+
+    /* ---- Bigger, easier-to-read text ---- */
+    .subj-page .sp-header h2 { font-size: 30px !important; }
+    .subj-page .sp-header p { font-size: 16px !important; }
+    .subj-page .sp-btn-gradient { font-size: 15.5px !important; padding: 11px 20px !important; }
+    .subj-page .grade-card .grade-num { font-size: 36px !important; }
+    .subj-page .grade-card .grade-label { font-size: 18px !important; }
+    .subj-page .grade-card .section-count { font-size: 15px !important; }
+    .subj-page .grade-card .grade-selected-pill { font-size: 13px !important; padding: 4px 14px !important; }
+    .subj-page .card-header h5 { font-size: 19px !important; }
+    .subj-page .card-header .badge { font-size: 13.5px; }
+    .subj-page .card-header .btn-sm { font-size: 14.5px; padding: 7px 14px; }
+    .subj-page .section-card .section-name { font-size: 19px !important; font-weight: 700; }
+    .subj-page .section-card .badge { font-size: 13px; }
+    .subj-page .section-card .card-body { padding-top: 22px !important; padding-bottom: 22px !important; }
+    .subj-page .sp-filter-label { font-size: 13px !important; }
+    .subj-page .sp-filter-bar .form-control, .subj-page .sp-filter-bar .form-select { font-size: 15px; min-height: 44px; }
+    .subj-page .table > :not(caption) > * > th { font-size: 12.5px; }
+    .subj-page .table > :not(caption) > * > td { font-size: 15px; }
+    .subj-page .sp-teacher-row { font-size: 15px; }
+    .subj-page .table .badge { font-size: 13px; }
 </style>
 
 <div class="subj-page">
