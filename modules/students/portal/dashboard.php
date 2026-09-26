@@ -7,6 +7,8 @@ require_once '../../../config/database.php';
 require_once '../../../includes/risk_helpers.php';
 require_once '../../../includes/grading_helpers.php';
 require_once '../../../includes/student_portal_ui.php'; // spSubjectColor(), spInitial() — for the Classes grid below
+require_once '../../../includes/assessment_material_helpers.php'; // aim_getStudentTasks() (mobile: pending / upcoming)
+require_once '../../../includes/student_portal_data.php';         // mobile dashboard summary
 
 // Check if student is logged in
 if (!isset($_SESSION['student_id']) || $_SESSION['role'] !== 'Student') {
@@ -135,6 +137,12 @@ if (!empty($student['profile_image']) && file_exists('../../../static/uploads/pr
 }
 
 $page_title = 'Student Dashboard';
+// Phone layout only: pending tasks, attendance and the next activities.
+$sp_ctx = spdContext($student_id);
+$sp_tasks = spdTasks($student_id, $sp_ctx);
+$sp_pending = count(array_filter($sp_tasks, function ($t) { return in_array($t['state'], ['To do', 'Active'], true); }));
+$sp_upcoming = spdUpcoming($sp_tasks, 5);
+$sp_att = spdAttendance($student_id, $enrollment['section_id'] ?? null);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -357,7 +365,7 @@ $page_title = 'Student Dashboard';
         <div class="col-md-10 main-content">
             <!-- Top Bar -->
             <div class="topbar">
-                <div class="topbar-left">
+                <div class="topbar-left sp-desktop-welcome">
                     <button class="mobile-menu-btn btn btn-sm" onclick="toggleSidebar()" style="display:none;border:1px solid var(--portal-border);background:#fff;border-radius:6px;padding:6px 10px;"><i class="fas fa-bars"></i></button>
                     <div>
                         <h4>Welcome, <?php echo htmlspecialchars($student_name); ?></h4>
@@ -396,8 +404,22 @@ $page_title = 'Student Dashboard';
                 </div>
             </div>
 
+            <!-- Phone: welcome card + summary (desktop keeps the stats row below) -->
+            <div class="sp-welcome">
+                <small>Welcome back,</small>
+                <h5><?php echo htmlspecialchars($student_name); ?></h5>
+                <span class="sp-chip"><i class="fas fa-layer-group me-1"></i><?php echo htmlspecialchars($enrollment['grade_level'] ?? 'Grade —'); ?></span>
+                <span class="sp-chip"><i class="fas fa-users me-1"></i><?php echo htmlspecialchars($enrollment['section_name'] ?? 'No section yet'); ?></span>
+                <span class="sp-chip">LRN <?php echo htmlspecialchars($lrn); ?></span>
+            </div>
+            <div class="sp-summary">
+                <a href="tasks.php"><i class="fas fa-clipboard-list"></i><strong><?php echo (int) $sp_pending; ?></strong><span>Pending Tasks</span></a>
+                <a href="grades.php"><i class="fas fa-chart-line"></i><strong><?php echo $average > 0 ? number_format($average, 1) : '—'; ?></strong><span>Average Grade</span></a>
+                <a href="attendance.php"><i class="fas fa-calendar-check"></i><strong><?php echo $sp_att['rate'] !== null ? $sp_att['rate'] . '%' : '—'; ?></strong><span>Attendance</span></a>
+            </div>
+
             <!-- Stats -->
-            <div class="row g-3 mb-4">
+            <div class="row g-3 mb-4 sp-desktop-stats">
                 <div class="col-6 col-md-4">
                     <div class="stat-card dash-anim-card">
                         <h6>Average</h6>
@@ -465,6 +487,24 @@ $page_title = 'Student Dashboard';
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
+
+            <!-- Phone: upcoming activities below the classes -->
+            <div class="sp-upcoming">
+                <div class="sp-section-title"><i class="fas fa-calendar-day"></i> Upcoming Activities <a href="tasks.php" class="ms-auto small fw-semibold" style="text-decoration:none;">See all</a></div>
+                <?php if (!$sp_upcoming): ?>
+                    <div class="sp-item"><span class="sp-item-icon"><i class="fas fa-check"></i></span><span class="sp-item-main"><strong>You're all caught up</strong><small>No activities to do right now.</small></span></div>
+                <?php else: ?>
+                    <div class="sp-list">
+                        <?php foreach ($sp_upcoming as $t): ?>
+                            <a class="sp-item" href="<?php echo htmlspecialchars($t['link']); ?>">
+                                <span class="sp-item-icon"><i class="fas fa-clipboard-list"></i></span>
+                                <span class="sp-item-main"><strong><?php echo htmlspecialchars($t['title']); ?></strong><small><?php echo htmlspecialchars($t['subject']); ?> · <?php echo $t['due'] ? 'Due ' . htmlspecialchars(date('M j, g:i A', strtotime($t['due']))) : 'No due date'; ?></small></span>
+                                <span class="sp-tag <?php echo $t['state'] === 'Upcoming' ? 'info' : 'warn'; ?>"><?php echo htmlspecialchars($t['state']); ?></span>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
 
             <!-- Risk Analysis -->
             <?php if ($risk['status'] === 'ok'): ?>

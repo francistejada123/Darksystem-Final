@@ -102,3 +102,88 @@ document.addEventListener('keydown', function (e) {
         }
     }
 });
+
+// ---- Mobile app shell (phones): top app bar, bottom navigation, full drawer menu ----
+// Desktop keeps the sidebar layout; everything below is shown only on small
+// screens by static/css/student-portal-classroom-ui.css (.sp-appbar / .sp-bottomnav).
+(function () {
+    var NAV = [
+        ['dashboard.php', 'fa-th-large', 'Dashboard'],
+        ['classes.php', 'fa-chalkboard', 'My Classes'],
+        ['tasks.php', 'fa-clipboard-list', 'Tasks & Activities'],
+        ['grades.php', 'fa-chart-bar', 'My Grades'],
+        ['attendance.php', 'fa-calendar-check', 'Attendance'],
+        ['updates.php', 'fa-bullhorn', 'Announcements'],
+        ['updates.php?tab=messages', 'fa-envelope', 'Messages'],
+        ['tutorial.php', 'fa-play-circle', 'My Tutorials'],
+        ['enrollment.php', 'fa-clipboard-check', 'Enrollment'],
+        ['profile.php', 'fa-user', 'My Profile']
+    ];
+    var BOTTOM = [
+        ['dashboard.php', 'fa-house', 'Home'],
+        ['classes.php', 'fa-chalkboard', 'Classes'],
+        ['tasks.php', 'fa-clipboard-list', 'Tasks'],
+        ['updates.php', 'fa-bell', 'Updates'],
+        ['profile.php', 'fa-user', 'Profile']
+    ];
+    var page = (location.pathname.split('/').pop() || 'dashboard.php').toLowerCase();
+    var messagesTab = /[?&]tab=messages/.test(location.search);
+
+    function active(href, bottom) {
+        var file = href.split('?')[0];
+        if (file === 'classes.php' && page === 'subject.php') return true;
+        if (file === 'updates.php') {
+            if (page !== 'updates.php') return false;
+            if (bottom) return true;
+            return href.indexOf('tab=messages') > -1 ? messagesTab : !messagesTab;
+        }
+        return file === page;
+    }
+    function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        if (!document.getElementById('mainSidebar')) return;   // not a Student Portal page
+        // On phones the drawer shows full labels (the icon-only rail is for desktop).
+        if (window.innerWidth <= 768) document.body.classList.remove('sidebar-collapsed', 'sidebar-peeking');
+
+        // The drawer / sidebar carries the complete navigation.
+        var nav = document.querySelector('#mainSidebar nav');
+        if (nav) {
+            nav.innerHTML = NAV.map(function (n) {
+                return '<a href="' + n[0] + '" class="nav-link' + (active(n[0]) ? ' active' : '') + '"><i class="fas ' + n[1] + '"></i> ' + esc(n[2]) + '</a>';
+            }).join('') + '<div class="nav-divider"></div><a href="../../../logout.php" class="nav-link text-danger"><i class="fas fa-sign-out-alt"></i> Logout</a>';
+        }
+
+        // Top app bar: menu, brand, updates bell, profile avatar.
+        var img = document.querySelector('.app-topbar-avatar img');
+        var bar = document.createElement('header');
+        bar.className = 'sp-appbar';
+        bar.innerHTML = '<button type="button" class="sp-appbar-btn" aria-label="Open menu"><i class="fas fa-bars"></i></button>'
+            + '<a class="sp-appbar-brand" href="dashboard.php"><img src="../../../static/images/logo.png" alt=""><span>EGradePro</span></a>'
+            + '<a class="sp-appbar-btn sp-appbar-bell" href="updates.php?tab=messages" aria-label="Updates"><i class="fas fa-bell"></i><span class="sp-badge" hidden></span></a>'
+            + '<a class="sp-appbar-avatar" href="profile.php" aria-label="My Profile">' + (img ? '<img src="' + img.getAttribute('src') + '" alt="">' : '<i class="fas fa-user"></i>') + '</a>';
+        document.body.insertBefore(bar, document.body.firstChild);
+        bar.querySelector('button').addEventListener('click', function (e) { e.stopPropagation(); toggleSidebar(); });
+
+        // Bottom navigation.
+        var bn = document.createElement('nav');
+        bn.className = 'sp-bottomnav';
+        bn.setAttribute('aria-label', 'Main');
+        bn.innerHTML = BOTTOM.map(function (n) {
+            return '<a href="' + n[0] + '" class="' + (active(n[0], true) ? 'active' : '') + '"><i class="fas ' + n[1] + '"></i><span>' + esc(n[2]) + '</span></a>';
+        }).join('');
+        document.body.appendChild(bn);
+        document.body.classList.add('sp-mobile-shell');
+
+        // Unread messages on the bell.
+        if (window.fetch) {
+            fetch('get_unread_message_count.php', { credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    var n = parseInt(d && d.unread_count, 10) || 0;
+                    var b = bar.querySelector('.sp-badge');
+                    if (n > 0 && b) { b.textContent = n > 9 ? '9+' : n; b.hidden = false; }
+                }).catch(function () {});
+        }
+    });
+})();
