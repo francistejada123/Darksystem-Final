@@ -42,6 +42,12 @@ if (!$app) {
     exit;
 }
 
+if (!empty($app['deleted_at'])) {
+    $_SESSION['error_message'] = 'This application is in the Recycle Bin. Restore it first.';
+    header('Location: applications_deleted.php');
+    exit;
+}
+
 if (!in_array($app['status'], ['Pending', 'Under Review', 'For Correction', OE_INCOMPLETE], true)) {
     $_SESSION['error_message'] = 'This application was already processed.';
     header('Location: applications.php');

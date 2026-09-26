@@ -323,7 +323,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             oeEnsureCorrectionStatus();
-            $dupe_app = getRecord("SELECT reference_no FROM online_applications WHERE lrn = ? AND status IN ('Pending','Under Review','For Correction','Incomplete Requirements')", [$lrn]);
+            $dupe_app = getRecord("SELECT reference_no FROM online_applications WHERE lrn = ? AND status IN ('Pending','Under Review','For Correction','Incomplete Requirements') AND deleted_at IS NULL", [$lrn]);
             if ($dupe_app) $errors[] = 'You already have a pending application (Ref. ' . $dupe_app['reference_no'] . ').';
         }
 

@@ -281,7 +281,7 @@ function notifyStaffNewApplication($application)
 /** Count of applications still waiting for a decision (for the sidebar badge). */
 function getPendingApplicationCount()
 {
-    $row = getRecord("SELECT COUNT(*) AS cnt FROM online_applications WHERE status IN ('Pending','Under Review')");
+    $row = getRecord("SELECT COUNT(*) AS cnt FROM online_applications WHERE status IN ('Pending','Under Review') AND deleted_at IS NULL");
     return intval($row['cnt'] ?? 0);
 }
 
@@ -606,7 +606,7 @@ function lrnBlockingMessage($lrn, $student_id, $sy_id)
         );
         if ($already) return 'This learner is already enrolled (or has an enrollment waiting for approval) for the current school year. Please contact the registrar instead.';
     }
-    $dupe_app = getRecord("SELECT reference_no FROM online_applications WHERE lrn = ? AND status IN ('Pending','Under Review')", [$lrn]);
+    $dupe_app = getRecord("SELECT reference_no FROM online_applications WHERE lrn = ? AND status IN ('Pending','Under Review') AND deleted_at IS NULL", [$lrn]);
     if ($dupe_app) return 'You already have a pending application (Ref. ' . $dupe_app['reference_no'] . ').';
     return '';
 }
@@ -739,3 +739,26 @@ function enEnsureIncompleteStatus()
     executeQuery("UPDATE enrollments SET enrollment_status = 'Incomplete Requirements' WHERE enrollment_status = 'Rejected'");
     schemaMarkReady('enrollment_incomplete_v1');
 }
+
+/**
+ * Online applications Recycle Bin: deleted_at / deleted_by (soft delete, like
+ * students). A deleted application is hidden from the inbox, the counts and the
+ * duplicate checks; it can be restored or permanently deleted from
+ * modules/enrollment/applications_deleted.php.
+ */
+function oeEnsureAppTrashSchema()
+{
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    try {
+        if (schemaIsReady('online_app_trash_v1')) return;
+        if (!getRecord("SHOW COLUMNS FROM online_applications LIKE 'deleted_at'")) {
+            executeQuery("ALTER TABLE online_applications ADD COLUMN deleted_at DATETIME NULL DEFAULT NULL, ADD COLUMN deleted_by INT NULL DEFAULT NULL, ADD KEY idx_oa_deleted (deleted_at)");
+        }
+        schemaMarkReady('online_app_trash_v1');
+    } catch (\Throwable $e) {
+        error_log('oeEnsureAppTrashSchema: ' . $e->getMessage());
+    }
+}
+oeEnsureAppTrashSchema();

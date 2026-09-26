@@ -5,6 +5,7 @@
 session_start();
 require_once 'config/database.php';
 require_once 'includes/auth.php';
+require_once 'includes/enrollment_helpers_online.php'; // deleted_at column (Recycle Bin) used in the application status message
 
 // If already logged in as student, redirect to dashboard
 if (isset($_SESSION['student_id']) && isset($_SESSION['role']) && $_SESSION['role'] === 'Student') {
@@ -33,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         srEnsureSchema();
         $walkin = getRecord("SELECT student_id FROM students WHERE lrn = ? AND is_active = 1 AND portal_access = 1", [$lrn]);
         $application = getRecord(
-            "SELECT reference_no, status FROM online_applications WHERE lrn = ?
+            "SELECT reference_no, status FROM online_applications WHERE lrn = ? AND deleted_at IS NULL
              ORDER BY FIELD(status, 'Approved', 'Under Review', 'Pending', 'Incomplete Requirements', 'Rejected'), application_id DESC LIMIT 1",
             [$lrn]
         );

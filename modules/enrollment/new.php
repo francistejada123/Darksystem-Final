@@ -165,7 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // ---- An online application with the same LRN is still waiting ----
     if ($form['lrn'] !== '' && strlen($form['lrn']) === 12) {
-        $oa = getRecord("SELECT reference_no, status FROM online_applications WHERE lrn = ? AND status IN ('Pending','Under Review','For Correction','Incomplete Requirements') ORDER BY application_id DESC LIMIT 1", [$form['lrn']]);
+        $oa = getRecord("SELECT reference_no, status FROM online_applications WHERE lrn = ? AND status IN ('Pending','Under Review','For Correction','Incomplete Requirements') AND deleted_at IS NULL ORDER BY application_id DESC LIMIT 1", [$form['lrn']]);
         if ($oa) {
             $warnings[] = 'This LRN already has an online application (Ref. ' . $oa['reference_no'] . ', ' . $oa['status'] . '). Consider approving that application in Online Applications instead of a new walk-in enrollment.';
         }

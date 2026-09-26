@@ -19,7 +19,7 @@ $approved_lrn = null;
 $error = '';
 
 if ($ref !== '') {
-    $application = getRecord("SELECT * FROM online_applications WHERE reference_no = ?", [$ref]);
+    $application = getRecord("SELECT * FROM online_applications WHERE reference_no = ? AND deleted_at IS NULL", [$ref]);
     if ($application) {
         $documents = getApplicationDocuments($application['application_id']);
         // Approved: the new student's LRN (first row of Application Details) opens their QR code.

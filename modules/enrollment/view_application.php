@@ -236,6 +236,13 @@ html[data-theme="dark"] .ar-actionbar .btn-reject:hover { background: rgba(217,4
 </style>
 
 <div class="app-review">
+<?php if (!empty($application['deleted_at'])): ?>
+    <div class="alert alert-warning d-flex align-items-center gap-2" style="font-size:15px;">
+        <i class="fas fa-trash-can"></i>
+        <div>This application is in the <strong>Recycle Bin</strong> (deleted <?php echo htmlspecialchars(date('M j, Y g:i A', strtotime($application['deleted_at']))); ?>). Restore it before approving or marking it.</div>
+        <a class="btn btn-sm btn-outline-dark ms-auto" href="applications_deleted.php">Go to Recycle Bin</a>
+    </div>
+<?php endif; ?>
 
     <div class="ar-crumbs">
         <a href="applications.php">Applications</a><i class="fas fa-chevron-right sep"></i><a href="applications.php">Inbox</a><i class="fas fa-chevron-right sep"></i><span class="current">Review Application</span>

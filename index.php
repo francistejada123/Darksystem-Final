@@ -234,6 +234,7 @@ if (hasRole('Enrollment Officer')) {
     $eo_recent_applications = getRecords("
         SELECT application_id, reference_no, first_name, last_name, grade_level, status, created_at
         FROM online_applications
+        WHERE deleted_at IS NULL
         ORDER BY created_at DESC
         LIMIT 5
     ");
