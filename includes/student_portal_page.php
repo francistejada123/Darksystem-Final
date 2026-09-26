@@ -62,6 +62,9 @@ function spPageStart($title, $subtitle, array $student, $profileImage)
         .empty-state { text-align: center; padding: 36px 20px; color: var(--portal-gray); }
         .empty-state i { font-size: 34px; margin-bottom: 10px; opacity: 0.3; }
         .empty-state h5 { font-size: 15px; font-weight: 600; color: #9ca3af; }
+        html[data-theme="dark"] .topbar small, html[data-theme="dark"] .stat-card h6 { color: var(--text-muted, #94a3b8) !important; }
+        html[data-theme="dark"] .stat-card, html[data-theme="dark"] .card-portal { background: var(--surface, #111827); }
+        html[data-theme="dark"] .stat-card .stat-value { color: var(--ink, #e5e7eb); }
         @media (max-width: 768px) {
             .sidebar { position: fixed !important; top: 0; left: -280px; width: 260px; height: 100vh; z-index: 1050; transition: left 0.25s ease; overflow-y: auto; box-shadow: 4px 0 24px rgba(0,0,0,0.15); }
             .sidebar.show { left: 0; }

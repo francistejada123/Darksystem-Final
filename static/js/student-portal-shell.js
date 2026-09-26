@@ -158,6 +158,27 @@ document.addEventListener('keydown', function (e) {
         bar.innerHTML = '<button type="button" class="sp-appbar-btn" aria-label="Open menu"><i class="fas fa-bars"></i></button>'
             + '<a class="sp-appbar-brand" href="dashboard.php"><img src="../../../static/images/logo.png" alt=""><span>EGradePro</span></a>';
         document.body.insertBefore(bar, document.body.firstChild);
+
+        // Phones: the dark / light theme button sits in the top bar next to "EGradePro";
+        // on wider screens it goes back to its place in the page topbar.
+        var themeBtn = document.getElementById('themeToggleBtn');
+        var themeHome = themeBtn ? themeBtn.parentNode : null;
+        var themeNext = themeBtn ? themeBtn.nextSibling : null;
+        var phoneMq = window.matchMedia ? window.matchMedia('(max-width: 767.98px)') : null;
+        function placeTheme() {
+            if (!themeBtn) return;
+            if (phoneMq ? phoneMq.matches : window.innerWidth <= 767) {
+                if (themeBtn.parentNode !== bar) bar.appendChild(themeBtn);
+            } else if (themeBtn.parentNode !== themeHome && themeHome) {
+                themeHome.insertBefore(themeBtn, themeNext);
+            }
+        }
+        placeTheme();
+        window.addEventListener('resize', placeTheme);
+        if (phoneMq) {
+            if (phoneMq.addEventListener) phoneMq.addEventListener('change', placeTheme);
+            else if (phoneMq.addListener) phoneMq.addListener(placeTheme);
+        }
         bar.querySelector('button').addEventListener('click', function (e) { e.stopPropagation(); toggleSidebar(); });
 
         // Bottom navigation.

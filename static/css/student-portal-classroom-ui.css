@@ -353,3 +353,17 @@ html[data-theme="dark"] .sp-card-body { color: var(--text-muted, #cbd5e1); }
     .sp-bottomnav a { position: relative; }
     .sp-bottomnav .sp-badge { top: 2px; right: calc(50% - 22px); }
 }
+
+@media (max-width: 767.98px) {
+    /* theme button in the top bar, right next to "EGradePro" */
+    .sp-appbar .sp-appbar-brand { flex: 0 1 auto; }
+    .sp-appbar .theme-toggle-btn { width: 36px !important; height: 36px !important; margin-left: 4px; flex-shrink: 0; }
+    /* the page topbar no longer needs its right side on phones */
+    .sp-mobile-shell .topbar-right:not(:has(> :not(.app-topbar-profile):not(.status-badge))) { display: none !important; }
+}
+
+/* dark theme: the light-mode rules above use !important, so dark mode needs its own */
+html[data-theme="dark"] body:has(#mainSidebar .logo small) { background: var(--bg, #0b1220) !important; }
+html[data-theme="dark"] body:has(#mainSidebar .logo small) .topbar h4 { color: var(--ink, #e9eef7) !important; }
+html[data-theme="dark"] body:has(#mainSidebar .logo small) .card-portal,
+html[data-theme="dark"] body:has(#mainSidebar .logo small) .stat-card { border-color: var(--border, #1f2a44) !important; box-shadow: none; }
