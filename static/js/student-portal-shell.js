@@ -107,13 +107,11 @@ document.addEventListener('keydown', function (e) {
 // Desktop keeps the sidebar layout; everything below is shown only on small
 // screens by static/css/student-portal-classroom-ui.css (.sp-appbar / .sp-bottomnav).
 (function () {
+    // Sidebar / drawer. My Classes, Tasks and Announcements are in the bottom navigation (phones).
     var NAV = [
         ['dashboard.php', 'fa-th-large', 'Dashboard'],
-        ['classes.php', 'fa-chalkboard', 'My Classes'],
-        ['tasks.php', 'fa-clipboard-list', 'Tasks & Activities'],
         ['grades.php', 'fa-chart-bar', 'My Grades'],
         ['attendance.php', 'fa-calendar-check', 'Attendance'],
-        ['updates.php', 'fa-bullhorn', 'Announcements'],
         ['updates.php?tab=messages', 'fa-envelope', 'Messages'],
         ['tutorial.php', 'fa-play-circle', 'My Tutorials'],
         ['enrollment.php', 'fa-clipboard-check', 'Enrollment'],
