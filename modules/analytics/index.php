@@ -286,7 +286,7 @@ if (!empty($student_ids)) {
 // ============================================================
 $ts_filter_sql = "
     SELECT ts.teacher_id, u.first_name, u.last_name,
-           ts.subject_code, sub.subject_name,
+           ts.subject_code, sub.subject_name, sub.grade_level AS subject_grade,
            ts.section_id, sec.section_name, sec.grade_level
     FROM teacher_subjects ts
     JOIN users u ON u.user_id = ts.teacher_id
@@ -312,6 +312,14 @@ foreach ($teacher_subject_rows as $tsr) {
     }
 }
 
+// Advisory class(es) of each teacher, shown next to the name in the Teacher filter.
+$advisory_by_teacher = [];
+foreach (getRecords("SELECT adviser_id, section_name FROM sections
+                     WHERE is_active = 1 AND adviser_id IS NOT NULL
+                     ORDER BY CAST(REPLACE(grade_level, 'Grade ', '') AS UNSIGNED), section_name") as $adv) {
+    $advisory_by_teacher[(int) $adv['adviser_id']][] = $adv['section_name'];
+}
+
 $teachers_for_filter = [];
 $seen_teacher_ids = [];
 foreach ($teacher_subject_rows as $tsr) {
@@ -320,6 +328,7 @@ foreach ($teacher_subject_rows as $tsr) {
         $teachers_for_filter[] = [
             'id' => (int)$tsr['teacher_id'],
             'name' => trim($tsr['first_name'] . ' ' . $tsr['last_name']),
+            'advisory' => $advisory_by_teacher[(int) $tsr['teacher_id']] ?? [],
         ];
     }
 }
@@ -476,29 +485,29 @@ include '../../includes/header.php';
 <div class="air-filter-bar mb-3 air-fade-up" style="animation-delay:250ms;">
     <div class="row g-3 align-items-end">
         <?php if ($is_admin): ?>
-        <div class="col-12 col-sm-6 col-lg-2">
+        <div class="col-12 col-sm-6 col-lg">
             <label class="air-filter-label">Teacher</label>
             <select class="form-select air-input" id="airFilterTeacher">
                 <option value="">All Teachers</option>
                 <?php foreach ($teachers_for_filter as $t): ?>
-                    <option value="<?php echo (int)$t['id']; ?>"><?php echo htmlspecialchars($t['name']); ?></option>
+                    <option value="<?php echo (int)$t['id']; ?>"><?php echo htmlspecialchars($t['name'] . ($t['advisory'] ? ' — Adviser: ' . implode(', ', $t['advisory']) : ' — No advisory class')); ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
         <?php endif; ?>
-        <div class="col-12 col-sm-6 col-lg-2">
+        <div class="col-12 col-sm-6 col-lg">
             <label class="air-filter-label">Subject</label>
             <select class="form-select air-input" id="airFilterSubject">
                 <option value="">All Subjects</option>
             </select>
         </div>
-        <div class="col-12 col-sm-6 col-lg-2">
+        <div class="col-12 col-sm-6 col-lg">
             <label class="air-filter-label">Section</label>
             <select class="form-select air-input" id="airFilterSection">
                 <option value="">All Sections</option>
             </select>
         </div>
-        <div class="col-12 col-sm-6 col-lg-2">
+        <div class="col-12 col-sm-6 col-lg">
             <label class="air-filter-label">Term</label>
             <form method="get" id="airTermForm">
                 <select name="term" class="form-select air-input" onchange="this.form.submit()">
@@ -510,7 +519,16 @@ include '../../includes/header.php';
                 </select>
             </form>
         </div>
-        <div class="col-12 col-sm-6 col-lg-2">
+        <div class="col-12 col-sm-6 col-lg">
+            <label class="air-filter-label">Grade Level</label>
+            <select class="form-select air-input" id="airFilterGrade">
+                <option value="">All Grade Levels</option>
+                <?php foreach (['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'] as $gl): ?>
+                    <option value="<?php echo $gl; ?>"><?php echo $gl; ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div class="col-12 col-sm-6 col-lg">
             <label class="air-filter-label">Risk Level</label>
             <select class="form-select air-input" id="airFilterRisk">
                 <option value="">All Risk Levels</option>
@@ -519,7 +537,7 @@ include '../../includes/header.php';
                 <option value="Low">Low Risk</option>
             </select>
         </div>
-        <div class="col-12 col-lg-2">
+        <div class="col-12 col-lg">
             <button type="button" class="air-clear-btn w-100" id="airClearFilters"><i class="fas fa-rotate-left me-1"></i> Clear Filters</button>
         </div>
     </div>
@@ -608,8 +626,10 @@ include '../../includes/header.php';
             'teacher_id'   => (int)$r['teacher_id'],
             'subject_code' => $r['subject_code'],
             'subject_name' => $r['subject_name'],
+            'subject_grade'=> $r['subject_grade'],
             'section_id'   => (int)$r['section_id'],
             'section_name' => $r['section_name'],
+            'grade_level'  => $r['grade_level'],
         ];
     }, $teacher_subject_rows)); ?>;
     var PASS_MARK = <?php echo json_encode((float)$pass_mark); ?>;
@@ -619,6 +639,18 @@ include '../../includes/header.php';
     var subjectSelect = document.getElementById('airFilterSubject');
     var sectionSelect = document.getElementById('airFilterSection');
     var riskSelect = document.getElementById('airFilterRisk');
+    var gradeSelect = document.getElementById('airFilterGrade');
+    function gradeNum(g) { var m = String(g || '').match(/\d+/); return m ? parseInt(m[0], 10) : 99; }
+    // <optgroup> per grade level, Grade 7 -> Grade 12, items sorted by name within each grade.
+    function groupedOptions(items, gradeOf, valueOf, labelOf) {
+        var groups = {};
+        items.forEach(function (it) { var g = gradeOf(it) || 'Other'; (groups[g] = groups[g] || []).push(it); });
+        return Object.keys(groups).sort(function (a, b) { return gradeNum(a) - gradeNum(b); }).map(function (g) {
+            var opts = groups[g].sort(function (a, b) { return String(labelOf(a)).localeCompare(String(labelOf(b)), undefined, { numeric: true }); })
+                .map(function (it) { return '<option value="' + escapeHtml(valueOf(it)) + '">' + escapeHtml(labelOf(it)) + '</option>'; }).join('');
+            return '<optgroup label="' + escapeHtml(g) + '">' + opts + '</optgroup>';
+        }).join('');
+    }
     var clearBtn = document.getElementById('airClearFilters');
     var tableBody = document.getElementById('airTableBody');
     var mobileCards = document.getElementById('airMobileCards');
@@ -647,14 +679,17 @@ include '../../includes/header.php';
     function rebuildSubjectOptions() {
         if (!subjectSelect) { return; }
         var teacherId = teacherSelect ? teacherSelect.value : '';
+        var grade = gradeSelect ? gradeSelect.value : '';
         var pool = TEACHER_SUBJECTS.filter(function (ts) {
-            return !teacherId || String(ts.teacher_id) === teacherId;
+            return (!teacherId || String(ts.teacher_id) === teacherId)
+                && (!grade || (ts.subject_grade || ts.grade_level) === grade);
         });
         var subjects = uniqueBy(pool, function (ts) { return ts.subject_code; });
         var currentVal = subjectSelect.value;
-        subjectSelect.innerHTML = '<option value="">All Subjects</option>' + subjects.map(function (s) {
-            return '<option value="' + escapeHtml(s.subject_code) + '">' + escapeHtml(s.subject_name) + '</option>';
-        }).join('');
+        subjectSelect.innerHTML = '<option value="">All Subjects</option>' + groupedOptions(subjects,
+            function (s) { return s.subject_grade || s.grade_level; },
+            function (s) { return s.subject_code; },
+            function (s) { return s.subject_name; });
         if (subjects.some(function (s) { return s.subject_code === currentVal; })) {
             subjectSelect.value = currentVal;
         }
@@ -664,15 +699,18 @@ include '../../includes/header.php';
         if (!sectionSelect) { return; }
         var teacherId = teacherSelect ? teacherSelect.value : '';
         var subjectCode = subjectSelect ? subjectSelect.value : '';
+        var grade = gradeSelect ? gradeSelect.value : '';
         var pool = TEACHER_SUBJECTS.filter(function (ts) {
             return (!teacherId || String(ts.teacher_id) === teacherId)
-                && (!subjectCode || ts.subject_code === subjectCode);
+                && (!subjectCode || ts.subject_code === subjectCode)
+                && (!grade || ts.grade_level === grade);
         });
         var sections = uniqueBy(pool, function (ts) { return ts.section_id; });
         var currentVal = sectionSelect.value;
-        sectionSelect.innerHTML = '<option value="">All Sections</option>' + sections.map(function (s) {
-            return '<option value="' + s.section_id + '">' + escapeHtml(s.section_name) + '</option>';
-        }).join('');
+        sectionSelect.innerHTML = '<option value="">All Sections</option>' + groupedOptions(sections,
+            function (s) { return s.grade_level; },
+            function (s) { return String(s.section_id); },
+            function (s) { return s.section_name; });
         if (sections.some(function (s) { return String(s.section_id) === currentVal; })) {
             sectionSelect.value = currentVal;
         }
@@ -693,12 +731,22 @@ include '../../includes/header.php';
     }
     if (sectionSelect) { sectionSelect.addEventListener('change', renderRows); }
     if (riskSelect) { riskSelect.addEventListener('change', renderRows); }
+    if (gradeSelect) {
+        gradeSelect.addEventListener('change', function () {
+            rebuildSubjectOptions();
+            rebuildSectionOptions();
+            renderRows();
+        });
+    }
     if (clearBtn) {
         clearBtn.addEventListener('click', function () {
             if (teacherSelect) { teacherSelect.value = ''; }
             rebuildSubjectOptions();
             rebuildSectionOptions();
             if (riskSelect) { riskSelect.value = ''; }
+            if (gradeSelect) { gradeSelect.value = ''; }
+            rebuildSubjectOptions();
+            rebuildSectionOptions();
             renderRows();
         });
     }
@@ -762,8 +810,10 @@ include '../../includes/header.php';
         var subjectCode = subjectSelect ? subjectSelect.value : '';
         var sectionId = sectionSelect ? sectionSelect.value : '';
         var risk = riskSelect ? riskSelect.value : '';
+        var grade = gradeSelect ? gradeSelect.value : '';
 
         return ROWS.filter(function (row) {
+            if (grade && row.grade_level !== grade) { return false; }
             if (teacherId && String(row.teacher_id) !== teacherId) { return false; }
             if (subjectCode && row.subject_code !== subjectCode) { return false; }
             if (sectionId && String(row.section_id) !== sectionId) { return false; }
@@ -806,8 +856,24 @@ include '../../includes/header.php';
             '</div>';
     }
 
+    // High / Medium / Low / Needs Intervention cards: for the chosen Grade Level (all grades when none).
+    function updateSummaryCards() {
+        var grade = gradeSelect ? gradeSelect.value : '';
+        var c = { High: 0, Medium: 0, Low: 0, needs: 0 };
+        ROWS.forEach(function (r) {
+            if (grade && r.grade_level !== grade) { return; }
+            if (c.hasOwnProperty(r.risk_level)) { c[r.risk_level]++; }
+            if ((r.risk_level === 'High' || r.risk_level === 'Medium') && r.intervention && r.intervention.label === 'Not Reviewed') { c.needs++; }
+        });
+        [['airCountHigh', c.High], ['airCountMedium', c.Medium], ['airCountLow', c.Low], ['airCountNeeds', c.needs]].forEach(function (p) {
+            var el = document.getElementById(p[0]);
+            if (el) { el.textContent = p[1].toLocaleString(); }
+        });
+    }
+
     function renderRows() {
         var visible = currentlyVisibleRows();
+        updateSummaryCards();
 
         function paint() {
             if (visible.length === 0) {
