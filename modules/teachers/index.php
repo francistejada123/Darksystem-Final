@@ -1299,6 +1299,28 @@ include '../../includes/header.php';
             width: 100%;
         }
     }
+
+    /* ---- Bigger, easier-to-read text ---- */
+    .tm-page .page-header h4 { font-size: 32px !important; }
+    .tm-page .page-header p { font-size: 16px !important; }
+    .tm-page .page-header .btn-sm-link, .tm-page .page-header .btn-primary-action { font-size: 15.5px !important; padding: 11px 18px !important; }
+    .tm-page .section-title { font-size: 14.5px !important; }
+    .tm-page .grade-card .grade-num { font-size: 36px !important; }
+    .tm-page .grade-card .grade-label { font-size: 18px !important; }
+    .tm-page .grade-card .section-count { font-size: 15px !important; }
+    .tm-page .grade-card .grade-selected-pill { font-size: 13px !important; padding: 4px 14px !important; }
+    .tm-page .card-header-bar h5 { font-size: 19px !important; }
+    .tm-page .card-header-bar .badge-count { font-size: 13.5px !important; }
+    .tm-page .card-header-bar .btn-sm-link { font-size: 14.5px !important; padding: 8px 14px !important; }
+    .tm-page .section-card .sec-name { font-size: 19px !important; }
+    .tm-page .section-card .sec-meta { font-size: 14.5px !important; }
+    .tm-page .section-card { padding: 16px 18px !important; }
+    .tm-page .tm-filter-label { font-size: 14px !important; }
+    .tm-page .tm-filter-bar .form-control, .tm-page .tm-filter-bar .form-select { font-size: 15px; min-height: 44px; }
+    .tm-page .data-table th { font-size: 12.5px !important; }
+    .tm-page .data-table td { font-size: 15px !important; }
+    .tm-page .data-table .spec-tag, .tm-page .data-table .section-tag, .tm-page .data-table .active-tag { font-size: 13.5px !important; }
+    .tm-page .content-card p, .tm-page .content-card label { font-size: 14.5px; }
 </style>
 <div class="tm-page" style="padding: 24px;">
 
