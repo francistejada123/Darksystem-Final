@@ -397,6 +397,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     exit;
 }
 
+// One teacher = one advisory class. The database enforces it too (UNIQUE on
+// sections.adviser_id; NULL = no adviser, allowed on many sections). Added once,
+// and only when no teacher already advises two sections (fix those first).
+function tmEnsureOneAdvisory()
+{
+    if (schemaIsReady('one_adviser_per_teacher_v1')) return;
+    try {
+        if (!getRecord("SHOW INDEX FROM sections WHERE Key_name = 'uniq_sections_adviser'")) {
+            if (getRecord("SELECT adviser_id FROM sections WHERE adviser_id IS NOT NULL GROUP BY adviser_id HAVING COUNT(*) > 1 LIMIT 1")) {
+                error_log('one_adviser_per_teacher: a teacher advises more than one section; UNIQUE index not added yet.');
+                return;
+            }
+            executeQuery("ALTER TABLE sections ADD UNIQUE KEY uniq_sections_adviser (adviser_id)");
+        }
+        schemaMarkReady('one_adviser_per_teacher_v1');
+    } catch (\Throwable $e) {
+        error_log('one_adviser_per_teacher: ' . $e->getMessage());
+    }
+}
+tmEnsureOneAdvisory();
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'set_adviser') {
     if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
         $_SESSION['error_message'] = 'Invalid security token.';
@@ -408,7 +429,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $_SESSION['error_message'] = 'Invalid section.';
         } else {
             $new_adviser_id = $adviser_id > 0 ? $adviser_id : null;
-            $result = executeQuery("UPDATE sections SET adviser_id = ? WHERE section_id = ?", [$new_adviser_id, $adviser_section_id]);
+            // Adviser Conflict: this teacher already advises another section.
+            $conflict = $new_adviser_id ? getRecord(
+                "SELECT section_name, grade_level FROM sections WHERE adviser_id = ? AND section_id <> ? LIMIT 1",
+                [$new_adviser_id, $adviser_section_id]
+            ) : null;
+            if ($conflict) {
+                $cname = getRecord("SELECT first_name, last_name FROM users WHERE user_id = ?", [$new_adviser_id]);
+                $_SESSION['adviser_conflict'] = trim(($cname['last_name'] ?? '') . ', ' . ($cname['first_name'] ?? ''), ', ')
+                    . ' is already assigned as adviser of ' . $conflict['grade_level'] . ' - ' . $conflict['section_name']
+                    . '. A teacher can only be assigned as adviser to one section.';
+                header('Location: index.php?grade=' . urlencode($selected_grade) . '&strand=' . urlencode($selected_strand) . '&section=' . $selected_section . '&subject=' . urlencode($selected_subject) . '#selected-section-details');
+                exit;
+            }
+            // Replacing the adviser: the section keeps one adviser_id, so the old one is removed by this same update.
+            try {
+                $result = executeQuery("UPDATE sections SET adviser_id = ? WHERE section_id = ?", [$new_adviser_id, $adviser_section_id]);
+            } catch (\Throwable $e) {   // UNIQUE index: someone else assigned the same teacher meanwhile
+                $result = false;
+            }
+            if (!$result && $new_adviser_id) {
+                $_SESSION['adviser_conflict'] = 'This teacher is already assigned as adviser of another section. A teacher can only be assigned as adviser to one section.';
+                header('Location: index.php?grade=' . urlencode($selected_grade) . '&strand=' . urlencode($selected_strand) . '&section=' . $selected_section . '&subject=' . urlencode($selected_subject) . '#selected-section-details');
+                exit;
+            }
 
             if ($result) {
                 $sec_name = getRecord("SELECT section_name FROM sections WHERE section_id = ?", [$adviser_section_id]);
@@ -566,7 +610,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 }
 
 $all_teachers_for_adviser = getRecords("
-    SELECT u.user_id, u.first_name, u.last_name
+    SELECT u.user_id, u.first_name, u.last_name,
+           (SELECT CONCAT(sa.grade_level, ' - ', sa.section_name) FROM sections sa WHERE sa.adviser_id = u.user_id LIMIT 1) AS advisory_of,
+           (SELECT sa.section_id FROM sections sa WHERE sa.adviser_id = u.user_id LIMIT 1) AS advisory_section_id
     FROM users u
     JOIN roles r ON u.role_id = r.role_id
     WHERE r.role_name = 'Teacher' AND u.is_active = 1
@@ -1337,7 +1383,7 @@ include '../../includes/header.php';
                 <i class="fas fa-calendar-alt"></i> Term Dates
             </button>
             <a href="add.php" class="btn-primary-action">
-                <i class="fas fa-envelope-open-text"></i> Invite New Teacher
+                <i class="fas fa-envelope-open-text"></i> Teacher Registration
             </a>
         </div>
     </div>
@@ -1481,6 +1527,16 @@ include '../../includes/header.php';
             <div class="card-header-bar">
                 <h5><i class="fas fa-chalkboard-teacher"></i> Section Adviser</h5>
             </div>
+            <?php if (!empty($_SESSION['adviser_conflict'])): ?>
+                <div role="alert" style="display:flex;gap:12px;align-items:flex-start;padding:14px 20px;background:#FEF2F2;border-bottom:1px solid #FCA5A5;border-left:4px solid #DC2626;color:#991B1B;">
+                    <i class="fas fa-user-lock" style="font-size:18px;margin-top:2px;"></i>
+                    <div>
+                        <strong style="display:block;font-size:15px;">Adviser Conflict</strong>
+                        <span style="font-size:14.5px;"><?php echo htmlspecialchars($_SESSION['adviser_conflict']); ?></span>
+                    </div>
+                </div>
+                <?php unset($_SESSION['adviser_conflict']); ?>
+            <?php endif; ?>
             <?php if (isset($_SESSION['success_message'])): ?>
                 <div
                     style="padding: 12px 20px; background: #EAF7F1; color: #238863; font-size: 13px; border-bottom: 1px solid var(--border-soft);">
@@ -1512,14 +1568,16 @@ include '../../includes/header.php';
                     <input type="hidden" name="section_id" value="<?php echo $selected_section; ?>">
                     <select name="adviser_id">
                         <option value="0">-- No adviser --</option>
-                        <?php foreach ($all_teachers_for_adviser as $t): ?>
-                            <option value="<?php echo $t['user_id']; ?>" <?php echo ($current_adviser && $current_adviser['user_id'] == $t['user_id']) ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($t['last_name'] . ', ' . $t['first_name']); ?>
+                        <?php foreach ($all_teachers_for_adviser as $t):
+                            $t_busy = !empty($t['advisory_section_id']) && (int) $t['advisory_section_id'] !== (int) $selected_section; ?>
+                            <option value="<?php echo $t['user_id']; ?>" <?php echo ($current_adviser && $current_adviser['user_id'] == $t['user_id']) ? 'selected' : ''; ?><?php echo $t_busy ? ' disabled' : ''; ?>>
+                                <?php echo htmlspecialchars($t['last_name'] . ', ' . $t['first_name'] . ($t_busy ? ' — Adviser of ' . $t['advisory_of'] : '')); ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
                     <button type="submit" class="btn-save"><i class="fas fa-save"></i> Save</button>
                 </form>
+                <div style="flex-basis:100%;font-size:13px;color:var(--text-muted);margin-top:6px;"><i class="fas fa-circle-info me-1"></i>A teacher can be adviser of one section only. Teachers who already advise another section are shown but cannot be selected; remove them from that section first.</div>
             </div>
         </div>
     <?php endif; ?>
