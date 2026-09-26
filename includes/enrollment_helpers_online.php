@@ -159,6 +159,10 @@ function getRequiredDocumentsForType($grade_level, $applicant_type)
     if ($applicant_type !== 'Continuing') {
         $docs[] = ['key' => 'psa', 'label' => 'PSA / NSO Birth Certificate', 'hint' => 'Clear photocopy or scanned copy.', 'required' => true];
     }
+    if (oeForm137Counts($applicant_type)) {
+        // Optional to submit now; without it the application is Incomplete Requirements until it is uploaded.
+        $docs[] = ['key' => 'form137', 'label' => 'Form 137 (Permanent Record)', 'hint' => 'Upload it if you already have it. Without it your application is marked Incomplete Requirements until you upload it on your Enrollment Tracking page.', 'required' => false];
+    }
     return $docs;
 }
 
@@ -659,18 +663,37 @@ function lookupLearnerForApplication($applicant_type, $lrn, $birth_date, $sy_id)
                 : 'Welcome back! We found your old record. Please review every detail and update whatever changed.'];
 }
 
+/** The decision besides Approved: a required document is missing (replaces Rejected / For Correction). */
+const OE_INCOMPLETE = 'Incomplete Requirements';
+
 /**
- * 'For Correction' = the registrar needs the applicant to correct details or
- * upload missing requirements (remarks say what). Added once to the status list.
+ * Online application statuses: Pending / Under Review while waiting, then
+ * Approved or Incomplete Requirements. Older Rejected / For Correction rows
+ * become Incomplete Requirements (once).
  */
 function oeEnsureCorrectionStatus()
 {
     static $done = false;
     if ($done) return;
     $done = true;
-    if (schemaIsReady('online_app_status_v2')) return;
-    executeQuery("ALTER TABLE online_applications MODIFY status ENUM('Pending','Under Review','For Correction','Approved','Rejected') DEFAULT 'Pending'");
-    schemaMarkReady('online_app_status_v2');
+    if (schemaIsReady('online_app_status_v3')) return;
+    executeQuery("ALTER TABLE online_applications MODIFY status ENUM('Pending','Under Review','For Correction','Incomplete Requirements','Approved','Rejected') DEFAULT 'Pending'");
+    executeQuery("UPDATE online_applications SET status = 'Incomplete Requirements' WHERE status IN ('Rejected','For Correction')");
+    schemaMarkReady('online_app_status_v3');
+}
+
+/** New Student and Transferee: Form 137 may be sent later, but without it the application is Incomplete Requirements. */
+function oeForm137Counts($applicant_type)
+{
+    return in_array($applicant_type, ['New Student', 'Transferee'], true);
+}
+
+/** Labels of the requirements still missing for this application (New Student / Transferee: Form 137). */
+function oeMissingRequirements($application_id, $applicant_type)
+{
+    if (!oeForm137Counts($applicant_type)) return [];
+    $has = getRecord("SELECT 1 FROM application_documents WHERE application_id = ? AND doc_key = 'form137'", [(int) $application_id]);
+    return $has ? [] : ['Form 137 (Permanent Record)'];
 }
 
 /** Cookie that remembers a submitted application on this browser (30 days). */

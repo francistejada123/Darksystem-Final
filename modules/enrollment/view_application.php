@@ -1,6 +1,6 @@
 <?php
 // modules/enrollment/view_application.php
-// ADMIN — review one online enrollment application, view uploaded documents, approve or reject.
+// ADMIN — review one online enrollment application, view uploaded documents, approve or mark Incomplete Requirements.
 
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/auth.php';
@@ -77,7 +77,9 @@ $csrf_token = generateCSRFToken();
 
 include '../../includes/header.php';
 
-$badge = ['Pending' => 'pending', 'Under Review' => 'review', 'For Correction' => 'correction', 'Approved' => 'approved', 'Rejected' => 'rejected'][$application['status']] ?? 'pending';
+$badge = ['Pending' => 'pending', 'Under Review' => 'review', 'For Correction' => 'incomplete', 'Incomplete Requirements' => 'incomplete', 'Approved' => 'approved', 'Rejected' => 'incomplete'][$application['status']] ?? 'pending';
+// New Student / Transferee: what is still missing (Form 137).
+$ar_missing = oeMissingRequirements($application_id, $application['application_type']);
 $full_name = trim($application['last_name'] . ', ' . $application['first_name'] . ' ' . $application['middle_name'] . ' ' . $application['suffix']);
 ?>
 
@@ -91,7 +93,7 @@ $ar_submitted = strtotime($application['created_at']);
 $ar_days = (int) floor((time() - $ar_submitted) / 86400);
 $ar_ago = $ar_days <= 0 ? 'Today' : ($ar_days === 1 ? 'Yesterday' : $ar_days . ' days ago');
 $ar_age = !empty($application['birth_date']) ? (int) date_diff(date_create($application['birth_date']), date_create('today'))->y : null;
-$ar_decided = in_array($application['status'], ['Approved', 'Rejected'], true);
+$ar_decided = in_array($application['status'], ['Approved', OE_INCOMPLETE], true);
 $ar_req_total = 0;
 $ar_req_done = 0;
 foreach ($required_docs as $rd) {
@@ -106,7 +108,7 @@ $ar_size = function ($bytes) {
     if ($bytes >= 1024) return round($bytes / 1024) . ' KB';
     return $bytes > 0 ? $bytes . ' B' : '';
 };
-$ar_can_decide = in_array($application['status'], ['Pending', 'Under Review', 'For Correction'], true);
+$ar_can_decide = in_array($application['status'], ['Pending', 'Under Review', 'For Correction', OE_INCOMPLETE], true);
 ?>
 
 <style>
@@ -150,7 +152,8 @@ $ar_can_decide = in_array($application['status'], ['Pending', 'Under Review', 'F
 .app-review .status-review { background: #dff3fb; color: #0b6a8a; }
 .app-review .status-approved { background: #EAF7F1; color: #238863; }
 .app-review .status-rejected { background: #FDEEEE; color: #C94A4A; }
-.app-review .status-correction { background: #FFF4E5; color: #B45309; }
+.app-review .status-incomplete { background: #FFF4E5; color: #B45309; }
+.ar-missing { background: #FFF4E5; color: #92400E; border: 1px solid #F5C77E; border-radius: 10px; padding: 10px 12px; font-size: 13px; margin-bottom: 12px; }
 
 .app-review .content-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
 .app-review .ar-card + .ar-card { margin-top: 18px; }
@@ -385,6 +388,9 @@ html[data-theme="dark"] .ar-actionbar .btn-reject:hover { background: rgba(217,4
             <!-- Decision -->
             <div class="ar-card">
                 <div class="ar-card-head"><i class="fas fa-shield-halved head-ic"></i><h5>Decision</h5></div>
+                <?php if ($ar_missing): ?>
+                    <div class="ar-missing"><i class="fas fa-file-circle-exclamation me-1"></i><strong>Incomplete Requirements:</strong> missing <?php echo htmlspecialchars(implode(', ', $ar_missing)); ?>. You can still approve if the learner submits it at the registrar.</div>
+                <?php endif; ?>
                 <?php if ($ar_can_decide): ?>
                     <form method="POST" action="application_action.php" id="arDecisionForm" class="ar-decision">
                         <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
@@ -425,15 +431,14 @@ html[data-theme="dark"] .ar-actionbar .btn-reject:hover { background: rgba(217,4
 <!-- Sticky action bar -->
 <div class="ar-actionbar">
     <span class="app-id">Application ID: <strong><?php echo htmlspecialchars($application['reference_no']); ?></strong></span>
-    <span class="status-badge status-<?php echo $badge; ?>" style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;<?php echo ['pending' => 'background:#FFF7E6;color:#B7791F', 'review' => 'background:#dff3fb;color:#0b6a8a', 'approved' => 'background:#EAF7F1;color:#238863', 'rejected' => 'background:#FDEEEE;color:#C94A4A', 'correction' => 'background:#FFF4E5;color:#B45309'][$badge]; ?>"><?php echo htmlspecialchars($application['status']); ?></span>
+    <span class="status-badge status-<?php echo $badge; ?>" style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;<?php echo ['pending' => 'background:#FFF7E6;color:#B7791F', 'review' => 'background:#dff3fb;color:#0b6a8a', 'approved' => 'background:#EAF7F1;color:#238863', 'incomplete' => 'background:#FFF4E5;color:#B45309'][$badge]; ?>"><?php echo htmlspecialchars(in_array($application['status'], ['Rejected', 'For Correction'], true) ? OE_INCOMPLETE : $application['status']); ?></span>
     <span class="spacer"></span>
     <?php if ($ar_can_decide): ?>
-        <button type="submit" form="arDecisionForm" name="action" value="correction" class="btn-reject" style="color:#B45309;border-color:#F5C77E;" onclick="var r=document.getElementById('arRemarks');if(!r.value.trim()){r.focus();r.placeholder='Write what the applicant needs to correct or submit, then click For Correction again.';return false;}return appConfirm(this, 'Mark this application For Correction? The applicant will see your remarks on the tracking page.', {okText: 'For Correction'})">
-            <i class="fas fa-pen-to-square" style="color:inherit"></i> For Correction
+        <?php if ($application['status'] !== OE_INCOMPLETE): ?>
+        <button type="submit" form="arDecisionForm" name="action" value="incomplete" class="btn-reject" onclick="return appConfirm(this, 'Mark this application Incomplete Requirements? The applicant sees the remarks (or the missing requirement) on the tracking page.', {okText: 'Incomplete Requirements'})">
+            <i class="fas fa-file-circle-exclamation"></i> Incomplete Requirements
         </button>
-        <button type="submit" form="arDecisionForm" name="action" value="reject" class="btn-reject" onclick="return appConfirm(this, 'Reject this application? The remarks are sent to the applicant.', {danger: true, okText: 'Reject'})">
-            <i class="fas fa-triangle-exclamation"></i> Reject Application
-        </button>
+        <?php endif; ?>
         <button type="submit" form="arDecisionForm" name="action" value="approve" class="btn-approve" onclick="return appConfirm(this, 'Approve this application and create the student record?')">
             <i class="fas fa-check"></i> Approve Application
         </button>

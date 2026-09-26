@@ -188,7 +188,10 @@ function sendEnrollmentNotification($student_email, $student_name, $status, $gra
         </html>
         ";
     } else {
-        $subject = "📋 Enrollment Update - EGRADEPRO";
+        // Online applications are never "rejected" now: the other outcome is Incomplete Requirements.
+        $incomplete = ($status === 'Incomplete Requirements');
+        $track_link = htmlspecialchars(function_exists('appUrl') ? appUrl('enrollment_status.php') : 'enrollment_status.php', ENT_QUOTES);
+        $subject = $incomplete ? "📋 Incomplete Requirements - EGRADEPRO Enrollment" : "📋 Enrollment Update - EGRADEPRO";
         $body = "
         <html>
         <head>
@@ -209,11 +212,11 @@ function sendEnrollmentNotification($student_email, $student_name, $status, $gra
                     <p>Enrollment Management System</p>
                 </div>
                 <div class='content'>
-                    <h2>❌ Enrollment Rejected</h2>
+                    <h2>" . ($incomplete ? "📄 Incomplete Requirements" : "❌ Enrollment Rejected") . "</h2>
                     <p>Dear <strong>" . htmlspecialchars($student_name) . "</strong>,</p>
-                    <p>We regret to inform you that your enrollment has been <strong>REJECTED</strong>.</p>
+                    <p>" . ($incomplete ? "Your enrollment application has <strong>Incomplete Requirements</strong>. Please submit the missing requirement so the registrar can approve your enrollment." : "We regret to inform you that your enrollment has been <strong>REJECTED</strong>.") . "</p>
                     
-                    <div class='status-badge'>❌ ENROLLMENT REJECTED</div>
+                    <div class='status-badge'>" . ($incomplete ? "📄 INCOMPLETE REQUIREMENTS" : "❌ ENROLLMENT REJECTED") . "</div>
                     
                     <div class='card'>
                         <h3>📋 Enrollment Details</h3>
@@ -225,9 +228,9 @@ function sendEnrollmentNotification($student_email, $student_name, $status, $gra
                     <div class='card' style='background: #f8d7da; border: 1px solid #dc3545;'>
                         <h4>📞 What to Do Next</h4>
                         <ul>
-                            <li>Contact the registrar's office for more information</li>
-                            <li>Check if you have submitted all requirements</li>
-                            <li>You may re-apply for enrollment</li>
+                            " . ($incomplete
+                                ? "<li>Open your <a href='" . $track_link . "'>Enrollment Tracking page</a> to see what is missing and upload it (e.g. Form 137)</li><li>Or bring it to the registrar's office</li>"
+                                : "<li>Contact the registrar's office for more information</li><li>Check if you have submitted all requirements</li><li>You may re-apply for enrollment</li>") . "
                         </ul>
                     </div>
                 </div>

@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $walkin = getRecord("SELECT student_id FROM students WHERE lrn = ? AND is_active = 1 AND portal_access = 1", [$lrn]);
         $application = getRecord(
             "SELECT reference_no, status FROM online_applications WHERE lrn = ?
-             ORDER BY FIELD(status, 'Approved', 'Under Review', 'Pending', 'Rejected'), application_id DESC LIMIT 1",
+             ORDER BY FIELD(status, 'Approved', 'Under Review', 'Pending', 'Incomplete Requirements', 'Rejected'), application_id DESC LIMIT 1",
             [$lrn]
         );
     }
@@ -51,8 +51,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error_link = ['online_enrollment.php', 'Go to Online Enrollment'];
     } elseif (!$walkin && $application['status'] !== 'Approved') {
         logActivity(null, 'student', 'Failed login', "LRN $lrn application not approved ({$application['status']})");
-        $error = $application['status'] === 'Rejected'
-            ? 'Your enrollment application (Ref. ' . $application['reference_no'] . ') was not approved, so the Student Portal is not available for this LRN. Please contact the registrar.'
+        $error = in_array($application['status'], ['Incomplete Requirements', 'Rejected', 'For Correction'], true)
+            ? 'Your enrollment application (Ref. ' . $application['reference_no'] . ') has Incomplete Requirements. Submit the missing requirement on your Enrollment Tracking page, then you can sign in once it is approved.'
             : 'Your enrollment application (Ref. ' . $application['reference_no'] . ') is still ' . $application['status'] . '. You can sign in once it is approved.';
         $error_link = ['enrollment_status.php', 'Check enrollment status'];
     } else {

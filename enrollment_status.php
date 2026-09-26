@@ -34,14 +34,56 @@ if ($ref !== '') {
     }
 }
 
+// Incomplete Requirements (New Student / Transferee without Form 137): the applicant
+// uploads it here; the application goes back to Pending for the registrar.
+$missing = $application ? oeMissingRequirements($application['application_id'], $application['application_type']) : [];
+$upload_msg = '';
+$upload_err = '';
+if ($application && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'upload_form137') {
+    $check = preg_replace('/\D/', '', (string) ($_POST['confirm_lrn'] ?? ''));
+    if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
+        $upload_err = 'Your session expired. Please reload the page and try again.';
+    } elseif (!in_array($application['status'], ['Pending', 'Under Review', OE_INCOMPLETE], true) || !$missing) {
+        $upload_err = 'Form 137 is not needed for this application.';
+    } elseif ($check === '' || $check !== preg_replace('/\D/', '', (string) $application['lrn'])) {
+        $upload_err = 'Enter the same LRN you used in your application.';
+    } else {
+        $res = saveApplicationFile($_FILES['form137'] ?? null, $application['reference_no'], 'form137');
+        if (!$res['success']) {
+            $upload_err = $res['message'];
+        } else {
+            executeQuery(
+                "INSERT INTO application_documents (application_id, doc_key, doc_label, file_name, file_path, file_type, file_size) VALUES (?,?,?,?,?,?,?)",
+                [(int) $application['application_id'], 'form137', 'Form 137 (Permanent Record)', $res['name'], $res['path'], $res['type'], $res['size']]
+            );
+            if ($application['status'] === OE_INCOMPLETE) {
+                executeQuery("UPDATE online_applications SET status = 'Pending', remarks = ? WHERE application_id = ?",
+                    ['Form 137 uploaded on ' . date('M j, Y g:i A') . '. Waiting for review.', (int) $application['application_id']]);
+            }
+            foreach (getRecords("SELECT u.user_id FROM users u JOIN roles r ON u.role_id = r.role_id WHERE r.role_name IN ('Administrator','Registrar','Enrollment Officer') AND u.is_active = 1") as $s) {
+                executeQuery(
+                    "INSERT INTO notifications (user_id, title, message, type, link, is_read) VALUES (?, ?, ?, 'info', ?, 0)",
+                    [$s['user_id'], 'Form 137 uploaded', $application['first_name'] . ' ' . $application['last_name'] . ' uploaded Form 137. Reference No. ' . $application['reference_no'] . '.',
+                     'modules/enrollment/view_application.php?id=' . (int) $application['application_id']]
+                );
+            }
+            logActivity(null, 'online_enrollment', 'Form 137 uploaded', 'Ref: ' . $application['reference_no']);
+            header('Location: enrollment_status.php?ref=' . urlencode($application['reference_no']) . '&uploaded=1');
+            exit;
+        }
+    }
+}
+if (isset($_GET['uploaded'])) $upload_msg = 'Form 137 uploaded. Your application is back with the registrar for review.';
+$csrf_token = generateCSRFToken();
+
 // status => [label shown to the applicant, colour, icon, message]
 $status_meta = [
     'Pending' => ['Submitted', 'primary', 'fa-paper-plane', 'Application successfully received.'],
     'Under Review' => ['Under Review', 'info', 'fa-magnifying-glass', 'Application is currently being checked.'],
-    'For Correction' => ['For Correction / Incomplete Requirements', 'warning', 'fa-pen-to-square', 'Please correct your details or submit the missing requirements. See the remarks below.'],
+    'Incomplete Requirements' => ['Incomplete Requirements', 'warning', 'fa-file-circle-exclamation', 'A requirement is still missing. See what to submit below.'],
     'Approved' => ['Approved', 'success', 'fa-circle-check', 'Enrollment has been approved.'],
-    'Rejected' => ['Not Approved', 'danger', 'fa-circle-xmark', 'Application was not approved. The reason is shown below.'],
 ];
+$status_meta['For Correction'] = $status_meta['Rejected'] = $status_meta['Incomplete Requirements'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -110,6 +152,23 @@ $status_meta = [
                 <span class="badge bg-<?php echo $m[1]; ?> px-3 py-2" style="font-size:15px;letter-spacing:.5px"><?php echo htmlspecialchars($application['reference_no']); ?></span>
             </div>
 
+            <?php if ($upload_msg !== ''): ?><div class="alert alert-success"><i class="fas fa-circle-check me-1"></i><?php echo htmlspecialchars($upload_msg); ?></div><?php endif; ?>
+            <?php if ($missing && in_array($application['status'], ['Pending', 'Under Review', OE_INCOMPLETE], true)): ?>
+                <div class="card-x" style="border:2px solid #f59e0b">
+                    <h6 class="fw-bold mb-1"><i class="fas fa-file-circle-exclamation text-warning me-1"></i>Missing requirement: <?php echo htmlspecialchars(implode(', ', $missing)); ?></h6>
+                    <p class="text-muted small mb-2">Upload it when you have it (PDF or photo, up to 5 MB). Your application then goes back to the registrar for review.</p>
+                    <?php if ($upload_err !== ''): ?><div class="alert alert-danger py-2 small"><?php echo htmlspecialchars($upload_err); ?></div><?php endif; ?>
+                    <form method="POST" enctype="multipart/form-data" class="row g-2">
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
+                        <input type="hidden" name="ref" value="<?php echo htmlspecialchars($application['reference_no']); ?>">
+                        <input type="hidden" name="action" value="upload_form137">
+                        <div class="col-md-5"><input type="text" name="confirm_lrn" class="form-control" inputmode="numeric" maxlength="12" placeholder="Your LRN (to confirm)" required></div>
+                        <div class="col-md-7"><input type="file" name="form137" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.webp" required></div>
+                        <div class="col-12"><button class="btn btn-warning fw-bold"><i class="fas fa-upload me-1"></i>Upload Form 137</button></div>
+                    </form>
+                </div>
+            <?php endif; ?>
+
             <?php if ($application['status'] === 'Approved'): ?>
                 <div class="card-x text-center" style="border:2px solid #198754">
                     <h5 class="fw-bold text-success mb-2"><i class="fas fa-user-graduate me-2"></i>Enrollment Approved</h5>
@@ -135,7 +194,7 @@ $status_meta = [
                     <tr><th>Current Status</th><td><span class="badge bg-<?php echo $m[1]; ?>"><?php echo htmlspecialchars($m[0]); ?></span></td></tr>
                     <tr><th>Documents Uploaded</th><td><?php echo count($documents); ?> file(s)</td></tr>
                     <?php if (!empty($application['remarks'])): ?>
-                        <tr><th><?php echo $application['status'] === 'Rejected' ? 'Reason' : 'Remarks from the Enrollment Officer'; ?></th><td><?php echo nl2br(htmlspecialchars($application['remarks'])); ?></td></tr>
+                        <tr><th><?php echo $application['status'] === OE_INCOMPLETE ? 'What is missing' : 'Remarks from the Enrollment Officer'; ?></th><td><?php echo nl2br(htmlspecialchars($application['remarks'])); ?></td></tr>
                     <?php endif; ?>
                 </table>
             </div>

@@ -1428,6 +1428,7 @@ html[data-theme="dark"] .grade-card:hover .section-count, html[data-theme="dark"
 .enroll-page .status-approved, .app-inbox .status-approved { background: #EAF7F1; color: #238863; }
 .enroll-page .status-rejected, .app-inbox .status-rejected { background: #FDEEEE; color: #C94A4A; }
 .enroll-page .status-correction, .app-inbox .status-correction { background: #FFF4E5; color: #B45309; }
+.enroll-page .status-incomplete, .app-inbox .status-incomplete { background: #FFF4E5; color: #B45309; }
 .enroll-page .status-transferred, .app-inbox .status-transferred { background: #cff4fc; color: #055160; }
 .enroll-page .strand-badge, .app-inbox .strand-badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; background: var(--bg); color: var(--text-secondary, var(--text-muted)); }
 .enroll-page .doc-count, .app-inbox .doc-count { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 7px; background: var(--bg); font-size: 13px; font-weight: 600; color: var(--ink); }

@@ -1,6 +1,6 @@
 <?php
 // modules/enrollment/application_action.php
-// ADMIN — approve or reject an online enrollment application.
+// ADMIN — approve an online enrollment application or mark it Incomplete Requirements.
 // Approving converts the application into a real student + enrollment record.
 // The enrollment is created already 'Approved' (student 'Enrolled') -- approving the
 // application is the approval -- so it shows as Approved under Recently Enrolled and
@@ -42,52 +42,37 @@ if (!$app) {
     exit;
 }
 
-if (!in_array($app['status'], ['Pending', 'Under Review', 'For Correction'], true)) {
+if (!in_array($app['status'], ['Pending', 'Under Review', 'For Correction', OE_INCOMPLETE], true)) {
     $_SESSION['error_message'] = 'This application was already processed.';
     header('Location: applications.php');
     exit;
 }
 
 // ============================================================
-// FOR CORRECTION -- the applicant must correct details / submit missing
-// requirements; the remarks (required) say what. Shown on the tracking page.
+// INCOMPLETE REQUIREMENTS (the only decision besides Approve; replaces Reject / For Correction)
 // ============================================================
-if ($action === 'correction') {
+if (in_array($action, ['incomplete', 'reject', 'correction'], true)) {
+    // The only decision besides Approve: something the applicant must still submit / fix.
+    $missing = oeMissingRequirements($application_id, $app['application_type']);
     if (trim($remarks) === '') {
-        $_SESSION['error_message'] = 'Write in the remarks what the applicant needs to correct or submit.';
-        header('Location: view_application.php?id=' . $application_id);
-        exit;
+        $remarks = $missing ? 'Missing requirement: ' . implode(', ', $missing) . '.' : 'Incomplete requirements. Please contact the registrar.';
     }
     executeQuery(
-        "UPDATE online_applications SET status = 'For Correction', remarks = ?, reviewed_by = ?, reviewed_at = NOW() WHERE application_id = ?",
-        [$remarks, $_SESSION['user_id'], $application_id]
-    );
-    logActivity($_SESSION['user_id'], 'online_enrollment', 'Online application marked For Correction', "Ref: {$app['reference_no']}");
-    $_SESSION['success_message'] = 'Application ' . $app['reference_no'] . ' is marked For Correction. The applicant sees your remarks on the tracking page.';
-    header('Location: applications.php');
-    exit;
-}
-
-// ============================================================
-// REJECT
-// ============================================================
-if ($action === 'reject') {
-    executeQuery(
-        "UPDATE online_applications SET status = 'Rejected', remarks = ?, reviewed_by = ?, reviewed_at = NOW() WHERE application_id = ?",
-        [$remarks, $_SESSION['user_id'], $application_id]
+        "UPDATE online_applications SET status = ?, remarks = ?, reviewed_by = ?, reviewed_at = NOW() WHERE application_id = ?",
+        [OE_INCOMPLETE, $remarks, $_SESSION['user_id'], $application_id]
     );
 
-    logActivity($_SESSION['user_id'], 'online_enrollment', 'Rejected online application', "Ref: {$app['reference_no']}");
+    logActivity($_SESSION['user_id'], 'online_enrollment', 'Online application marked Incomplete Requirements', "Ref: {$app['reference_no']}");
 
     if (!empty($app['email']) && function_exists('sendEnrollmentNotification')) {
         try {
-            sendEnrollmentNotification($app['email'], $app['first_name'] . ' ' . $app['last_name'], 'Rejected', $app['grade_level'], $app['strand'], '', $app['lrn']);
+            sendEnrollmentNotification($app['email'], $app['first_name'] . ' ' . $app['last_name'], OE_INCOMPLETE, $app['grade_level'], $app['strand'], '', $app['lrn']);
         } catch (Exception $e) {
-            error_log('Online enrollment rejection email failed: ' . $e->getMessage());
+            error_log('Online enrollment incomplete-requirements email failed: ' . $e->getMessage());
         }
     }
 
-    $_SESSION['success_message'] = 'Application ' . $app['reference_no'] . ' was rejected.';
+    $_SESSION['success_message'] = 'Application ' . $app['reference_no'] . ' is marked Incomplete Requirements. The applicant sees what is missing on the tracking page.';
     header('Location: applications.php');
     exit;
 }

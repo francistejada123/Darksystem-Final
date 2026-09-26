@@ -321,7 +321,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             oeEnsureCorrectionStatus();
-            $dupe_app = getRecord("SELECT reference_no FROM online_applications WHERE lrn = ? AND status IN ('Pending','Under Review','For Correction')", [$lrn]);
+            $dupe_app = getRecord("SELECT reference_no FROM online_applications WHERE lrn = ? AND status IN ('Pending','Under Review','For Correction','Incomplete Requirements')", [$lrn]);
             if ($dupe_app) $errors[] = 'You already have a pending application (Ref. ' . $dupe_app['reference_no'] . ').';
         }
 
@@ -418,6 +418,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             "INSERT INTO application_documents (application_id, doc_key, doc_label, file_name, file_path, file_type, file_size)
                              VALUES (?,?,?,?,?,?,?)",
                             [$application_id, $s['doc']['key'], $s['doc']['label'], $s['res']['name'], $s['res']['path'], $s['res']['type'], $s['res']['size']]
+                        );
+                    }
+
+                    // New Student / Transferee without Form 137: Incomplete Requirements until it is uploaded.
+                    if (oeForm137Counts($application_type) && !in_array('form137', array_map(function ($x) { return $x['doc']['key']; }, $saved), true)) {
+                        executeQuery(
+                            "UPDATE online_applications SET status = ?, remarks = ? WHERE application_id = ?",
+                            [OE_INCOMPLETE, 'Missing requirement: Form 137 (Permanent Record). Upload it on your Enrollment Tracking page when you have it.', $application_id]
                         );
                     }
 

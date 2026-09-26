@@ -1734,7 +1734,7 @@ document.addEventListener('click', function (e) {
                                     if ($a_status === 'Approved') $a_class = 'success';
                                     elseif ($a_status === 'Pending') $a_class = 'pending';
                                     elseif ($a_status === 'Under Review') $a_class = 'warning';
-                                    elseif ($a_status === 'Rejected') $a_class = 'danger';
+                                    elseif (in_array($a_status, ['Incomplete Requirements', 'Rejected', 'For Correction'], true)) { $a_class = 'warning'; $a_status = 'Incomplete Requirements'; }
                                 ?>
                                 <span class="dash-badge dash-badge-<?php echo $a_class; ?>"><?php echo htmlspecialchars($a_status); ?></span>
                             </td>
