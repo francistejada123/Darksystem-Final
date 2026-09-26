@@ -449,6 +449,33 @@ include '../../includes/header.php';
 /* ---- Table card header: calendar icon + Export button ---- */
 .att-page .att-table-header-title { display: flex; align-items: center; gap: 8px; }
 .att-page .att-export-btn { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ---- Bigger, easier-to-read text in the tables (Today's Overview,
+   Attendance History, Manage Teaching Schedule). !important beats the
+   small inline font sizes on some cells. ---- */
+.att-page .table > :not(caption) > * > th { font-size: 12.5px !important; font-weight: 700; letter-spacing: .04em; padding-top: 13px; padding-bottom: 13px; }
+.att-page .table > :not(caption) > * > td { font-size: 15px !important; padding-top: 14px; padding-bottom: 14px; }
+.att-page .table .cell-strong { font-size: 15px; }
+.att-page .table .text-muted-2, .att-page .att-muted-dash { font-size: 14.5px !important; }
+.att-page .table .time-label { font-size: 13.5px; }
+.att-page .table .time-value { font-size: 14.5px; }
+.att-page .status-pill { font-size: 13px; padding: 5px 12px; }
+.att-page .section-title { font-size: 17px !important; }
+.att-page .card-header .badge, .att-page .card-header .status-pill { font-size: 13px; }
+/* Assignment chips (10-B, 11-GAS B, +5 more) */
+.att-page .assignment-chip-row { gap: 6px !important; }
+.att-page .assignment-chip-row .chip { font-size: 14px; font-weight: 600; padding: 6px 12px; border-radius: 8px; line-height: 1.2; }
+.att-page .assignment-chip-row .chip-more { font-size: 13.5px; }
+.att-page .table td:has(> .assignment-chip-row) { max-width: 360px !important; }
+/* Subjects under an opened section chip */
+.att-page .section-panel { font-size: 14.5px; }
+.att-page .section-panel-title { font-size: 14px !important; }
+/* Manage Teaching Schedule form */
+.att-page .card-body .form-label, .att-page .card-body label { font-size: 14.5px !important; }
+.att-page .card-body .form-select, .att-page .card-body .form-control { font-size: 15px; min-height: 44px; }
+.att-page .card-body .btn { font-size: 15px; }
+.att-page .card-header h5, .att-page .card-header h6 { font-size: 17px !important; }
+.att-page .table .btn-sm { font-size: 14px; padding: 6px 14px; }
 </style>
 
 <div class="att-page">
