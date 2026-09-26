@@ -65,7 +65,7 @@ $all_sections = getRecords("
     FROM sections s
     LEFT JOIN users adv ON s.adviser_id = adv.user_id
     WHERE s.is_active = 1 
-    ORDER BY s.grade_level, s.section_name
+    ORDER BY CAST(REPLACE(s.grade_level, 'Grade ', '') AS UNSIGNED), s.section_name
 ");
 
 // Legacy 'HUMSS' sections belong to the ASSH Cluster (see normalizeStrandKey).
@@ -634,7 +634,7 @@ include '../../includes/header.php';
     <form method="get" class="row g-3 align-items-end">
         <div class="col-md-3 col-6">
             <label class="sp-filter-label">Grade Level</label>
-            <select name="filter_grade" class="form-select">
+            <select name="filter_grade" id="spFilterGrade" class="form-select">
                 <option value="">All Grades</option>
                 <?php foreach ($grade_levels as $g): ?>
                     <option value="<?php echo htmlspecialchars($g); ?>" <?php echo $filter_grade === $g ? 'selected' : ''; ?>><?php echo htmlspecialchars($g); ?></option>
@@ -643,13 +643,18 @@ include '../../includes/header.php';
         </div>
         <div class="col-md-3 col-6">
             <label class="sp-filter-label">Section</label>
-            <select name="filter_section" class="form-select">
+            <select name="filter_section" id="spFilterSection" class="form-select">
                 <option value="0">All Sections</option>
-                <?php foreach ($all_sections as $sec): ?>
-                    <option value="<?php echo (int)$sec['section_id']; ?>" <?php echo $filter_section_id === (int)$sec['section_id'] ? 'selected' : ''; ?>>
-                        <?php echo htmlspecialchars($sec['section_name'] . ' (' . $sec['grade_level'] . ')'); ?>
+                <?php $sp_group = null; foreach ($all_sections as $sec):   // Grade 7 (7-A, 7-B, 7-C) ... Grade 12
+                    if ($sec['grade_level'] !== $sp_group):
+                        if ($sp_group !== null) echo '</optgroup>';
+                        $sp_group = $sec['grade_level']; ?>
+                    <optgroup label="<?php echo htmlspecialchars($sp_group); ?>" data-grade="<?php echo htmlspecialchars($sp_group); ?>">
+                    <?php endif; ?>
+                    <option value="<?php echo (int)$sec['section_id']; ?>" data-grade="<?php echo htmlspecialchars($sec['grade_level']); ?>" <?php echo $filter_section_id === (int)$sec['section_id'] ? 'selected' : ''; ?>>
+                        <?php echo htmlspecialchars($sec['section_name']); ?>
                     </option>
-                <?php endforeach; ?>
+                <?php endforeach; if ($sp_group !== null) echo '</optgroup>'; ?>
             </select>
         </div>
         <div class="col-md-2 col-6">
@@ -1456,6 +1461,30 @@ function showDeleteModal(id, name) {
     var modal = new bootstrap.Modal(document.getElementById('deleteModal'));
     modal.show();
 }
+</script>
+
+<script src="<?php echo BASE_URL; ?>static/js/dropdown-below.js?v=<?php echo (int) @filemtime(__DIR__ . '/../../static/js/dropdown-below.js'); ?>"></script>
+<script>
+// Section filter: grouped Grade 7 ... Grade 12, only the chosen grade's sections
+// when a Grade Level is picked, and the list opens below the field.
+(function () {
+    var grade = document.getElementById('spFilterGrade');
+    var section = document.getElementById('spFilterSection');
+    if (!grade || !section) return;
+    function sync() {
+        var g = grade.value, keep = false;
+        section.querySelectorAll('optgroup').forEach(function (grp) {
+            var show = !g || grp.getAttribute('data-grade') === g;
+            grp.hidden = !show;
+            grp.disabled = !show;
+            if (show && grp.querySelector('option[value="' + section.value + '"]')) keep = true;
+        });
+        if (section.value !== '0' && !keep) section.value = '0';
+    }
+    grade.addEventListener('change', sync);
+    sync();
+    if (window.DropdownBelow) { DropdownBelow.enhance(grade); DropdownBelow.enhance(section); }
+})();
 </script>
 
 <?php include '../../includes/footer.php'; ?>
