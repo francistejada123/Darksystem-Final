@@ -741,6 +741,8 @@ include '../../includes/header.php';
     if (clearBtn) {
         clearBtn.addEventListener('click', function () {
             if (teacherSelect) { teacherSelect.value = ''; }
+            if (subjectSelect) { subjectSelect.value = ''; }
+            if (sectionSelect) { sectionSelect.value = ''; }
             rebuildSubjectOptions();
             rebuildSectionOptions();
             if (riskSelect) { riskSelect.value = ''; }
@@ -1209,5 +1211,14 @@ include '../../includes/header.php';
     .air-mobile-grid { grid-template-columns: 1fr; }
 }
 </style>
+
+<!-- Filter dropdowns always open below their field (the browser's own list opened upward near the top of the page). -->
+<script src="../../static/js/dropdown-below.js?v=<?php echo (int) @filemtime(__DIR__ . '/../../static/js/dropdown-below.js'); ?>"></script>
+<script>
+['airFilterTeacher', 'airFilterSubject', 'airFilterSection', 'airFilterGrade', 'airFilterRisk'].forEach(function (id) {
+    DropdownBelow.enhance(document.getElementById(id));
+});
+DropdownBelow.enhance(document.querySelector('#airTermForm select[name="term"]'));
+</script>
 
 <?php include '../../includes/footer.php'; ?>
