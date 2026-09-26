@@ -520,21 +520,32 @@ include '../../includes/header.php';
         margin-bottom: 3px;
     }
     .subj-page .sp-teacher-row:last-child { margin-bottom: 0; }
-    .subj-page .sp-more-teachers { position: relative; display: inline-block; margin-top: 2px; outline: none; }
-    .subj-page .sp-more-link { font-size: 12px; font-weight: 600; color: var(--primary); cursor: default; }
-    .subj-page .sp-more-link i { font-size: 9px; margin-left: 2px; }
+    /* Teacher name on one line; a long name ends in "…" (full name on hover). */
+    .subj-page .sp-teacher-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 190px; }
+    /* "+N more": the other teachers open in a card to the right, so the next row is not covered. */
+    .subj-page .sp-more-teachers { position: relative; display: inline-block; margin: 4px 0 0 32px; outline: none; }
+    .subj-page .sp-more-link {
+        display: inline-flex; align-items: center; height: 22px; padding: 0 10px; border-radius: 999px;
+        font-size: 11.5px; font-weight: 600; color: var(--primary); background: var(--primary-soft, #EAF1FE);
+        border: 1px solid transparent; cursor: default; transition: background 0.15s, border-color 0.15s;
+    }
+    .subj-page .sp-more-teachers:hover .sp-more-link,
+    .subj-page .sp-more-teachers:focus-within .sp-more-link { border-color: var(--primary); background: var(--surface); }
     .subj-page .sp-more-pop {
-        display: none; position: absolute; left: 0; top: 100%; z-index: 30; min-width: 220px;
-        margin-top: 4px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border);
+        display: none; position: absolute; left: var(--pop-left, calc(100% + 12px)); top: 50%; transform: translateY(-50%); z-index: 30;
+        min-width: 230px; max-width: 280px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border);
         border-radius: 10px; box-shadow: 0 10px 24px rgba(16, 24, 40, 0.14);
     }
-    .subj-page .sp-more-teachers::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 6px; }
+    .subj-page .sp-more-pop::before {   /* small arrow pointing at "+N more" */
+        content: ''; position: absolute; left: -6px; top: 50%; width: 10px; height: 10px; margin-top: -5px;
+        background: var(--surface); border-left: 1px solid var(--border); border-bottom: 1px solid var(--border); transform: rotate(45deg);
+    }
+    .subj-page .sp-more-teachers::after { content: ''; position: absolute; top: 0; bottom: 0; left: 100%; width: var(--bridge, 14px); }   /* hover bridge */
     .subj-page .sp-more-teachers:hover .sp-more-pop,
     .subj-page .sp-more-teachers:focus-within .sp-more-pop { display: block; }
-    .subj-page .sp-more-pop .sp-teacher-row { white-space: nowrap; margin-bottom: 6px; }
-    /* Last rows of the table: open upward so the list is not cut off at the bottom. */
-    .subj-page tbody tr:nth-last-child(-n+2) .sp-more-pop { top: auto; bottom: 100%; margin: 0 0 4px; }
-    .subj-page tbody tr:nth-last-child(-n+2) .sp-more-teachers::after { top: auto; bottom: 100%; }
+    .subj-page .sp-more-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); margin-bottom: 8px; }
+    .subj-page .sp-more-pop .sp-teacher-row { margin-bottom: 6px; }
+    .subj-page .sp-more-pop .sp-teacher-name { max-width: 210px; }
     .subj-page .sp-pagination {
         display: flex;
         align-items: center;
@@ -915,20 +926,23 @@ include '../../includes/header.php';
                                     $tt = $asub['teachers'][0];
                                     $tinit = strtoupper(substr($tt['first_name'], 0, 1) . substr($tt['last_name'], 0, 1));
                                 ?>
+                                <?php $tname = $tt['last_name'] . ', ' . $tt['first_name']; ?>
                                 <div class="sp-teacher-row">
                                     <span class="sp-avatar" style="background:<?php echo $tcolor['bg']; ?>;color:<?php echo $tcolor['fg']; ?>;"><?php echo htmlspecialchars($tinit); ?></span>
-                                    <?php echo htmlspecialchars($tt['last_name'] . ', ' . $tt['first_name']); ?>
+                                    <span class="sp-teacher-name" title="<?php echo htmlspecialchars($tname); ?>"><?php echo htmlspecialchars($tname); ?></span>
                                 </div>
-                                <?php if (count($asub['teachers']) > 1): ?>
-                                    <div class="sp-more-teachers" tabindex="0">
-                                        <span class="sp-more-link">See more (+<?php echo count($asub['teachers']) - 1; ?>) <i class="fas fa-chevron-down"></i></span>
-                                        <div class="sp-more-pop">
-                                            <?php foreach (array_slice($asub['teachers'], 1) as $tt):
+                                <?php if (count($asub['teachers']) > 1): $others = array_slice($asub['teachers'], 1); ?>
+                                    <div class="sp-more-teachers" tabindex="0" aria-label="Show <?php echo count($others); ?> more teacher(s)">
+                                        <span class="sp-more-link">+<?php echo count($others); ?> more</span>
+                                        <div class="sp-more-pop" role="tooltip">
+                                            <div class="sp-more-title">Other teachers (<?php echo count($others); ?>)</div>
+                                            <?php foreach ($others as $tt):
                                                 $tinit = strtoupper(substr($tt['first_name'], 0, 1) . substr($tt['last_name'], 0, 1));
+                                                $tname = $tt['last_name'] . ', ' . $tt['first_name'];
                                             ?>
                                             <div class="sp-teacher-row">
                                                 <span class="sp-avatar" style="background:<?php echo $tcolor['bg']; ?>;color:<?php echo $tcolor['fg']; ?>;"><?php echo htmlspecialchars($tinit); ?></span>
-                                                <?php echo htmlspecialchars($tt['last_name'] . ', ' . $tt['first_name']); ?>
+                                                <span class="sp-teacher-name" title="<?php echo htmlspecialchars($tname); ?>"><?php echo htmlspecialchars($tname); ?></span>
                                             </div>
                                             <?php endforeach; ?>
                                         </div>
@@ -971,6 +985,20 @@ include '../../includes/header.php';
         <?php endif; ?>
     </div>
 </div>
+
+<script>
+// "+N more": open the card just past the Teacher column, so it never covers
+// the teacher names in the rows above or below.
+document.querySelectorAll('.subj-page .sp-more-teachers').forEach(function (m) {
+    function place() {
+        var gap = m.closest('td').getBoundingClientRect().right - m.getBoundingClientRect().left + 10;
+        m.style.setProperty('--pop-left', gap + 'px');
+        m.style.setProperty('--bridge', (gap - m.offsetWidth) + 'px');
+    }
+    m.addEventListener('mouseenter', place);
+    m.addEventListener('focus', place);
+});
+</script>
 
 <!-- Subject detail view — populated client-side from the row's own data,
      since no separate "view subject" page exists in this system. -->
