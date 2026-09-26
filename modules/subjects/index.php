@@ -1314,8 +1314,8 @@ document.querySelectorAll('.subj-page .sp-more-teachers').forEach(function (m) {
                                                     data-section-id="<?php echo $selected_section; ?>"
                                                     data-grade-level="<?php echo htmlspecialchars($selected_grade); ?>"
                                                     data-strand="<?php echo htmlspecialchars($selected_strand); ?>"
-                                                    title="Edit Assignment">
-                                                <i class="fas fa-pen"></i> Edit Assignment
+                                                    title="Change the teacher or class schedule for this subject">
+                                                <i class="fas fa-user-pen"></i> Teacher &amp; Schedule
                                             </button>
                                             <a href="remove_from_section.php?subject=<?php echo urlencode($subject['subject_code']); ?>&section=<?php echo $selected_section; ?>&grade=<?php echo urlencode($selected_grade); ?>&strand=<?php echo urlencode($selected_strand); ?>" 
                                                class="btn btn-sm btn-outline-danger"
