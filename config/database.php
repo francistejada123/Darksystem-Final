@@ -319,6 +319,14 @@ function logActivity($userId, $module, $action, $details = null, $ipAddress = nu
         // Get user agent
         $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
         
+        // Some callers pass (action, module) instead of (module, action). A module
+        // is a short lowercase key (e.g. "grading"); an action is words
+        // (e.g. "Added assessment item"). Put each in its own column.
+        if (is_string($action) && is_string($module)
+            && preg_match('/^[a-z][a-z_]*$/', $action) && !preg_match('/^[a-z][a-z_]*$/', $module)) {
+            [$module, $action] = [$action, $module];
+        }
+
         // Convert details to JSON if array
         if (is_array($details)) {
             $details = json_encode($details);
