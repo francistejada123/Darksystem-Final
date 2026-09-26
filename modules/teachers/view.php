@@ -227,6 +227,18 @@ html[data-theme="dark"] .tprofile .tp-grade-filter button.active { background: #
                 <div class="info-card-body">
                     <div class="detail-grid">
                         <div class="detail-item">
+                            <span class="detail-label">Teacher ID / Employee ID</span>
+                            <span class="detail-value"><?php echo tpValue($teacher['employee_id'] ?? ''); ?></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Department / Level</span>
+                            <span class="detail-value"><?php echo tpValue($teacher['department_level'] ?? ''); ?></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Employment Status</span>
+                            <span class="detail-value"><?php echo tpValue($teacher['employment_status'] ?? ''); ?></span>
+                        </div>
+                        <div class="detail-item">
                             <span class="detail-label">Highest Educational Attainment</span>
                             <span class="detail-value"><?php echo tpValue($teacher['highest_educ_attainment'] ?? ''); ?></span>
                         </div>

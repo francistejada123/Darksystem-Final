@@ -1337,7 +1337,7 @@ include '../../includes/header.php';
                 <i class="fas fa-calendar-alt"></i> Term Dates
             </button>
             <a href="add.php" class="btn-primary-action">
-                <i class="fas fa-user-plus"></i> Add Teacher
+                <i class="fas fa-envelope-open-text"></i> Invite New Teacher
             </a>
         </div>
     </div>
