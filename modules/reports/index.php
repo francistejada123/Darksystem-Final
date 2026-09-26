@@ -128,7 +128,7 @@ include '../../includes/header.php';
                                         <th>Grade Level</th>
                                         <th class="text-center">Pending</th>
                                         <th class="text-center">Approved</th>
-                                        <th class="text-center">Rejected</th>
+                                        <th class="text-center">Incomplete Requirements</th>
                                         <th class="text-center">Total</th>
                                     </tr>
                                 </thead>
@@ -445,7 +445,7 @@ function exportTable() {
                 '<td>' + escapeHtml(r.grade_level) + ' <i class="fas fa-chevron-right text-muted"></i></td>' +
                 '<td class="text-center"><span class="badge bg-warning text-dark">' + r.pending + '</span></td>' +
                 '<td class="text-center"><span class="badge bg-success">' + r.approved + '</span></td>' +
-                '<td class="text-center"><span class="badge bg-danger">' + r.rejected + '</span></td>' +
+                '<td class="text-center"><span class="badge bg-warning text-dark">' + r.rejected + '</span></td>' +
                 '<td class="text-center"><strong>' + r.total + '</strong></td>' +
                 '</tr>';
         }).join('');

@@ -1444,6 +1444,8 @@ html[data-theme="dark"] .grade-card:hover .section-count, html[data-theme="dark"
 .enroll-page .btn-action.approve:hover, .app-inbox .btn-action.approve:hover { background: #238863; color: #fff; border-color: #238863; }
 .enroll-page .btn-action.reject, .app-inbox .btn-action.reject { color: #C94A4A; }
 .enroll-page .btn-action.reject:hover, .app-inbox .btn-action.reject:hover { background: #C94A4A; color: #fff; border-color: #C94A4A; }
+.enroll-page .btn-action.incomplete, .app-inbox .btn-action.incomplete { color: #B45309; }
+.enroll-page .btn-action.incomplete:hover, .app-inbox .btn-action.incomplete:hover { background: #B45309; color: #fff; border-color: #B45309; }
 
 .enroll-page .pagination-wrap, .app-inbox .pagination-wrap { padding: 16px 20px; display: flex; justify-content: center; }
 .enroll-page .pagination, .app-inbox .pagination { display: flex; gap: 4px; list-style: none; margin: 0; padding: 0; }

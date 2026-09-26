@@ -55,6 +55,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($form['last_name'] === '') $errors[] = 'Last name is required.';
     if ($form['first_name'] === '') $errors[] = 'First name is required.';
+    // Names: letters (incl. ñ / accents), spaces, hyphen, apostrophe, period -- no digits or symbols.
+    foreach (['first_name' => 'First name', 'middle_name' => 'Middle name', 'last_name' => 'Last name'] as $nk => $nl) {
+        $plain = html_entity_decode($form[$nk], ENT_QUOTES, 'UTF-8');
+        if ($plain !== '' && !preg_match('/^[\p{L}\p{M}][\p{L}\p{M}\.\-\x27 ]*$/u', $plain)) {
+            $errors[] = $nl . ' must contain letters only (spaces, - and \' are allowed).';
+        }
+    }
+    $warnings = [];   // unusual but possible: saved only after the user ticks "enroll anyway"
 
     // Birth date must be a real past date. A future birth date is always a
     // typo and would follow the learner through every report.
@@ -75,6 +83,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Email is required.';
     } elseif (!validateEmail($form['email'])) {
         $errors[] = 'Email format is invalid.';
+    } elseif ($used = getRecord("SELECT first_name, last_name FROM students WHERE email = ? AND is_active = 1 LIMIT 1", [$form['email']])) {
+        $errors[] = 'This email is already used by another student (' . $used['last_name'] . ', ' . $used['first_name'] . '). Use the learner\'s own email.';
     }
 
     if ($form['contact_number'] === '') {
@@ -141,6 +151,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // ---- Age for the grade level (usual age = grade + 5, e.g. Grade 7 ~ 12 years old) ----
+    if ($form['birth_date'] !== '' && strtotime($form['birth_date']) !== false && strtotime($form['birth_date']) <= time()
+        && in_array($form['grade_level'], $grade_levels, true)) {
+        $age = (int) date_diff(date_create($form['birth_date']), date_create('today'))->y;
+        $usual = (int) str_replace('Grade ', '', $form['grade_level']) + 5;
+        if ($age < $usual - 3) {
+            $errors[] = 'The learner is only ' . $age . ' years old — too young for ' . $form['grade_level'] . '. Please check the birth date.';
+        } elseif ($age < $usual - 1 || $age > $usual + 3) {
+            $warnings[] = 'The learner is ' . $age . ' years old, which is unusual for ' . $form['grade_level'] . ' (usually about ' . $usual . '). Check the birth date and grade level.';
+        }
+    }
+
+    // ---- An online application with the same LRN is still waiting ----
+    if ($form['lrn'] !== '' && strlen($form['lrn']) === 12) {
+        $oa = getRecord("SELECT reference_no, status FROM online_applications WHERE lrn = ? AND status IN ('Pending','Under Review','For Correction','Incomplete Requirements') ORDER BY application_id DESC LIMIT 1", [$form['lrn']]);
+        if ($oa) {
+            $warnings[] = 'This LRN already has an online application (Ref. ' . $oa['reference_no'] . ', ' . $oa['status'] . '). Consider approving that application in Online Applications instead of a new walk-in enrollment.';
+        }
+    }
+    if (!$errors && $warnings && empty($_POST['confirm_warnings'])) {
+        $needs_confirm = true;   // show the warnings; nothing is saved yet
+    }
+
     // ---- General average is now required ----
     // The lower bound is 60 because the SY 2026-2027 transmutation table
     // floors every reported grade at 60 — nothing below that can be a real
@@ -156,7 +189,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $average_grade = floatval($form['general_average']);
     }
 
-    if (empty($errors)) {
+    if (empty($errors) && empty($needs_confirm)) {
         $db->beginTransaction();
         try {
             $section = null;
@@ -242,11 +275,20 @@ include '../../includes/header.php';
     </div>
 <?php endif; ?>
 
+<?php if (!empty($needs_confirm)): ?>
+    <div class="alert alert-warning">
+        <strong><i class="fas fa-triangle-exclamation me-1"></i>Please check before enrolling:</strong>
+        <ul class="mb-2 mt-1"><?php foreach ($warnings as $w): ?><li><?php echo htmlspecialchars($w); ?></li><?php endforeach; ?></ul>
+        <label class="d-flex gap-2 align-items-center fw-semibold mb-0"><input type="checkbox" form="walkinForm" name="confirm_warnings" value="1" class="form-check-input mt-0"> I checked this — enroll anyway</label>
+        <small class="text-muted">Tick it, then click Enroll again.</small>
+    </div>
+<?php endif; ?>
+
 <?php if (!$active_sy): ?>
     <div class="alert alert-warning"><i class="fas fa-triangle-exclamation me-2"></i>No active school year is set. Set one in Settings before enrolling students.</div>
 <?php endif; ?>
 
-<form method="POST" action="">
+<form method="POST" action="" id="walkinForm" novalidate>
     <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
 
     <div class="row">
@@ -358,6 +400,82 @@ include '../../includes/header.php';
 </form>
 
 <script>
+// Live checks while typing (the server checks everything again on Enroll).
+(function () {
+    var form = document.getElementById('walkinForm');
+    if (!form) return;
+    var NAME = /^[\p{L}\p{M}][\p{L}\p{M}.\-' ]*$/u;
+    var MOBILE = /^(09\d{9}|\+?639\d{9})$/;
+    var rules = {
+        lrn: function (v) { return !v ? 'LRN is required.' : (/^\d{12}$/.test(v) ? '' : 'LRN must be exactly 12 digits (' + v.replace(/\D/g, '').length + ' now).'); },
+        last_name: function (v) { return !v ? 'Last name is required.' : (NAME.test(v) ? '' : 'Letters only (spaces, - and \' are allowed).'); },
+        first_name: function (v) { return !v ? 'First name is required.' : (NAME.test(v) ? '' : 'Letters only (spaces, - and \' are allowed).'); },
+        middle_name: function (v) { return !v || NAME.test(v) ? '' : 'Letters only (spaces, - and \' are allowed).'; },
+        birth_date: function (v) {
+            if (!v) return 'Birth date is required.';
+            var d = new Date(v + 'T00:00:00');
+            return isNaN(d) ? 'Enter a valid date.' : (d > new Date() ? 'Birth date cannot be in the future.' : '');
+        },
+        contact_number: function (v) { return !v ? 'Contact number is required.' : (MOBILE.test(v.replace(/[\s-]/g, '')) ? '' : 'Enter a valid mobile number (09XXXXXXXXX).'); },
+        email: function (v) { return !v ? 'Email is required.' : (/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v) ? '' : 'Enter a valid email address.'); },
+        address: function (v) { return !v ? 'Address is required.' : (v.length < 5 ? 'Enter the complete address.' : ''); },
+        guardian_name: function (v) { return !v ? 'Guardian name is required.' : (NAME.test(v) && v.length >= 2 ? '' : 'Letters only, at least 2 characters.'); },
+        guardian_contact: function (v) { return !v ? 'Guardian contact is required.' : (MOBILE.test(v.replace(/[\s-]/g, '')) ? '' : 'Enter a valid mobile number (09XXXXXXXXX).'); },
+        general_average: function (v) { return v === '' ? 'General average is required.' : (isNaN(v) || +v < 60 || +v > 100 ? 'Must be a number from 60 to 100.' : ''); },
+        grade_level: function (v) { return v ? '' : 'Please select a grade level.'; },
+        gender: function (v) { return v ? '' : 'Please select a gender.'; }
+    };
+    function feedback(el) {
+        var fb = el.parentNode.querySelector('.live-feedback');
+        if (!fb) { fb = document.createElement('div'); fb.className = 'live-feedback invalid-feedback'; el.insertAdjacentElement('afterend', fb); }
+        return fb;
+    }
+    function check(el, show) {
+        var rule = rules[el.name];
+        if (!rule) return true;
+        var msg = rule(el.value.trim());
+        if (show || el.dataset.touched) {
+            el.classList.toggle('is-invalid', !!msg);
+            el.classList.toggle('is-valid', !msg && el.value.trim() !== '');
+            feedback(el).textContent = msg;
+        }
+        return !msg;
+    }
+    // Age hint for the chosen grade (usual age = grade + 5); a note, not a block.
+    function ageHint() {
+        var bd = form.elements['birth_date'], gl = form.elements['grade_level'];
+        if (!bd || !gl || !bd.value || !gl.value) return;
+        var d = new Date(bd.value + 'T00:00:00'), now = new Date();
+        var age = now.getFullYear() - d.getFullYear() - ((now.getMonth() < d.getMonth() || (now.getMonth() === d.getMonth() && now.getDate() < d.getDate())) ? 1 : 0);
+        var usual = parseInt(gl.value.replace('Grade ', ''), 10) + 5;
+        var note = bd.parentNode.querySelector('.age-note');
+        if (!note) { note = document.createElement('div'); note.className = 'age-note small mt-1'; bd.parentNode.appendChild(note); }
+        if (age < usual - 1 || age > usual + 3) {
+            note.style.color = '#b45309';
+            note.textContent = 'Age ' + age + ' is unusual for ' + gl.value + ' (usually about ' + usual + '). Please double-check.';
+        } else {
+            note.style.color = '#667085';
+            note.textContent = 'Age ' + age + '.';
+        }
+    }
+    Object.keys(rules).forEach(function (name) {
+        var el = form.elements[name];
+        if (!el || !el.addEventListener) return;
+        el.addEventListener('input', function () { if (name === 'lrn') el.value = el.value.replace(/\D/g, '').slice(0, 12); check(el); });
+        el.addEventListener('change', function () { el.dataset.touched = '1'; check(el); ageHint(); });
+        el.addEventListener('blur', function () { el.dataset.touched = '1'; check(el); });
+    });
+    ageHint();
+    form.addEventListener('submit', function (e) {
+        var first = null;
+        Object.keys(rules).forEach(function (name) {
+            var el = form.elements[name];
+            if (el && el.addEventListener && !check(el, true) && !first) first = el;
+        });
+        if (first) { e.preventDefault(); first.focus(); first.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+    });
+})();
+
 function toggleStrandField() {
     var grade = document.getElementById('gradeLevelSelect').value;
     var strandField = document.getElementById('strandField');

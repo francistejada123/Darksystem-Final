@@ -477,6 +477,7 @@ if (hasRole('Administrator') && $active_sy) {
         'Approved'    => '#238863',
         'Pending'     => '#356EA8',
         'Rejected'    => '#C94A4A',
+        'Incomplete Requirements' => '#B45309',
         'Transferred' => '#9A7520',
         'Graduated'   => '#667085',
     ];
@@ -1263,7 +1264,7 @@ function dw_widget_close() {
                                     $e_class = 'gray';
                                     if ($e_status === 'Approved') $e_class = 'success';
                                     elseif ($e_status === 'Pending') $e_class = 'pending';
-                                    elseif ($e_status === 'Rejected') $e_class = 'danger';
+                                    elseif (in_array($e_status, ['Incomplete Requirements', 'Rejected'], true)) { $e_class = 'warning'; $e_status = 'Incomplete Requirements'; }
                                     elseif ($e_status === 'Transferred') $e_class = 'warning';
                                 ?>
                                 <span class="dash-badge dash-badge-<?php echo $e_class; ?>"><?php echo htmlspecialchars($e_status); ?></span>
@@ -1796,7 +1797,7 @@ document.addEventListener('click', function (e) {
                                     $w_class = 'gray';
                                     if ($w_status === 'Approved') $w_class = 'success';
                                     elseif ($w_status === 'Pending') $w_class = 'pending';
-                                    elseif ($w_status === 'Rejected') $w_class = 'danger';
+                                    elseif (in_array($w_status, ['Incomplete Requirements', 'Rejected'], true)) { $w_class = 'warning'; $w_status = 'Incomplete Requirements'; }
                                     elseif ($w_status === 'Transferred') $w_class = 'warning';
                                 ?>
                                 <span class="dash-badge dash-badge-<?php echo $w_class; ?>"><?php echo htmlspecialchars($w_status); ?></span>

@@ -71,7 +71,7 @@ $enrollment_status = getRecords("
     SELECT gl.grade_level,
            COALESCE(SUM(CASE WHEN e.enrollment_status = 'Pending' THEN 1 ELSE 0 END), 0) AS pending,
            COALESCE(SUM(CASE WHEN e.enrollment_status = 'Approved' THEN 1 ELSE 0 END), 0) AS approved,
-           COALESCE(SUM(CASE WHEN e.enrollment_status = 'Rejected' THEN 1 ELSE 0 END), 0) AS rejected,
+           COALESCE(SUM(CASE WHEN e.enrollment_status IN ('Incomplete Requirements','Rejected') THEN 1 ELSE 0 END), 0) AS rejected,
            COUNT(e.enrollment_id) AS total
     FROM (
         SELECT 'Grade 7' AS grade_level UNION ALL
@@ -90,7 +90,7 @@ $enrollment_totals = getRecord("
     SELECT
         SUM(CASE WHEN enrollment_status = 'Pending' THEN 1 ELSE 0 END) AS pending,
         SUM(CASE WHEN enrollment_status = 'Approved' THEN 1 ELSE 0 END) AS approved,
-        SUM(CASE WHEN enrollment_status = 'Rejected' THEN 1 ELSE 0 END) AS rejected,
+        SUM(CASE WHEN enrollment_status IN ('Incomplete Requirements','Rejected') THEN 1 ELSE 0 END) AS rejected,
         COUNT(*) AS total
     FROM enrollments
     WHERE school_year_id = ?

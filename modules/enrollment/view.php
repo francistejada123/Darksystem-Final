@@ -54,6 +54,7 @@ if (!$enrollment) {
 // Requirements the learner uploaded through Online Enrollment (if this learner came in that way).
 // The application is linked to the student record on approval; older/edge cases fall back to the LRN.
 require_once __DIR__ . '/../../includes/enrollment_helpers_online.php';
+enEnsureIncompleteStatus(); // walk-in: Rejected -> Incomplete Requirements (once)
 $online_application = getRecord(
     "SELECT * FROM online_applications WHERE student_id = ? ORDER BY application_id DESC LIMIT 1",
     [$enrollment['student_id']]
@@ -88,7 +89,8 @@ include '../../includes/header.php';
 $status_class = [
     'Pending' => 'pending',
     'Approved' => 'approved',
-    'Rejected' => 'rejected',
+    'Rejected' => 'incomplete',
+    'Incomplete Requirements' => 'incomplete',
     'Transferred' => 'transferred'
 ];
 $st = $enrollment['enrollment_status'];
@@ -119,6 +121,9 @@ $cls = $status_class[$st] ?? 'pending';
 .enroll-view .status-pending { background: #FFF7E6; color: #B7791F; }
 .enroll-view .status-approved { background: #EAF7F1; color: #238863; }
 .enroll-view .status-rejected { background: #FDEEEE; color: #C94A4A; }
+.enroll-view .status-incomplete { background: #FFF4E5; color: #B45309; }
+.enroll-view .btn-incomplete { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; color: #B45309; background: var(--surface); border: 1px solid #F5C77E; text-decoration: none; transition: all 0.15s; }
+.enroll-view .btn-incomplete:hover { background: #FFF4E5; border-color: #B45309; color: #92400E; }
 .enroll-view .status-transferred { background: #cff4fc; color: #055160; }
 .enroll-view .assign-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; border-left: 3px solid #14213D; }
 .enroll-view .assign-card .info-card-header { border-bottom: 1px solid var(--border-soft); }
@@ -157,13 +162,15 @@ $cls = $status_class[$st] ?? 'pending';
             <h4>Enrollment Details</h4>
         </div>
         <div class="page-header-actions">
-            <?php if ($enrollment['enrollment_status'] == 'Pending'): ?>
+            <?php if (in_array($enrollment['enrollment_status'], ['Pending', 'Incomplete Requirements'], true)): ?>
                 <a href="approve.php?id=<?php echo $enrollment['enrollment_id']; ?>" class="btn-approve" onclick="return appConfirm(this, 'Approve this enrollment?')">
                     <i class="fas fa-check"></i> Approve
                 </a>
-                <a href="reject.php?id=<?php echo $enrollment['enrollment_id']; ?>" class="btn-reject" onclick="return appConfirm(this, 'Reject this enrollment?', {danger: true, okText: 'Reject'})">
-                    <i class="fas fa-times"></i> Reject
+                <?php if ($enrollment['enrollment_status'] === 'Pending'): ?>
+                <a href="reject.php?id=<?php echo $enrollment['enrollment_id']; ?>" class="btn-incomplete" onclick="return appConfirm(this, 'Mark this enrollment as Incomplete Requirements? The student will be emailed what is missing.', {okText: 'Incomplete Requirements'})">
+                    <i class="fas fa-file-circle-exclamation"></i> Incomplete Requirements
                 </a>
+                <?php endif; ?>
             <?php endif; ?>
             <a href="index.php" class="btn-back">
                 <i class="fas fa-arrow-left"></i> Back

@@ -45,13 +45,13 @@ $datasets = [];
 
 $datasets['enrollment_status'] = [
     'title' => 'Enrollment Status by Grade Level',
-    'headers' => ['Grade Level', 'Pending', 'Approved', 'Rejected', 'Total'],
+    'headers' => ['Grade Level', 'Pending', 'Approved', 'Incomplete Requirements', 'Total'],
     'align' => [1 => 'center', 2 => 'center', 3 => 'center', 4 => 'center'],
     'rows' => getRecords("
         SELECT grade_level,
                SUM(CASE WHEN enrollment_status = 'Pending' THEN 1 ELSE 0 END) AS pending,
                SUM(CASE WHEN enrollment_status = 'Approved' THEN 1 ELSE 0 END) AS approved,
-               SUM(CASE WHEN enrollment_status = 'Rejected' THEN 1 ELSE 0 END) AS rejected,
+               SUM(CASE WHEN enrollment_status IN ('Incomplete Requirements','Rejected') THEN 1 ELSE 0 END) AS rejected,
                COUNT(*) AS total
         FROM enrollments WHERE school_year_id = ?
         GROUP BY grade_level ORDER BY $GRADE_ORDER_SQL

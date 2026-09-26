@@ -6,6 +6,8 @@ require_once '../../config/database.php';
 require_once '../../includes/auth.php';
 require_once '../../includes/attendance_qr_helpers.php'; // attQrLrnLink() -- approved students' LRN opens their QR code
 require_once '../../includes/grading_helpers.php'; // year status (Completed / Promoted) -- see Section 17c
+require_once __DIR__ . '/../../includes/enrollment_helpers_online.php';
+enEnsureIncompleteStatus(); // walk-in: Rejected -> Incomplete Requirements (once)
 
 if (!defined('BASE_URL')) {
     define('BASE_URL', '/watdahel/');
@@ -129,7 +131,7 @@ $sql = "SELECT e.*, s.lrn, s.first_name, s.last_name, s.middle_name,
 $enrollments = getRecords($sql, $params);
 
 // Get filter options
-$statuses = ['Pending', 'Approved', 'Rejected', 'Transferred', $year_promoted_label];
+$statuses = ['Pending', 'Approved', 'Incomplete Requirements', 'Transferred', $year_promoted_label];
 $grade_levels = ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
 
 // "Delete Student" (permanent delete of an enrolled student + related records).
@@ -142,7 +144,7 @@ $counts = getRecord("
     SELECT
         SUM(enrollment_status = 'Pending') AS pending,
         SUM(enrollment_status = 'Approved') AS approved,
-        SUM(enrollment_status = 'Rejected') AS rejected,
+        SUM(enrollment_status IN ('Incomplete Requirements', 'Rejected')) AS rejected,
         SUM(enrollment_status = 'Transferred') AS transferred
     FROM enrollments
     WHERE enrollment_status != 'Graduated'
@@ -178,7 +180,7 @@ include '../../includes/header.php';
         $cards = [
             ['Pending', intval($counts['pending'] ?? 0), '#B7791F', '#fef9e7', 'fa-hourglass-half'],
             ['Approved', intval($counts['approved'] ?? 0), '#238863', '#e8f5e9', 'fa-circle-check'],
-            ['Rejected', intval($counts['rejected'] ?? 0), '#C94A4A', '#fdecea', 'fa-circle-xmark'],
+            ['Incomplete Requirements', intval($counts['rejected'] ?? 0), '#B45309', '#FFF4E5', 'fa-file-circle-exclamation'],
             ['Transferred', intval($counts['transferred'] ?? 0), '#667085', '#f3f4f6', 'fa-right-left'],
         ];
         foreach ($cards as $c): ?>
@@ -272,7 +274,8 @@ include '../../includes/header.php';
                                     $status_class = [
                                         'Pending' => 'pending',
                                         'Approved' => 'approved',
-                                        'Rejected' => 'rejected',
+                                        'Rejected' => 'incomplete',
+                                        'Incomplete Requirements' => 'incomplete',
                                         'Transferred' => 'transferred'
                                     ];
                                     $st = $enrollment['enrollment_status'];
@@ -290,13 +293,15 @@ include '../../includes/header.php';
                                         <a href="view.php?id=<?php echo $enrollment['enrollment_id']; ?>" class="btn-view" title="View" aria-label="View enrollment for <?php echo htmlspecialchars($enrollment['last_name'] . ', ' . $enrollment['first_name']); ?>">
                                             <i class="fas fa-eye"></i> View
                                         </a>
-                                        <?php if ($enrollment['enrollment_status'] == 'Pending'): ?>
+                                        <?php if (in_array($enrollment['enrollment_status'], ['Pending', 'Incomplete Requirements'], true)): ?>
                                             <a href="approve.php?id=<?php echo $enrollment['enrollment_id']; ?>" class="btn-action approve" title="Approve" aria-label="Approve enrollment for <?php echo htmlspecialchars($enrollment['last_name'] . ', ' . $enrollment['first_name']); ?>" onclick="return appConfirm(this, 'Approve this enrollment?')">
                                                 <i class="fas fa-check"></i>
                                             </a>
-                                            <a href="reject.php?id=<?php echo $enrollment['enrollment_id']; ?>" class="btn-action reject" title="Reject" aria-label="Reject enrollment for <?php echo htmlspecialchars($enrollment['last_name'] . ', ' . $enrollment['first_name']); ?>" onclick="return appConfirm(this, 'Reject this enrollment?', {danger: true, okText: 'Reject'})">
-                                                <i class="fas fa-times"></i>
+                                            <?php if ($enrollment['enrollment_status'] === 'Pending'): ?>
+                                            <a href="reject.php?id=<?php echo $enrollment['enrollment_id']; ?>" class="btn-action incomplete" title="Mark as Incomplete Requirements" aria-label="Mark enrollment of <?php echo htmlspecialchars($enrollment['last_name'] . ', ' . $enrollment['first_name']); ?> as Incomplete Requirements" onclick="return appConfirm(this, 'Mark this enrollment as Incomplete Requirements? The student will be emailed what is missing.', {okText: 'Incomplete Requirements'})">
+                                                <i class="fas fa-file-circle-exclamation"></i>
                                             </a>
+                                            <?php endif; ?>
                                         <?php endif; ?>
                                         <?php if ($can_delete_student && in_array($enrollment['enrollment_status'], $deletable_statuses, true)): ?>
                                             <a href="#" class="btn-action reject js-delete-student" role="button" title="Delete Student"

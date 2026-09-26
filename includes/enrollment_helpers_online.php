@@ -723,3 +723,19 @@ function oeSubmittedRef()
     if ($ref === '' || !preg_match('/^[A-Za-z0-9-]{4,20}$/', $ref)) return null;
     return getRecord("SELECT reference_no FROM online_applications WHERE reference_no = ?", [$ref]) ? $ref : null;
 }
+
+/**
+ * Walk-in enrollments (table enrollments): "Rejected" is now "Incomplete
+ * Requirements" -- a requirement is still missing, and the enrollment can
+ * still be approved later. Older Rejected rows are converted once.
+ */
+function enEnsureIncompleteStatus()
+{
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    if (schemaIsReady('enrollment_incomplete_v1')) return;
+    executeQuery("ALTER TABLE enrollments MODIFY enrollment_status ENUM('Pending','Approved','Rejected','Incomplete Requirements','Transferred','Graduated') DEFAULT 'Pending'");
+    executeQuery("UPDATE enrollments SET enrollment_status = 'Incomplete Requirements' WHERE enrollment_status = 'Rejected'");
+    schemaMarkReady('enrollment_incomplete_v1');
+}

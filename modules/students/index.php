@@ -639,7 +639,7 @@ include '../../includes/header.php';
             <label class="sp-filter-label">Status</label>
             <select name="filter_status" class="form-select">
                 <option value="">All Status</option>
-                <?php foreach (['Pending', 'Approved', $year_promoted_label, 'Rejected', 'Transferred', 'Graduated'] as $stopt): ?>
+                <?php foreach (['Pending', 'Approved', $year_promoted_label, 'Incomplete Requirements', 'Transferred', 'Graduated'] as $stopt): ?>
                     <option value="<?php echo $stopt; ?>" <?php echo $filter_status === $stopt ? 'selected' : ''; ?>><?php echo $stopt; ?></option>
                 <?php endforeach; ?>
             </select>
