@@ -218,7 +218,7 @@ include '../../includes/header.php';
     <?php unset($_SESSION['error_message']); ?>
 <?php endif; ?>
 
-<div class="row mt-4">
+<div class="row mt-4 asg-head">
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2><i class="fas fa-user-graduate text-primary me-2"></i>Assign Students to Teacher</h2>
@@ -465,6 +465,26 @@ include '../../includes/header.php';
        components in static/css/style.css (same ones Student/Teacher/
        Subject Management and Class Records use) — this page no longer
        redefines its own radius/shadow/colors for them. */
+
+    /* ---- Bigger, easier-to-read text (this page only) ---- */
+    .asg-head h2 { font-size: 30px; }
+    .asg-head .text-muted { font-size: 16px; }
+    .asg-head .badge { font-size: 13.5px; padding: 6px 10px; }
+    .asg-head .btn { font-size: 15.5px; padding: 10px 18px; }
+    .main-content .card-header h5 { font-size: 19px; }
+    .main-content .card-header .badge { font-size: 13.5px; padding: 5px 10px; }
+    .main-content .card-header .btn-sm { font-size: 14.5px; padding: 7px 14px; }
+    .grade-card .grade-icon span { font-size: 36px !important; }
+    .grade-card .grade-label { font-size: 18px !important; }
+    .grade-card .section-count { font-size: 15px !important; }
+    .grade-card .badge { font-size: 13px !important; padding: 5px 12px; }
+    .section-card .section-name { font-size: 19px !important; font-weight: 700; }
+    .section-card .badge { font-size: 13.5px !important; padding: 5px 10px; }
+    .section-card .card-body { padding-top: 22px !important; padding-bottom: 22px !important; }
+    .main-content .table > :not(caption) > * > th { font-size: 13px; }
+    .main-content .table > :not(caption) > * > td { font-size: 15px; padding-top: 12px; padding-bottom: 12px; }
+    .main-content .table .badge { font-size: 13px; }
+    .main-content .table .btn-sm { font-size: 14px; padding: 6px 14px; }
 </style>
 
 <?php include '../../includes/footer.php'; ?>
