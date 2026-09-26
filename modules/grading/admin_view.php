@@ -330,6 +330,27 @@ include __DIR__ . '/../../includes/header.php';
         font-size: 13.5px;
         padding: 8px 12px;
     }
+
+    /* ---- Bigger, easier-to-read text ---- */
+    .grading-admin-view h2 { font-size: 32px; }
+    .grading-admin-view .page-subtitle { font-size: 16px; }
+    .grading-admin-view .view-only-badge { font-size: 15px; padding: 9px 18px; }
+    .grading-admin-view .admin-crumb { font-size: 16px; }
+    .grading-admin-view .admin-crumb .crumb-sep { font-size: 13px; }
+    .grading-admin-view h4 { font-size: 24px; }
+    .grading-admin-view .btn-sm { font-size: 14.5px; padding: 8px 14px; }
+    .grading-admin-view .grade-card .grade-num { font-size: 36px !important; }
+    .grading-admin-view .grade-card .grade-label { font-size: 18px !important; }
+    .grading-admin-view .grade-card .section-count { font-size: 15px !important; }
+    .grading-admin-view .section-card .sec-name { font-size: 20px !important; }
+    .grading-admin-view .section-card .sec-meta { font-size: 15px !important; }
+    .grading-admin-view .section-card .card-body { padding-top: 24px; padding-bottom: 24px; }
+    .grading-admin-view .empty-hint-panel h6 { font-size: 16px; }
+    .grading-admin-view .empty-hint-panel p { font-size: 15px; }
+    .grading-admin-view .subject-card .subject-teacher { font-size: 14px; }
+    .grading-admin-view .subject-card h5, .grading-admin-view .subject-card .card-title { font-size: 18px; }
+    .grading-admin-view .table thead th { font-size: 12.5px; }
+    .grading-admin-view .term-select { font-size: 15px; }
 </style>
 
 <div class="grading-admin-view">
