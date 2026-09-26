@@ -8,6 +8,7 @@ if (!defined('BASE_URL')) {
     define('BASE_URL', '/watdahel/');
 }
 require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../../includes/teacher_validation.php';
 
 if (!hasAnyRole(['Administrator', 'Registrar'])) {
     header('Location: ../../index.php');
@@ -47,6 +48,32 @@ $assignments = getRecords("
     WHERE ts.teacher_id = ?
     ORDER BY sec.grade_level, sec.section_name, sub.subject_name
 ", [$teacher_id]);
+
+$missing_fields = tvMissingFields($teacher);
+// Shows the value, or a "Not set" marker when the field is empty.
+function tpValue($v, string $suffix = ''): string
+{
+    $v = trim((string) ($v ?? ''));
+    return $v === '' ? '<span class="not-set"><i class="fas fa-circle-exclamation"></i> Not set</span>' : htmlspecialchars($v) . $suffix;
+}
+$grade_counts = [];
+foreach ($assignments as $a) { $grade_counts[$a['grade_level']] = ($grade_counts[$a['grade_level']] ?? 0) + 1; }
+uksort($grade_counts, function ($x, $y) { return (int) filter_var($x, FILTER_SANITIZE_NUMBER_INT) <=> (int) filter_var($y, FILTER_SANITIZE_NUMBER_INT); });
+usort($assignments, function ($x, $y) {
+    return [(int) filter_var($x['grade_level'], FILTER_SANITIZE_NUMBER_INT), $x['section_name'], $x['subject_name']]
+       <=> [(int) filter_var($y['grade_level'], FILTER_SANITIZE_NUMBER_INT), $y['section_name'], $y['subject_name']];
+});
+$photo = '';
+if (!empty($teacher['profile_image'])) {
+    $img = $teacher['profile_image'];
+    if (preg_match('#^(https?:)?//#', $img)) {
+        $photo = $img;
+    } else {
+        foreach (['static/uploads/profiles/' . basename($img), ltrim($img, '/')] as $rel) {
+            if (is_file(__DIR__ . '/../../' . $rel)) { $photo = '../../' . $rel; break; }
+        }
+    }
+}
 
 include '../../includes/header.php';
 
@@ -102,7 +129,27 @@ $qs_class = match($qs) { 'Qualified' => 'qualified', 'Not Qualified' => 'not-qua
 .tprofile .stat-row:last-child { border-bottom: none; }
 .tprofile .stat-row .label { font-size: 12px; color: var(--text-muted); }
 .tprofile .stat-row .value { font-size: 14px; font-weight: 600; color: var(--ink); }
+/* Empty fields + incomplete-profile notice */
+.tprofile .not-set { color: #B45309; font-style: italic; font-size: 13.5px; }
+.tprofile .not-set i { font-size: 12px; margin-right: 3px; }
+.tprofile .tp-incomplete { display: flex; align-items: flex-start; gap: 12px; padding: 14px 18px; margin-bottom: 20px; border: 1px solid #F5D9A8; border-left: 4px solid #D97706; border-radius: 8px; background: #FFF8EB; color: #7A4A06; font-size: 14px; }
+.tprofile .tp-incomplete i { color: #D97706; font-size: 18px; margin-top: 2px; }
+.tprofile .tp-incomplete strong { display: block; color: #7A4A06; margin-bottom: 2px; }
+.tprofile .tp-incomplete a { margin-left: auto; align-self: center; white-space: nowrap; padding: 8px 14px; border-radius: 6px; background: #D97706; color: #fff; font-weight: 600; font-size: 13px; text-decoration: none; }
+.tprofile .tp-incomplete a:hover { background: #B45309; }
+/* Grade level filter above Subject Assignments */
+.tprofile .tp-grade-filter { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 20px; border-bottom: 1px solid var(--border-soft); }
+.tprofile .tp-grade-filter button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--ink); font-size: 13px; font-weight: 600; cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
+.tprofile .tp-grade-filter button span { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--surface-hover); color: var(--text-muted); font-size: 11.5px; }
+.tprofile .tp-grade-filter button:hover { border-color: #14213D; }
+.tprofile .tp-grade-filter button.active { background: #14213D; border-color: #14213D; color: #fff; }
+.tprofile .tp-grade-filter button.active span { background: rgba(255,255,255,.2); color: #fff; }
+html[data-theme="dark"] .tprofile .tp-incomplete { background: rgba(217,119,6,.12); border-color: rgba(217,119,6,.4); color: #F5C77E; }
+html[data-theme="dark"] .tprofile .tp-incomplete strong { color: #F5C77E; }
+html[data-theme="dark"] .tprofile .not-set { color: #F5B454; }
+html[data-theme="dark"] .tprofile .tp-grade-filter button.active { background: #3B82F6; border-color: #3B82F6; }
 @media (max-width: 768px) {
+    .tprofile .tp-incomplete { flex-wrap: wrap; }
     .tprofile .content-grid { grid-template-columns: 1fr; }
     .tprofile .detail-grid { grid-template-columns: 1fr 1fr; }
 }
@@ -121,6 +168,17 @@ $qs_class = match($qs) { 'Qualified' => 'qualified', 'Not Qualified' => 'not-qua
             </a>
         </div>
     </div>
+
+    <?php if ($missing_fields): ?>
+        <div class="tp-incomplete" role="status">
+            <i class="fas fa-triangle-exclamation"></i>
+            <div>
+                <strong>Incomplete profile</strong>
+                Missing: <?php echo htmlspecialchars(implode(', ', $missing_fields)); ?>.
+            </div>
+            <a href="edit.php?id=<?php echo $teacher_id; ?>"><i class="fas fa-pen me-1"></i> Complete profile</a>
+        </div>
+    <?php endif; ?>
 
     <div class="content-grid">
         <!-- Main Content -->
@@ -143,7 +201,7 @@ $qs_class = match($qs) { 'Qualified' => 'qualified', 'Not Qualified' => 'not-qua
                         </div>
                         <div class="detail-item">
                             <span class="detail-label">Sex / Gender</span>
-                            <span class="detail-value"><?php echo htmlspecialchars($teacher['sex'] ?? '---'); ?></span>
+                            <span class="detail-value"><?php echo tpValue($teacher['sex'] ?? ''); ?></span>
                         </div>
                         <div class="detail-item">
                             <span class="detail-label">Email</span>
@@ -151,7 +209,7 @@ $qs_class = match($qs) { 'Qualified' => 'qualified', 'Not Qualified' => 'not-qua
                         </div>
                         <div class="detail-item">
                             <span class="detail-label">Contact Number</span>
-                            <span class="detail-value"><?php echo htmlspecialchars($teacher['contact_number'] ?? '---'); ?></span>
+                            <span class="detail-value"><?php echo tpValue($teacher['contact_number'] ?? ''); ?></span>
                         </div>
                         <div class="detail-item">
                             <span class="detail-label">Status</span>
@@ -170,15 +228,15 @@ $qs_class = match($qs) { 'Qualified' => 'qualified', 'Not Qualified' => 'not-qua
                     <div class="detail-grid">
                         <div class="detail-item">
                             <span class="detail-label">Highest Educational Attainment</span>
-                            <span class="detail-value"><?php echo htmlspecialchars($teacher['highest_educ_attainment'] ?? '---'); ?></span>
+                            <span class="detail-value"><?php echo tpValue($teacher['highest_educ_attainment'] ?? ''); ?></span>
                         </div>
                         <div class="detail-item">
                             <span class="detail-label">Degree / Course</span>
-                            <span class="detail-value"><?php echo htmlspecialchars($teacher['degree_course'] ?? '---'); ?></span>
+                            <span class="detail-value"><?php echo tpValue($teacher['degree_course'] ?? ''); ?></span>
                         </div>
                         <div class="detail-item">
                             <span class="detail-label">Specialization</span>
-                            <span class="detail-value"><?php echo htmlspecialchars($teacher['specialization'] ?? '---'); ?></span>
+                            <span class="detail-value"><?php echo tpValue($teacher['specialization'] ?? ''); ?></span>
                         </div>
                         <div class="detail-item">
                             <span class="detail-label">Years of Experience</span>
@@ -186,11 +244,11 @@ $qs_class = match($qs) { 'Qualified' => 'qualified', 'Not Qualified' => 'not-qua
                         </div>
                         <div class="detail-item">
                             <span class="detail-label">Position / Designation</span>
-                            <span class="detail-value"><?php echo htmlspecialchars($teacher['position_designation'] ?? '---'); ?></span>
+                            <span class="detail-value"><?php echo tpValue($teacher['position_designation'] ?? ''); ?></span>
                         </div>
                         <div class="detail-item">
                             <span class="detail-label">PRC License Number</span>
-                            <span class="detail-value"><?php echo htmlspecialchars($teacher['prc_license_number'] ?? '---'); ?></span>
+                            <span class="detail-value"><?php echo tpValue($teacher['prc_license_number'] ?? ''); ?></span>
                         </div>
                         <div class="detail-item">
                             <span class="detail-label">Qualification Status</span>
@@ -204,8 +262,16 @@ $qs_class = match($qs) { 'Qualified' => 'qualified', 'Not Qualified' => 'not-qua
             <div class="info-card">
                 <div class="info-card-header">
                     <h5><i class="fas fa-book"></i> Subject Assignments</h5>
-                    <span style="display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; border-radius: 11px; background: var(--surface-hover); font-size: 11px; font-weight: 600; color: var(--text-muted); padding: 0 6px;"><?php echo count($assignments); ?></span>
+                    <span id="tpAssignCount" style="display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; border-radius: 11px; background: var(--surface-hover); font-size: 11px; font-weight: 600; color: var(--text-muted); padding: 0 6px;"><?php echo count($assignments); ?></span>
                 </div>
+                <?php if (count($grade_counts) > 1): ?>
+                    <div class="tp-grade-filter" role="group" aria-label="Filter by grade level">
+                        <button type="button" class="active" data-grade="">All <span><?php echo count($assignments); ?></span></button>
+                        <?php foreach ($grade_counts as $g => $n): ?>
+                            <button type="button" data-grade="<?php echo htmlspecialchars($g); ?>"><?php echo htmlspecialchars($g); ?> <span><?php echo $n; ?></span></button>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
                 <?php if (!empty($assignments)): ?>
                     <div style="overflow-x: auto;">
                         <table class="data-table">
@@ -219,7 +285,7 @@ $qs_class = match($qs) { 'Qualified' => 'qualified', 'Not Qualified' => 'not-qua
                             </thead>
                             <tbody>
                                 <?php foreach ($assignments as $a): ?>
-                                    <tr>
+                                    <tr data-grade="<?php echo htmlspecialchars($a['grade_level']); ?>">
                                         <td><span class="grade-level-tag"><?php echo htmlspecialchars($a['grade_level']); ?></span></td>
                                         <td>
                                             <?php echo htmlspecialchars($a['section_name']); ?>
@@ -251,8 +317,8 @@ $qs_class = match($qs) { 'Qualified' => 'qualified', 'Not Qualified' => 'not-qua
             <!-- Profile Card -->
             <div class="sidebar-card">
                 <div class="card-body">
-                    <?php if (!empty($teacher['profile_image'])): ?>
-                        <img src="<?php echo htmlspecialchars($teacher['profile_image']); ?>" class="rounded-circle mb-3" width="80" height="80" style="object-fit:cover;">
+                    <?php if ($photo !== ''): ?>
+                        <img src="<?php echo htmlspecialchars($photo); ?>" alt="" class="rounded-circle mb-3" width="80" height="80" style="object-fit:cover;">
                     <?php else: ?>
                         <div class="avatar">
                             <?php echo strtoupper(mb_substr($teacher['first_name'],0,1) . mb_substr($teacher['last_name'],0,1)); ?>
@@ -322,5 +388,22 @@ $qs_class = match($qs) { 'Qualified' => 'qualified', 'Not Qualified' => 'not-qua
     </div>
 
 </div>
+
+<script>
+// Subject Assignments: show one grade level at a time.
+document.querySelectorAll('.tp-grade-filter button').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        var g = btn.getAttribute('data-grade'), shown = 0;
+        document.querySelectorAll('.tp-grade-filter button').forEach(function (b) { b.classList.toggle('active', b === btn); });
+        document.querySelectorAll('.tprofile .data-table tbody tr[data-grade]').forEach(function (tr) {
+            var on = !g || tr.getAttribute('data-grade') === g;
+            tr.style.display = on ? '' : 'none';
+            if (on) shown++;
+        });
+        var c = document.getElementById('tpAssignCount');
+        if (c) c.textContent = shown;
+    });
+});
+</script>
 
 <?php include '../../includes/footer.php'; ?>

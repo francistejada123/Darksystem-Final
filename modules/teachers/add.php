@@ -8,6 +8,7 @@ if (!defined('BASE_URL')) {
     define('BASE_URL', '/watdahel/');
 }
 require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../../includes/teacher_validation.php';
 
 if (!hasRole('Administrator')) {
     header('Location: ../../index.php');
@@ -58,10 +59,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (empty($username)) $errors[] = 'Username is required.';
         if (empty($password) || strlen($password) < 6) $errors[] = 'Password must be at least 6 characters.';
         if (empty($email)) $errors[] = 'Email is required.';
-        if (!validateEmail($email)) $errors[] = 'Invalid email address.';
-        if (empty($first_name)) $errors[] = 'First name is required.';
-        if (empty($last_name)) $errors[] = 'Last name is required.';
-        if (!in_array($department_level, ['', 'JHS', 'SHS'], true)) $errors[] = 'Department / Level must be JHS or SHS.';
+        elseif (!validateEmail($email)) $errors[] = 'Invalid email address.';
+        $errors = array_merge($errors, tvValidate($_POST, 'add'));
+        $contact_number = tvNormalizeMobile($contact_number);
         if (!in_array($employment_status, ['Active', 'Inactive'], true)) $errors[] = 'Employment Status must be Active or Inactive.';
         if (strlen($employee_id) > 50) $errors[] = 'Teacher ID / Employee ID must be 50 characters or fewer.';
 
@@ -178,6 +178,7 @@ include '../../includes/header.php';
         </div>
     <?php endif; ?>
 
+    <p class="tv-note" style="font-size:13px;color:var(--text-muted);margin:-8px 0 16px;">Fields marked <span style="color:#C94A4A;font-weight:700;">*</span> are required.</p>
     <form method="POST" action="">
         <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
 
@@ -189,7 +190,7 @@ include '../../includes/header.php';
             <div class="form-card-body">
                 <div class="form-grid">
                     <div class="form-group">
-                        <label>First Name</label>
+                        <label>First Name <span class="req">*</span></label>
                         <input type="text" name="first_name" placeholder="First name" value="<?php echo htmlspecialchars($_POST['first_name'] ?? ''); ?>" required>
                     </div>
                     <div class="form-group">
@@ -197,7 +198,7 @@ include '../../includes/header.php';
                         <input type="text" name="middle_name" placeholder="Middle name" value="<?php echo htmlspecialchars($_POST['middle_name'] ?? ''); ?>">
                     </div>
                     <div class="form-group">
-                        <label>Last Name</label>
+                        <label>Last Name <span class="req">*</span></label>
                         <input type="text" name="last_name" placeholder="Last name" value="<?php echo htmlspecialchars($_POST['last_name'] ?? ''); ?>" required>
                     </div>
                     <div class="form-group">
@@ -205,8 +206,8 @@ include '../../includes/header.php';
                         <input type="text" name="suffix" placeholder="Jr., Sr., III" value="<?php echo htmlspecialchars($_POST['suffix'] ?? ''); ?>">
                     </div>
                     <div class="form-group">
-                        <label>Sex / Gender</label>
-                        <select name="sex">
+                        <label>Sex / Gender <span class="req">*</span></label>
+                        <select name="sex" required>
                             <option value="">-- Select --</option>
                             <option value="Male" <?php echo (($_POST['sex'] ?? '') === 'Male') ? 'selected' : ''; ?>>Male</option>
                             <option value="Female" <?php echo (($_POST['sex'] ?? '') === 'Female') ? 'selected' : ''; ?>>Female</option>
@@ -214,12 +215,12 @@ include '../../includes/header.php';
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Email</label>
+                        <label>Email <span class="req">*</span></label>
                         <input type="email" name="email" placeholder="teacher@email.com" value="<?php echo htmlspecialchars($_POST['email'] ?? ''); ?>" required>
                     </div>
                     <div class="form-group">
-                        <label>Contact Number</label>
-                        <input type="text" name="contact_number" placeholder="09XXXXXXXXX" value="<?php echo htmlspecialchars($_POST['contact_number'] ?? ''); ?>">
+                        <label>Contact Number <span class="req">*</span></label>
+                        <input type="text" name="contact_number" placeholder="09XXXXXXXXX" required inputmode="numeric" maxlength="13" pattern="(09|\+639)[0-9]{9}" title="Mobile number, e.g. 09171234567" value="<?php echo htmlspecialchars($_POST['contact_number'] ?? ''); ?>">
                     </div>
                 </div>
             </div>
@@ -237,12 +238,12 @@ include '../../includes/header.php';
                         <input type="text" name="employee_id" maxlength="50" placeholder="e.g. 1234567" value="<?php echo htmlspecialchars($_POST['employee_id'] ?? ''); ?>">
                     </div>
                     <div class="form-group">
-                        <label>Position / Designation</label>
-                        <input type="text" name="position_designation" placeholder="e.g. Teacher I, Master Teacher" value="<?php echo htmlspecialchars($_POST['position_designation'] ?? ''); ?>">
+                        <label>Position / Designation <span class="req">*</span></label>
+                        <input type="text" name="position_designation" placeholder="e.g. Teacher I, Master Teacher" required maxlength="100" value="<?php echo htmlspecialchars($_POST['position_designation'] ?? ''); ?>">
                     </div>
                     <div class="form-group">
-                        <label>Specialization / Subject Area</label>
-                        <select name="specialization">
+                        <label>Specialization / Subject Area <span class="req">*</span></label>
+                        <select name="specialization" required>
                             <option value="">-- Select Subject Area --</option>
                             <?php
                             $specs = ['Mathematics','English','Science','Filipino','Social Studies','MAPEH','TLE','ICT','ESP','Values Education','Physical Education','Music','Arts','Health','Computer','Research','Statistics','General Education'];
@@ -253,8 +254,8 @@ include '../../includes/header.php';
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Department / Level</label>
-                        <select name="department_level">
+                        <label>Department / Level <span class="req">*</span></label>
+                        <select name="department_level" required>
                             <option value="">-- Select --</option>
                             <option value="JHS" <?php echo (($_POST['department_level'] ?? '') === 'JHS') ? 'selected' : ''; ?>>JHS (Junior High School)</option>
                             <option value="SHS" <?php echo (($_POST['department_level'] ?? '') === 'SHS') ? 'selected' : ''; ?>>SHS (Senior High School)</option>
@@ -279,11 +280,11 @@ include '../../includes/header.php';
             <div class="form-card-body">
                 <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
                     <div class="form-group">
-                        <label>Username</label>
+                        <label>Username <span class="req">*</span></label>
                         <input type="text" name="username" placeholder="Enter username" value="<?php echo htmlspecialchars($_POST['username'] ?? ''); ?>" required>
                     </div>
                     <div class="form-group">
-                        <label>Password</label>
+                        <label>Password <span class="req">*</span></label>
                         <input type="password" name="password" placeholder="Enter password (min 6 chars)" required>
                     </div>
                 </div>

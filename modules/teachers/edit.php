@@ -8,6 +8,7 @@ if (!defined('BASE_URL')) {
     define('BASE_URL', '/watdahel/');
 }
 require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../../includes/teacher_validation.php';
 
 if (!hasRole('Administrator')) {
     header('Location: ../../index.php');
@@ -60,9 +61,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (empty($username)) $errors[] = 'Username is required.';
         if (empty($email)) $errors[] = 'Email is required.';
-        if (!validateEmail($email)) $errors[] = 'Invalid email address.';
-        if (empty($first_name)) $errors[] = 'First name is required.';
-        if (empty($last_name)) $errors[] = 'Last name is required.';
+        elseif (!validateEmail($email)) $errors[] = 'Invalid email address.';
+        $errors = array_merge($errors, tvValidate($_POST, 'edit'));
+        $contact_number = tvNormalizeMobile($contact_number);
+        if (!empty($password) && strlen($password) < 6) $errors[] = 'New password must be at least 6 characters.';
 
         if (empty($errors)) {
             $check = getRecord("SELECT user_id FROM users WHERE username = ? AND user_id != ?", [$username, $teacher_id]);
@@ -180,6 +182,15 @@ include '../../includes/header.php';
 @media (max-width: 768px) { .tform-page .form-grid { grid-template-columns: 1fr; } }
 </style>
 
+<?php
+if (!empty($errors) && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    foreach (['username', 'email', 'first_name', 'last_name', 'middle_name', 'suffix', 'sex', 'contact_number',
+              'highest_educ_attainment', 'degree_course', 'specialization', 'years_experience',
+              'position_designation', 'prc_license_number', 'qualification_status', 'is_active'] as $k) {
+        if (isset($_POST[$k])) $teacher[$k] = $_POST[$k];
+    }
+}
+?>
 <div class="tform-page" style="padding: 24px;">
 
     <div class="page-header">
@@ -204,6 +215,7 @@ include '../../includes/header.php';
         </div>
     <?php endif; ?>
 
+    <p class="tv-note" style="font-size:13px;color:var(--text-muted);margin:-8px 0 16px;">Fields marked <span style="color:#C94A4A;font-weight:700;">*</span> are required.</p>
     <form method="POST" action="">
         <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
 
@@ -215,7 +227,7 @@ include '../../includes/header.php';
             <div class="form-card-body">
                 <div class="form-grid">
                     <div class="form-group">
-                        <label>First Name</label>
+                        <label>First Name <span class="req">*</span></label>
                         <input type="text" name="first_name" value="<?php echo htmlspecialchars($teacher['first_name']); ?>" required>
                     </div>
                     <div class="form-group">
@@ -223,7 +235,7 @@ include '../../includes/header.php';
                         <input type="text" name="middle_name" value="<?php echo htmlspecialchars($teacher['middle_name'] ?? ''); ?>">
                     </div>
                     <div class="form-group">
-                        <label>Last Name</label>
+                        <label>Last Name <span class="req">*</span></label>
                         <input type="text" name="last_name" value="<?php echo htmlspecialchars($teacher['last_name']); ?>" required>
                     </div>
                     <div class="form-group">
@@ -231,8 +243,8 @@ include '../../includes/header.php';
                         <input type="text" name="suffix" placeholder="Jr., Sr., III" value="<?php echo htmlspecialchars($teacher['suffix'] ?? ''); ?>">
                     </div>
                     <div class="form-group">
-                        <label>Sex / Gender</label>
-                        <select name="sex">
+                        <label>Sex / Gender <span class="req">*</span></label>
+                        <select name="sex" required>
                             <option value="">-- Select --</option>
                             <option value="Male" <?php echo (($teacher['sex'] ?? '') === 'Male') ? 'selected' : ''; ?>>Male</option>
                             <option value="Female" <?php echo (($teacher['sex'] ?? '') === 'Female') ? 'selected' : ''; ?>>Female</option>
@@ -240,12 +252,12 @@ include '../../includes/header.php';
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Email</label>
+                        <label>Email <span class="req">*</span></label>
                         <input type="email" name="email" value="<?php echo htmlspecialchars($teacher['email']); ?>" required>
                     </div>
                     <div class="form-group">
-                        <label>Contact Number</label>
-                        <input type="text" name="contact_number" placeholder="09XXXXXXXXX" value="<?php echo htmlspecialchars($teacher['contact_number'] ?? ''); ?>">
+                        <label>Contact Number <span class="req">*</span></label>
+                        <input type="text" name="contact_number" placeholder="09XXXXXXXXX" required inputmode="numeric" maxlength="13" pattern="(09|\+639)[0-9]{9}" title="Mobile number, e.g. 09171234567" value="<?php echo htmlspecialchars($teacher['contact_number'] ?? ''); ?>">
                     </div>
                 </div>
             </div>
@@ -259,8 +271,8 @@ include '../../includes/header.php';
             <div class="form-card-body">
                 <div class="form-grid">
                     <div class="form-group">
-                        <label>Highest Educational Attainment</label>
-                        <select name="highest_educ_attainment">
+                        <label>Highest Educational Attainment <span class="req">*</span></label>
+                        <select name="highest_educ_attainment" required>
                             <option value="">-- Select --</option>
                             <?php
                             $hea_options = ["Bachelor's Degree", "Master's Degree", "Doctorate", "Post Graduate Diploma"];
@@ -271,12 +283,12 @@ include '../../includes/header.php';
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Degree / Course</label>
-                        <input type="text" name="degree_course" placeholder="e.g. Bachelor of Secondary Education" value="<?php echo htmlspecialchars($teacher['degree_course'] ?? ''); ?>">
+                        <label>Degree / Course <span class="req">*</span></label>
+                        <input type="text" name="degree_course" placeholder="e.g. Bachelor of Secondary Education" required maxlength="150" value="<?php echo htmlspecialchars($teacher['degree_course'] ?? ''); ?>">
                     </div>
                     <div class="form-group">
-                        <label>Specialization / Major</label>
-                        <select name="specialization">
+                        <label>Specialization / Major <span class="req">*</span></label>
+                        <select name="specialization" required>
                             <option value="">-- Select Specialization --</option>
                             <?php
                             $specs = ['Mathematics','English','Science','Filipino','Social Studies','MAPEH','TLE','ICT','ESP','Values Education','Physical Education','Music','Arts','Health','Computer','Research','Statistics','General Education'];
@@ -287,16 +299,16 @@ include '../../includes/header.php';
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Years of Teaching Experience</label>
-                        <input type="number" name="years_experience" placeholder="0" min="0" value="<?php echo htmlspecialchars($teacher['years_experience'] ?? 0); ?>">
+                        <label>Years of Teaching Experience <span class="req">*</span></label>
+                        <input type="number" name="years_experience" placeholder="0" min="0" max="50" required value="<?php echo htmlspecialchars($teacher['years_experience'] ?? 0); ?>">
                     </div>
                     <div class="form-group">
-                        <label>Position / Designation</label>
-                        <input type="text" name="position_designation" placeholder="e.g. Teacher I, Master Teacher" value="<?php echo htmlspecialchars($teacher['position_designation'] ?? ''); ?>">
+                        <label>Position / Designation <span class="req">*</span></label>
+                        <input type="text" name="position_designation" placeholder="e.g. Teacher I, Master Teacher" required maxlength="100" value="<?php echo htmlspecialchars($teacher['position_designation'] ?? ''); ?>">
                     </div>
                     <div class="form-group">
                         <label>PRC License Number</label>
-                        <input type="text" name="prc_license_number" placeholder="License #" value="<?php echo htmlspecialchars($teacher['prc_license_number'] ?? ''); ?>">
+                        <input type="text" name="prc_license_number" placeholder="License # (digits)" inputmode="numeric" pattern="[0-9]{6,10}" title="6 to 10 digits" value="<?php echo htmlspecialchars($teacher['prc_license_number'] ?? ''); ?>">
                     </div>
                     <div class="form-group">
                         <label>Qualification Status</label>
@@ -318,7 +330,7 @@ include '../../includes/header.php';
             <div class="form-card-body">
                 <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr;">
                     <div class="form-group">
-                        <label>Username</label>
+                        <label>Username <span class="req">*</span></label>
                         <input type="text" name="username" value="<?php echo htmlspecialchars($teacher['username']); ?>" required>
                     </div>
                     <div class="form-group">
