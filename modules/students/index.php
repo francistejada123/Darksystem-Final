@@ -464,6 +464,23 @@ include '../../includes/header.php';
     .students-page .sp-qa-green  { background: #E9F7EF; color: #1E7B45; }
     .students-page .sp-qa-purple { background: #F1EBFE; color: #6A3FC2; }
     .students-page .sp-qa-red    { background: #FDECEF; color: #C23A57; }
+
+/* ---- Bigger, easier-to-read text: header, grade cards, section cards ---- */
+.sp-header h2 { font-size: 28px !important; }
+.sp-header p { font-size: 15.5px !important; }
+.sp-header .btn-sm { font-size: 14.5px; padding: 8px 16px; border-radius: 9px; }
+.grade-card .grade-num { font-size: 36px !important; }
+.grade-card .grade-label { font-size: 18px !important; }
+.grade-card .section-count { font-size: 15px !important; }
+.grade-card .grade-selected-pill { font-size: 13px !important; padding: 4px 14px !important; }
+.card-header h5 { font-size: 19px; }
+.card-header .btn-sm { font-size: 14.5px; padding: 7px 14px; }
+.card-header .badge { font-size: 13px; }
+.section-card .section-name { font-size: 19px !important; font-weight: 700; }
+.section-card .badge { font-size: 13.5px !important; padding: 5px 10px; }
+.section-card .text-muted.small { font-size: 14.5px !important; }
+.section-card .card-body { padding-top: 20px !important; padding-bottom: 20px !important; }
+.strand-card .strand-sub { font-size: 15px !important; }
 </style>
 
 <div class="students-page">
