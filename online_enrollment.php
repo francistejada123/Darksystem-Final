@@ -100,6 +100,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['oe_action'] ?? '') === 're
             'general_average' => $rc_d['general_average'] ?? null, 'remarks' => $rc_d['remarks'] ?? '',
             'subjects' => count($rc_d['subjects'] ?? []),
         ] : null,
+        // Form 138 grade vs Step 1 grade (the page re-compares when the applicant changes the grade)
+        'grade_check' => $rc['status'] === 'verified' ? oeGradeLevelCheck($rc_d, (string) ($_POST['grade_level'] ?? '')) : null,
     ]);
     exit;
 }
@@ -358,6 +360,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $errors[] = $rc['message'];
                 } else {
                     $card_data = $rc['data'];
+                    $grade_check = oeGradeLevelCheck($card_data, $grade_level);
+                    if ($grade_check['status'] === OE_GC_MISMATCH) {
+                        $errors[] = 'Step 1 – Grade Level Information: Grade Level Does Not Match. ' . $grade_check['message'];
+                        $grade_mismatch_error = true;
+                    }
                 }
                 continue;
             }
@@ -404,6 +411,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ]
                 );
 
+                if ($application_id && !empty($grade_check)) {
+                    oeEnsureGradeCheckSchema();
+                    executeQuery("UPDATE online_applications SET grade_level_check = ?, grade_level_check_note = ? WHERE application_id = ?",
+                        [$grade_check['status'], mb_substr($grade_check['message'], 0, 255), (int) $application_id]);
+                }
                 if ($application_id && $card_data !== null) {
                     // The verified Report Card's General Average is the one used for section assignment.
                     oeEnsureReportCardSchema();
@@ -487,7 +499,7 @@ $school_email_addr = getSchoolSetting('school_email');
 // applicant was on the final Review & Submit step when they clicked Submit —
 // send them back there (with all their entered values intact) instead of
 // dumping them back on Step 1.
-$initial_step = (!empty($errors) && !$success_ref && !empty($old)) ? 4 : 1;
+$initial_step = (!empty($errors) && !$success_ref && !empty($old)) ? (!empty($grade_mismatch_error) ? 1 : 4) : 1;
 
 // After a server-side error the wizard is rebuilt from what was posted. For
 // Continuing / Returning, hand the JS the (still session-verified) saved record
@@ -782,6 +794,24 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
         .doc-lrn-status.is-checking{display:block;background:#EFF6FF;color:#1D4ED8}
         .doc-lrn-status.is-verified{display:block;background:#ECFDF5;color:#047857}
         .doc-lrn-status.is-bad{display:block;background:#FEF2F2;color:#B91C1C}
+        /* Form 138 grade level vs Step 1 grade level */
+        .gc-box{display:none;margin-top:8px;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.45}
+        .gc-box.show{display:block}
+        .gc-box.ok{background:#ECFDF5;border:1px solid #A7F3D0;color:#047857;font-weight:600}
+        .gc-box.manual{background:#FFFBEB;border:1px solid #FDE68A;color:#92400E}
+        .gc-box.bad{background:#FEF2F2;border:1.5px solid #FCA5A5;color:#991B1B}
+        .gc-step{display:inline-block;font-size:11.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;background:#DC2626;color:#fff;border-radius:6px;padding:2px 8px;margin-bottom:6px}
+        .gc-title{display:block;font-size:14.5px;font-weight:800;margin-bottom:3px}
+        .gc-btn{display:inline-flex;align-items:center;gap:6px;margin-top:8px;border:0;border-radius:8px;background:#DC2626;color:#fff;font-weight:700;font-size:13px;padding:7px 14px;cursor:pointer}
+        .gc-btn:hover{background:#B91C1C}
+        .grade-grid.gc-flag{outline:2px solid #DC2626;outline-offset:6px;border-radius:14px;animation:gcPulse 1.2s ease 2}
+        .grade-option.gc-wrong .grade-card{border-color:#DC2626 !important;background:#FEF2F2 !important;box-shadow:0 0 0 3px rgba(220,38,38,.18) !important}
+        .grade-option.gc-expected .grade-card{border-style:dashed;border-color:#16A34A}
+        @keyframes gcPulse{0%,100%{outline-color:#DC2626}50%{outline-color:rgba(220,38,38,.2)}}
+        html[data-theme="dark"] .gc-box.ok{background:rgba(5,150,105,.12);border-color:rgba(5,150,105,.4);color:#6ee7b7}
+        html[data-theme="dark"] .gc-box.manual{background:rgba(217,119,6,.12);border-color:rgba(217,119,6,.4);color:#fcd34d}
+        html[data-theme="dark"] .gc-box.bad{background:rgba(220,38,38,.14);border-color:rgba(248,113,113,.5);color:#fca5a5}
+        html[data-theme="dark"] .grade-option.gc-wrong .grade-card{background:rgba(220,38,38,.14) !important}
         .doc-card-error.show{display:block}
         .doc-card-invalid{border-color:var(--danger) !important;background:var(--danger-soft) !important}
         .doc-card-invalid .doc-empty-state{border-color:var(--danger)}
@@ -1147,6 +1177,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                                 <?php endforeach; ?>
                             </div>
                             <div class="form-hint" id="gradeHint"></div>
+                            <div class="gc-box bad" id="gcStep1Box" role="alert" aria-live="assertive"></div>
                         </div>
 
                         <div id="strandWrap" style="display:none;margin-top:16px">
@@ -1482,6 +1513,8 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                                 <small>Review your information. Click "Edit" to go back and make changes.</small>
                             </div>
                         </div>
+
+                        <div class="gc-box bad" id="gcStep4Box" role="alert" style="margin-bottom:16px"></div>
 
                         <!-- Review: details changed from the saved record (Continuing / Returning) -->
                         <div class="review-card review-changes" id="revChangesCard" style="display:none">
@@ -1888,6 +1921,14 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                     }
                     clearInvalid(strand);
                 }
+                var gcNow = gradeCheckNow();
+                if (gcNow && gcNow.status === 'mismatch') {
+                    renderGradeCheck();
+                    setBanner1('Grade Level Does Not Match your uploaded Form 138. Please correct your selected grade level.');
+                    showBanner(1);
+                    if (gradeGrid) { gradeGrid.classList.add('gc-flag'); gradeGrid.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+                    return false;
+                }
                 return true;
             }
 
@@ -2116,7 +2157,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                         if (inp.files && inp.files.length) {
                             var file = inp.files[0];
                             var card = inp.closest('.doc-card');
-                            var target = (newGroup && pk[0] === grade && card) ? newGroup.querySelector('.doc-card[data-doc-key="' + card.getAttribute('data-doc-key') + '"] .doc-file-input[name="' + inp.name + '"]') : null;
+                            var target = (newGroup && card) ? newGroup.querySelector('.doc-card[data-doc-key="' + card.getAttribute('data-doc-key') + '"] .doc-file-input[name="' + inp.name + '"]') : null;
                             if (target) {
                                 try { var dt = new DataTransfer(); dt.items.add(file); target.files = dt.files; updateDocCardUI(target); } catch (err) {}
                             }
@@ -2729,6 +2770,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             if (s.status === 'verified') {
                 setCardLrnStatus(card, 'verified', '✓ LRN Verified');
                 setCardRead(card, s.card);
+                renderGradeCheck();
             } else {
                 setCardLrnStatus(card, 'bad', '<i class="fas fa-circle-xmark me-1"></i>' + esc(s.message || RC_MSG.unreadable));
                 setCardRead(card, null);
@@ -2746,12 +2788,14 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             fd.append('oe_action', 'report_card_lrn');
             fd.append('csrf_token', document.querySelector('#oeForm [name="csrf_token"]').value);
             fd.append('lrn', enteredLrn());
+            fd.append('grade_level', curGrade());
             rcPages(card).forEach(function (f) { if (f) fd.append('report_card[]', f); });
             fetch(window.location.href.split('#')[0], { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
                 .then(function (r) { return r.json(); })
                 .then(function (res) {
                     if (rcSig(card) !== sig) return;                     // pages changed meanwhile
                     rcState[key] = { sig: sig, status: (res && res.status) || 'error', detected: (res && res.detected) || '', message: (res && res.message) || '', card: (res && res.card) || null };
+                    if (res && res.grade_check) gcBySig[sig] = res.grade_check;
                     applyRcState(card);
                 })
                 .catch(function () {
@@ -2769,8 +2813,107 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             if (!s || s.sig !== rcSig(card)) { checkReportCard(card); return 'Checking your Report Card… please wait.'; }
             if (s.status === 'checking') return 'Checking your Report Card… please wait.';
             applyRcState(card);
-            return s.status === 'verified' ? '' : (s.message || RC_MSG.unreadable);
+            if (s.status !== 'verified') return s.message || RC_MSG.unreadable;
+            var gc = gradeCheckNow();
+            return (gc && gc.status === 'mismatch') ? 'Grade Level Does Not Match. Please correct your grade level in Step 1.' : '';
         }
+
+        // ---- Grade level on the Form 138 vs the grade chosen in Step 1 ----
+        // The server reads the grade on the card and says which grade is expected
+        // (one grade up; the same grade when the card says Retained). Kept by page
+        // set, so changing the grade in Step 1 re-compares at once. The selected
+        // grade is never changed for the applicant.
+        var gcBySig = {};
+        function gradeCheckNow() {
+            var group = activeDocGroup();
+            var card = group ? group.querySelector('.doc-card[data-doc-key="form138"]') : null;
+            if (!card || !rcRequiredDone(card)) return null;
+            var s = rcState[rcKey(card)], sig = rcSig(card);
+            if (!s || s.sig !== sig || s.status !== 'verified') return null;
+            var g = gcBySig[sig];
+            if (!g) return null;
+            if (!g.card_grade) return { status: 'manual', card: card, info: g };
+            var ok = g.expected !== '' && curGrade() === g.expected;
+            return { status: ok ? 'match' : 'mismatch', card: card, info: g };
+        }
+        function gcMessage(info) {
+            if (!info.expected) return info.message;
+            return 'Your uploaded Form 138 shows ' + info.card_grade + (info.retained ? ' (Retained)' : '') + '. Based on this record, your expected enrollment grade level is ' + info.expected + '. Please go back to Step 1 and correct your selected grade level.';
+        }
+        function gcBoxHtml(info, withButton) {
+            return (withButton ? '<span class="gc-step">Action Required: Step 1</span>' : '<span class="gc-step">Step 1 &ndash; Grade Level Information</span>')
+                + '<span class="gc-title"><i class="fas fa-triangle-exclamation me-1"></i>Grade Level Does Not Match</span>'
+                + esc(gcMessage(info))
+                + (withButton ? '<br><button type="button" class="gc-btn" data-gc-go="1"><i class="fas fa-arrow-left"></i> Go to Step 1</button>' : '');
+        }
+        function renderGradeCheck() {
+            var gc = gradeCheckNow();
+            // the Form 138 card(s)
+            document.querySelectorAll('.doc-card[data-doc-key="form138"]').forEach(function (c) {
+                var box = c.querySelector('.gc-box');
+                if (!box) {
+                    box = document.createElement('div');
+                    box.className = 'gc-box';
+                    var read = c.querySelector('.doc-card-read');
+                    if (read) read.insertAdjacentElement('afterend', box); else c.appendChild(box);
+                }
+                if (!gc || gc.card !== c) { box.className = 'gc-box'; box.innerHTML = ''; return; }
+                if (gc.status === 'match') {
+                    box.className = 'gc-box show ok';
+                    box.innerHTML = '<i class="fas fa-circle-check me-1"></i>Grade Level Validated &middot; Form 138 shows ' + esc(gc.info.card_grade) + ' &rarr; ' + esc(gc.info.expected);
+                } else if (gc.status === 'manual') {
+                    box.className = 'gc-box show manual';
+                    box.innerHTML = '<i class="fas fa-user-check me-1"></i><b>For Manual Verification</b> &middot; The grade level on your Form 138 could not be read. You may continue; the registrar will check it.';
+                } else {
+                    box.className = 'gc-box show bad';
+                    box.innerHTML = gcBoxHtml(gc.info, true);
+                    c.classList.add('doc-card-invalid');
+                }
+            });
+            // Step 1 and Step 4
+            var bad = gc && gc.status === 'mismatch';
+            var b1 = document.getElementById('gcStep1Box'), b4 = document.getElementById('gcStep4Box');
+            if (b1) { b1.className = 'gc-box bad' + (bad ? ' show' : ''); b1.innerHTML = bad ? gcBoxHtml(gc.info, false) : ''; }
+            if (b4) { b4.className = 'gc-box bad' + (bad ? ' show' : ''); b4.innerHTML = bad ? gcBoxHtml(gc.info, true) : ''; }
+            var grid = document.querySelector('.grade-grid');
+            document.querySelectorAll('.grade-option').forEach(function (o) {
+                var inp = o.querySelector('input[name="grade_level"]');
+                o.classList.toggle('gc-wrong', !!(bad && inp && inp.checked));
+                o.classList.toggle('gc-expected', !!(bad && inp && gc.info.expected && inp.value === gc.info.expected));
+            });
+            if (grid && !bad) grid.classList.remove('gc-flag');
+        }
+        function goToStep1ForGrade() {
+            showStep(1);
+            var grid = document.querySelector('.grade-grid');
+            if (!grid) return;
+            grid.classList.remove('gc-flag'); void grid.offsetWidth; grid.classList.add('gc-flag');
+            setTimeout(function () {
+                grid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                var sel = grid.querySelector('input[name="grade_level"]:checked');
+                if (sel) { try { sel.focus({ preventScroll: true }); } catch (e) {} }
+            }, 350);
+        }
+        document.addEventListener('click', function (e) {
+            if (e.target.closest && e.target.closest('[data-gc-go]')) { e.preventDefault(); goToStep1ForGrade(); }
+        });
+        document.querySelectorAll('input[name="grade_level"]').forEach(function (r) {
+            r.addEventListener('change', function () {
+                setTimeout(function () {
+                    // The Report Card pages moved to this grade's documents: reuse their result (same files).
+                    var group = activeDocGroup();
+                    var card = group ? group.querySelector('.doc-card[data-doc-key="form138"]') : null;
+                    if (card && rcRequiredDone(card) && !rcState[rcKey(card)]) {
+                        var sig = rcSig(card);
+                        Object.keys(rcState).forEach(function (k) {
+                            if (!rcState[rcKey(card)] && rcState[k].sig === sig && rcState[k].status !== 'checking') rcState[rcKey(card)] = rcState[k];
+                        });
+                        if (rcState[rcKey(card)]) applyRcState(card);
+                    }
+                    renderGradeCheck();
+                }, 0);
+            });
+        });
         // Editing the LRN in Step 2 re-checks every Report Card at once.
         ['f_lrn', 'v_lrn'].forEach(function (id) {
             var el = document.getElementById(id);

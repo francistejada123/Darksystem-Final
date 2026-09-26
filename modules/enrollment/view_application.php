@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/enrollment_helpers_online.php';
 require_once __DIR__ . '/../../includes/attendance_qr_helpers.php'; // attQrLrnLink()
+require_once __DIR__ . '/../../includes/enrollment_lrn_card.php'; // oeGradeLevelCheck() -- Form 138 grade vs grade applied for
 
 if (!defined('BASE_URL')) {
     define('BASE_URL', '/watdahel/');
@@ -326,6 +327,15 @@ html[data-theme="dark"] .ar-actionbar .btn-reject:hover { background: rgba(217,4
                     <tr><th>Name on card</th><td><?php echo htmlspecialchars($ar_card['name'] ?? ''); ?></td></tr>
                     <tr><th>LRN on card</th><td><?php echo htmlspecialchars($ar_card['lrn'] ?? ''); ?></td></tr>
                     <tr><th>Grade level</th><td><?php echo htmlspecialchars($ar_card['grade_level'] ?? ''); ?></td></tr>
+                    <?php
+                        // Form 138 grade vs the grade applied for (older applications: computed now)
+                        $ar_gc_status = $application['grade_level_check'] ?? '';
+                        $ar_gc_note = $application['grade_level_check_note'] ?? '';
+                        if ($ar_gc_status === '') { $ar_gc = oeGradeLevelCheck($ar_card, $application['grade_level']); $ar_gc_status = $ar_gc['status']; $ar_gc_note = $ar_gc['message']; }
+                        $ar_gc_style = ['Validated' => 'background:#ECFDF5;color:#047857', 'For Manual Verification' => 'background:#FFFBEB;color:#92400E', 'Grade Level Mismatch' => 'background:#FEF2F2;color:#B91C1C'][$ar_gc_status] ?? 'background:#F2F4F7;color:#475467';
+                    ?>
+                    <tr><th>Grade level check</th><td><span style="display:inline-block;padding:3px 10px;border-radius:999px;font-weight:700;font-size:12.5px;<?php echo $ar_gc_style; ?>"><?php echo htmlspecialchars($ar_gc_status); ?></span>
+                        <small class="text-muted d-block mt-1">Applied for <?php echo htmlspecialchars($application['grade_level']); ?>. <?php echo htmlspecialchars($ar_gc_note); ?></small></td></tr>
                     <tr><th>General Average</th><td><strong><?php echo htmlspecialchars((string) ($ar_card['general_average'] ?? '')); ?></strong> <small class="text-muted">— used for section assignment</small></td></tr>
                     <?php if (!empty($ar_card['remarks'])): ?><tr><th>Remarks</th><td><?php echo htmlspecialchars($ar_card['remarks']); ?></td></tr><?php endif; ?>
                     <?php if (!empty($ar_card['subjects'])): ?>

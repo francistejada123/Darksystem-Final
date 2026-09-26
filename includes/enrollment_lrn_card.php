@@ -299,3 +299,82 @@ function oeReportCardCheck(array $paths, $enteredLrn)
     }
     return ['status' => 'verified', 'message' => 'LRN Verified', 'detected' => $d['lrn'], 'data' => $d];
 }
+
+// ---------------------------------------------------------------------------
+// Grade level check: the grade on the Form 138 vs the grade selected in Step 1.
+// Normal progression is one grade up (Grade 6 -> 7, ... Grade 11 -> 12); a
+// Report Card marked Retained / Not Promoted stays in the same grade.
+// The selected grade is never changed for the applicant -- they correct it.
+// ---------------------------------------------------------------------------
+
+const OE_GC_VALIDATED = 'Validated';
+const OE_GC_MISMATCH = 'Grade Level Mismatch';
+const OE_GC_MANUAL = 'For Manual Verification';
+
+/** 10 from "Grade 10", "G10", "Grade Ten", "Grade X", "Baitang 10"; null when not readable. */
+function oeCardGradeNumber($text)
+{
+    $t = strtolower(trim((string) $text));
+    if ($t === '') return null;
+    if (preg_match('/(?<!\d)(\d{1,2})(?!\d)/', $t, $m)) {
+        $n = (int) $m[1];
+        return ($n >= 1 && $n <= 12) ? $n : null;
+    }
+    $words = ['one' => 1, 'two' => 2, 'three' => 3, 'four' => 4, 'five' => 5, 'six' => 6, 'seven' => 7, 'eight' => 8,
+              'nine' => 9, 'ten' => 10, 'eleven' => 11, 'twelve' => 12];
+    foreach ($words as $w => $n) {
+        if (preg_match('/\b' . $w . '\b/', $t)) return $n;
+    }
+    $roman = ['xii' => 12, 'xi' => 11, 'x' => 10, 'ix' => 9, 'viii' => 8, 'vii' => 7, 'vi' => 6, 'v' => 5, 'iv' => 4, 'iii' => 3, 'ii' => 2, 'i' => 1];
+    foreach ($roman as $r => $n) {
+        if (preg_match('/\b(grade|baitang|g)\s*' . $r . '\b/', $t)) return $n;
+    }
+    return null;
+}
+
+/**
+ * @param array  $card     what was read from the Report Card (grade_level, remarks)
+ * @param string $selected "Grade 11" (Step 1)
+ * @return array{status:string, card_grade:string, expected:string, retained:bool, message:string}
+ *   status: Validated | Grade Level Mismatch | For Manual Verification
+ */
+function oeGradeLevelCheck(array $card, $selected)
+{
+    $n = oeCardGradeNumber($card['grade_level'] ?? '');
+    if ($n === null) {
+        return ['status' => OE_GC_MANUAL, 'card_grade' => '', 'expected' => '', 'retained' => false,
+                'message' => 'The grade level on your Form 138 could not be read. The registrar will check it (For Manual Verification).'];
+    }
+    $cardLabel = 'Grade ' . $n;
+    $retained = (bool) preg_match('/retain|not\s+promoted|repeat/i', (string) ($card['remarks'] ?? ''));
+    $expectedN = $retained ? $n : $n + 1;
+    $expected = ($expectedN >= 7 && $expectedN <= 12) ? 'Grade ' . $expectedN : '';
+    if ($expected === '') {
+        $msg = $n >= 12
+            ? "Your uploaded Form 138 shows Grade 12. A Grade 12 completer cannot enroll in Grades 7 to 12. Please check your uploaded Form 138 or contact the registrar."
+            : "Your uploaded Form 138 shows $cardLabel. Online Enrollment is for Grades 7 to 12 only. Please check your uploaded Form 138 or contact the registrar.";
+        return ['status' => OE_GC_MISMATCH, 'card_grade' => $cardLabel, 'expected' => '', 'retained' => $retained, 'message' => $msg];
+    }
+    if ($selected === $expected) {
+        return ['status' => OE_GC_VALIDATED, 'card_grade' => $cardLabel, 'expected' => $expected, 'retained' => $retained,
+                'message' => "Form 138 shows $cardLabel" . ($retained ? ' (retained)' : '') . ". $expected is correct."];
+    }
+    return ['status' => OE_GC_MISMATCH, 'card_grade' => $cardLabel, 'expected' => $expected, 'retained' => $retained,
+            'message' => "Your uploaded Form 138 shows $cardLabel" . ($retained ? ' (Retained)' : '') . ". Based on this record, your expected enrollment grade level is $expected. Please go back to Step 1 and correct your selected grade level."];
+}
+
+/** online_applications.grade_level_check (+ note) for the registrar. */
+function oeEnsureGradeCheckSchema()
+{
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    if (schemaIsReady('oe_grade_check_v1')) return;
+    if (!getRecord("SHOW COLUMNS FROM online_applications LIKE 'grade_level_check'")) {
+        executeQuery("ALTER TABLE online_applications ADD COLUMN grade_level_check VARCHAR(30) NULL COMMENT 'Validated / For Manual Verification (Form 138 grade vs selected grade)'");
+    }
+    if (!getRecord("SHOW COLUMNS FROM online_applications LIKE 'grade_level_check_note'")) {
+        executeQuery("ALTER TABLE online_applications ADD COLUMN grade_level_check_note VARCHAR(255) NULL");
+    }
+    schemaMarkReady('oe_grade_check_v1');
+}
