@@ -520,6 +520,21 @@ include '../../includes/header.php';
         margin-bottom: 3px;
     }
     .subj-page .sp-teacher-row:last-child { margin-bottom: 0; }
+    .subj-page .sp-more-teachers { position: relative; display: inline-block; margin-top: 2px; outline: none; }
+    .subj-page .sp-more-link { font-size: 12px; font-weight: 600; color: var(--primary); cursor: default; }
+    .subj-page .sp-more-link i { font-size: 9px; margin-left: 2px; }
+    .subj-page .sp-more-pop {
+        display: none; position: absolute; left: 0; top: 100%; z-index: 30; min-width: 220px;
+        margin-top: 4px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border);
+        border-radius: 10px; box-shadow: 0 10px 24px rgba(16, 24, 40, 0.14);
+    }
+    .subj-page .sp-more-teachers::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 6px; }
+    .subj-page .sp-more-teachers:hover .sp-more-pop,
+    .subj-page .sp-more-teachers:focus-within .sp-more-pop { display: block; }
+    .subj-page .sp-more-pop .sp-teacher-row { white-space: nowrap; margin-bottom: 6px; }
+    /* Last rows of the table: open upward so the list is not cut off at the bottom. */
+    .subj-page tbody tr:nth-last-child(-n+2) .sp-more-pop { top: auto; bottom: 100%; margin: 0 0 4px; }
+    .subj-page tbody tr:nth-last-child(-n+2) .sp-more-teachers::after { top: auto; bottom: 100%; }
     .subj-page .sp-pagination {
         display: flex;
         align-items: center;
@@ -564,13 +579,14 @@ include '../../includes/header.php';
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 30px;
-        height: 30px;
-        border-radius: 8px;
+        width: 38px;
+        height: 38px;
+        font-size: 16px;
+        border-radius: 10px;
         border: 1px solid var(--border);
         color: var(--text-muted);
         background: var(--surface);
-        margin-right: 4px;
+        margin-right: 6px;
         transition: background 0.15s, color 0.15s;
     }
     .subj-page .sp-action-icon:hover { background: #F2F4F7; color: var(--ink); }
@@ -894,16 +910,29 @@ include '../../includes/header.php';
                         <td><?php echo (int)$asub['units']; ?></td>
                         <td>
                             <?php if (!empty($asub['teachers'])): ?>
-                                <?php foreach (array_slice($asub['teachers'], 0, 2) as $tt):
+                                <?php
+                                    // One teacher in the row; the rest appear when the pointer is over "See more".
+                                    $tt = $asub['teachers'][0];
                                     $tinit = strtoupper(substr($tt['first_name'], 0, 1) . substr($tt['last_name'], 0, 1));
                                 ?>
                                 <div class="sp-teacher-row">
                                     <span class="sp-avatar" style="background:<?php echo $tcolor['bg']; ?>;color:<?php echo $tcolor['fg']; ?>;"><?php echo htmlspecialchars($tinit); ?></span>
                                     <?php echo htmlspecialchars($tt['last_name'] . ', ' . $tt['first_name']); ?>
                                 </div>
-                                <?php endforeach; ?>
-                                <?php if (count($asub['teachers']) > 2): ?>
-                                    <div class="text-muted" style="font-size:12px;">+<?php echo count($asub['teachers']) - 2; ?> more</div>
+                                <?php if (count($asub['teachers']) > 1): ?>
+                                    <div class="sp-more-teachers" tabindex="0">
+                                        <span class="sp-more-link">See more (+<?php echo count($asub['teachers']) - 1; ?>) <i class="fas fa-chevron-down"></i></span>
+                                        <div class="sp-more-pop">
+                                            <?php foreach (array_slice($asub['teachers'], 1) as $tt):
+                                                $tinit = strtoupper(substr($tt['first_name'], 0, 1) . substr($tt['last_name'], 0, 1));
+                                            ?>
+                                            <div class="sp-teacher-row">
+                                                <span class="sp-avatar" style="background:<?php echo $tcolor['bg']; ?>;color:<?php echo $tcolor['fg']; ?>;"><?php echo htmlspecialchars($tinit); ?></span>
+                                                <?php echo htmlspecialchars($tt['last_name'] . ', ' . $tt['first_name']); ?>
+                                            </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
                                 <?php endif; ?>
                             <?php else: ?>
                                 <span class="text-muted">No teacher assigned</span>
