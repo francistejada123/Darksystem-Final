@@ -154,14 +154,11 @@ document.addEventListener('keydown', function (e) {
             }).join('') + '<div class="nav-divider"></div><a href="../../../logout.php" class="nav-link text-danger"><i class="fas fa-sign-out-alt"></i> Logout</a>';
         }
 
-        // Top app bar: menu, brand, updates bell, profile avatar.
-        var img = document.querySelector('.app-topbar-avatar img');
+        // Top app bar: menu + brand (Updates and Profile are in the bottom navigation).
         var bar = document.createElement('header');
         bar.className = 'sp-appbar';
         bar.innerHTML = '<button type="button" class="sp-appbar-btn" aria-label="Open menu"><i class="fas fa-bars"></i></button>'
-            + '<a class="sp-appbar-brand" href="dashboard.php"><img src="../../../static/images/logo.png" alt=""><span>EGradePro</span></a>'
-            + '<a class="sp-appbar-btn sp-appbar-bell" href="updates.php?tab=messages" aria-label="Updates"><i class="fas fa-bell"></i><span class="sp-badge" hidden></span></a>'
-            + '<a class="sp-appbar-avatar" href="profile.php" aria-label="My Profile">' + (img ? '<img src="' + img.getAttribute('src') + '" alt="">' : '<i class="fas fa-user"></i>') + '</a>';
+            + '<a class="sp-appbar-brand" href="dashboard.php"><img src="../../../static/images/logo.png" alt=""><span>EGradePro</span></a>';
         document.body.insertBefore(bar, document.body.firstChild);
         bar.querySelector('button').addEventListener('click', function (e) { e.stopPropagation(); toggleSidebar(); });
 
@@ -175,14 +172,19 @@ document.addEventListener('keydown', function (e) {
         document.body.appendChild(bn);
         document.body.classList.add('sp-mobile-shell');
 
-        // Unread messages on the bell.
+        // Unread messages: a badge on Updates in the bottom navigation.
         if (window.fetch) {
             fetch('get_unread_message_count.php', { credentials: 'same-origin' })
                 .then(function (r) { return r.json(); })
                 .then(function (d) {
                     var n = parseInt(d && d.unread_count, 10) || 0;
-                    var b = bar.querySelector('.sp-badge');
-                    if (n > 0 && b) { b.textContent = n > 9 ? '9+' : n; b.hidden = false; }
+                    var up = bn.querySelector('a[href="updates.php"]');
+                    if (n > 0 && up) {
+                        var b = document.createElement('span');
+                        b.className = 'sp-badge';
+                        b.textContent = n > 9 ? '9+' : n;
+                        up.appendChild(b);
+                    }
                 }).catch(function () {});
         }
     });

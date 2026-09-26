@@ -348,3 +348,8 @@ html[data-theme="dark"] .sp-card-body { color: var(--text-muted, #cbd5e1); }
     body.sp-mobile-shell:has(#mainSidebar .logo small) .sidebar .logo span { opacity: 1 !important; max-width: none !important; }
     body.sp-mobile-shell:has(#mainSidebar .logo small) .main-content { width: 100% !important; max-width: 100% !important; margin-left: 0 !important; padding: 14px 14px 20px !important; }
 }
+
+@media (max-width: 767.98px) {
+    .sp-bottomnav a { position: relative; }
+    .sp-bottomnav .sp-badge { top: 2px; right: calc(50% - 22px); }
+}
