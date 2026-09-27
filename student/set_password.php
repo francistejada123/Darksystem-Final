@@ -26,7 +26,8 @@ if ($student && $_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $first_time = empty($student['portal_password_hash']);
         spwSet($student['student_id'], $_POST['password']);
-        unset($_SESSION['spw_sid'], $_SESSION['spw_until']);
+        if (!empty($_SESSION['spw_notify'])) spwNotifyCreated((int) $student['student_id']);
+        unset($_SESSION['spw_sid'], $_SESSION['spw_until'], $_SESSION['spw_notify']);
         logActivity(null, 'student', $first_time ? 'Created portal password' : 'Reset portal password', 'Student ' . $student['lrn']);
         // Sign in right away, exactly like the Student Login.
         $full = getRecord(

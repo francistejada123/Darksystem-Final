@@ -112,3 +112,21 @@ function spwSendSetupLink(array $student, $purpose = 'setup')
     $r = mailSendOne($email, $title . ' - EGradePro', $html);
     return $r['success'] ? ['success' => true, 'masked' => spwMaskEmail($email)] : ['success' => false, 'error' => $r['error']];
 }
+
+/** "Your Student Portal password was created" -- sent when it was made from the tracking page (no email link). */
+function spwNotifyCreated($studentId)
+{
+    $st = getRecord("SELECT first_name, lrn, email FROM students WHERE student_id = ?", [(int) $studentId]);
+    if (!$st || !filter_var((string) $st['email'], FILTER_VALIDATE_EMAIL)) return;
+    $e = function ($v) { return htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8'); };
+    $forgot = appUrl('student/forgot_password.php');
+    $html = '<div style="background:#f1f4f8;padding:28px 12px;font-family:Segoe UI,Arial,sans-serif;">'
+        . '<div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;">'
+        . '<div style="background:#14213D;padding:20px 28px;color:#fff;font-size:18px;font-weight:700;">EGradePro Student Portal</div>'
+        . '<div style="padding:28px;font-size:15px;color:#334155;line-height:1.6;">'
+        . '<h2 style="margin:0 0 14px;font-size:21px;color:#14213D;">Your password was created</h2>'
+        . '<p>Hi ' . $e($st['first_name']) . ', a password for your Student Portal (LRN ' . $e($st['lrn']) . ') was just created on ' . date('M j, Y g:i A') . '. You can now sign in with your LRN and this password.</p>'
+        . '<p><strong>Was this not you?</strong> Set a new password right away using <a href="' . $e($forgot) . '">Create / Forgot Password</a>, and tell the registrar.</p>'
+        . '</div></div></div>';
+    mailSendOne($st['email'], 'Your EGradePro Student Portal password was created', $html);
+}

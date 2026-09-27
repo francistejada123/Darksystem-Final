@@ -15,7 +15,7 @@ spwEnsureSchema();
 
 $done = false;
 $error = '';
-$lrn_v = '';
+$lrn_v = preg_replace('/\D/', '', (string) ($_GET['lrn'] ?? ''));   // pre-filled from the tracking page
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $lrn_v = preg_replace('/\D/', '', (string) ($_POST['lrn'] ?? ''));
     $bday = trim((string) ($_POST['birth_date'] ?? ''));

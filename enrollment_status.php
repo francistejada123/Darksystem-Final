@@ -174,10 +174,31 @@ $status_meta['For Correction'] = $status_meta['Rejected'] = $status_meta['Incomp
                     <h5 class="fw-bold text-success mb-2"><i class="fas fa-user-graduate me-2"></i>Enrollment Approved</h5>
                     <p class="mb-3">Your enrollment application has been approved. You may now access your EGradePro Student Portal.</p>
                     <a href="student_login.php" class="btn btn-success px-4"><i class="fas fa-right-to-bracket me-1"></i>Go to Student Login</a>
+                    <?php
+                        // First time on the device that applied: create the password right here (birthday check).
+                        // Otherwise (password exists / another device): the emailed link, with the LRN filled in.
+                        require_once __DIR__ . '/includes/student_password.php';
+                        spwEnsureSchema();
+                        $tp_student = !empty($application['student_id'])
+                            ? getRecord("SELECT lrn, portal_password_hash FROM students WHERE student_id = ? AND is_active = 1", [(int) $application['student_id']])
+                            : null;
+                        $tp_can_create = $tp_student && empty($tp_student['portal_password_hash']) && oeSubmittedRef() === $application['reference_no'];
+                        $tp_lrn = $tp_student['lrn'] ?? ($application['lrn'] ?? '');
+                    ?>
                     <div style="margin:16px auto 0;max-width:520px;padding:14px 16px;border-radius:12px;background:#F0F7FF;border:1px solid #BFDBFE;color:#1E3A5F;text-align:left;">
-                        <div style="font-size:16px;font-weight:700;margin-bottom:4px;"><i class="fas fa-key me-2" style="color:#1D4ED8;"></i>First time signing in?</div>
-                        <div style="font-size:15px;line-height:1.55;">Create your password using the <strong>Create My Password</strong> button in your approval email. No email or the link expired? Get a new link here:</div>
-                        <a href="student/forgot_password.php" class="btn btn-outline-primary mt-2" style="font-size:15px;font-weight:600;"><i class="fas fa-key me-1"></i> Create / Forgot Password</a>
+                        <?php if ($tp_can_create): ?>
+                            <div style="font-size:16px;font-weight:700;margin-bottom:4px;"><i class="fas fa-key me-2" style="color:#1D4ED8;"></i>First time signing in?</div>
+                            <div style="font-size:15px;line-height:1.55;">Create your password now. Your LRN is already filled in; you only confirm your birthday.</div>
+                            <a href="student/create_password.php?ref=<?php echo urlencode($application['reference_no']); ?>" class="btn btn-primary mt-2" style="font-size:15px;font-weight:700;"><i class="fas fa-key me-1"></i> Create My Password</a>
+                        <?php elseif ($tp_student && !empty($tp_student['portal_password_hash'])): ?>
+                            <div style="font-size:16px;font-weight:700;margin-bottom:4px;"><i class="fas fa-lock me-2" style="color:#1D4ED8;"></i>Forgot your password?</div>
+                            <div style="font-size:15px;line-height:1.55;">Your password is already created. Sign in with your LRN and password. Forgot it? We will email you a link.</div>
+                            <a href="student/forgot_password.php?lrn=<?php echo urlencode($tp_lrn); ?>" class="btn btn-outline-primary mt-2" style="font-size:15px;font-weight:600;"><i class="fas fa-key me-1"></i> Forgot Password</a>
+                        <?php else: ?>
+                            <div style="font-size:16px;font-weight:700;margin-bottom:4px;"><i class="fas fa-key me-2" style="color:#1D4ED8;"></i>First time signing in?</div>
+                            <div style="font-size:15px;line-height:1.55;">Create your password using the <strong>Create My Password</strong> button in your approval email. No email or the link expired? Get a new link here:</div>
+                            <a href="student/forgot_password.php?lrn=<?php echo urlencode($tp_lrn); ?>" class="btn btn-outline-primary mt-2" style="font-size:15px;font-weight:600;"><i class="fas fa-key me-1"></i> Create / Forgot Password</a>
+                        <?php endif; ?>
                     </div>
                 </div>
             <?php endif; ?>
