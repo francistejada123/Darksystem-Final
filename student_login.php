@@ -168,7 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         .login-header {
             text-align: center;
-            margin-bottom: 22px;
+            margin-bottom: 30px;
         }
         .login-header .logo-img {
             max-width: 78px;
@@ -210,8 +210,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         #lrnInput { letter-spacing: 1.5px; }
         /* Edge / IE draw their own eye button inside password boxes: hide it (we have one). */
         input[type="password"]::-ms-reveal, input[type="password"]::-ms-clear { display: none; }
-        .field { margin-bottom: 20px; }
-        .field .form-label { display: block; margin-bottom: 7px; font-size: 15px; }
+        .field { margin-bottom: 14px; }
+        .field .form-label { display: block; margin-bottom: 5px; font-size: 15px; }
         .input-group-text { width: 52px; justify-content: center; }
         .input-group .pw-toggle {
             width: 52px; justify-content: center; cursor: pointer;
@@ -220,7 +220,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         .input-group .pw-toggle:hover { background: #fff; }
         .input-group #pwInput { border-radius: 0; }
-        .field-note { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 8px; min-height: 18px; }
+        .field-note { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 5px; min-height: 16px; }
         .forgot-link { color: #fff; font-size: 14px; font-weight: 600; text-decoration: underline; text-shadow: 0 2px 6px rgba(0,0,0,0.6); white-space: nowrap; }
         .forgot-link:hover { color: #90caf9; }
         .form-control:focus {
@@ -381,7 +381,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <button type="button" class="input-group-text pw-toggle" id="pwToggle" aria-label="Show password"><i class="fas fa-eye"></i></button>
                     </div>
                     <div class="field-note" style="justify-content:flex-end;">
-                        <a href="student/forgot_password.php" class="forgot-link"><i class="fas fa-key me-1"></i>First time / Forgot password?</a>
+                        <a href="student/forgot_password.php" class="forgot-link"><i class="fas fa-key me-1"></i>Forgot password?</a>
                     </div>
                 </div>
                 
