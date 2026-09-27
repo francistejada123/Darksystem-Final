@@ -210,7 +210,31 @@ if (!$is_embedded) {
                     <tr><td class="fw-bold">Contact:</td><td><?php echo htmlspecialchars($student['contact_number'] ?? 'N/A'); ?></td></tr>
                     <tr><td class="fw-bold">Email:</td><td><?php echo htmlspecialchars($student['email'] ?? 'N/A'); ?></td></tr>
                     <tr><td class="fw-bold">Guardian:</td><td><?php echo htmlspecialchars($student['guardian_name'] ?? 'N/A'); ?></td></tr>
+                    <?php
+                        require_once __DIR__ . '/../../includes/student_password.php';
+                        spwEnsureSchema();
+                        $pw_row = getRecord("SELECT portal_password_set_at FROM students WHERE student_id = ?", [(int) $student['student_id']]);
+                    ?>
+                    <tr><td class="fw-bold">Portal Password:</td><td>
+                        <?php if (!empty($pw_row['portal_password_set_at'])): ?>
+                            <span class="badge bg-success">Set</span> <small class="text-muted"><?php echo date('M j, Y', strtotime($pw_row['portal_password_set_at'])); ?></small>
+                        <?php else: ?>
+                            <span class="badge bg-warning text-dark">Not created yet</span>
+                        <?php endif; ?>
+                    </td></tr>
                 </table>
+                <?php if (!empty($_SESSION['portal_link_flash'])): [$plf_type, $plf_msg] = $_SESSION['portal_link_flash']; unset($_SESSION['portal_link_flash']); ?>
+                    <div class="alert alert-<?php echo $plf_type; ?> py-2 small text-start"><?php echo htmlspecialchars($plf_msg); ?></div>
+                <?php endif; ?>
+                <?php if (hasAnyRole(['Administrator', 'Registrar'])): ?>
+                    <form method="POST" action="send_portal_link.php" onsubmit="return confirm('Email a Create / Set New Password link to this student?');">
+                        <input type="hidden" name="csrf_token" value="<?php echo generateCSRFToken(); ?>">
+                        <input type="hidden" name="student_id" value="<?php echo (int) $student['student_id']; ?>">
+                        <?php if ($is_embedded): ?><input type="hidden" name="embed" value="1"><?php endif; ?>
+                        <button type="submit" class="btn btn-outline-primary btn-sm w-100"><i class="fas fa-key me-1"></i> Send Password Link</button>
+                        <div class="small text-muted mt-1">The student sets their own password. The school never sees it.</div>
+                    </form>
+                <?php endif; ?>
             </div>
         </div>
     </div>

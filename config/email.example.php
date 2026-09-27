@@ -141,9 +141,9 @@ function sendEnrollmentNotification($student_email, $student_name, $status, $gra
                             📛 " . htmlspecialchars($lrn) . "
                         </div>
                         <br>
-                        <p><strong>Your enrollment has been approved.</strong> Click <strong>Go to Student Portal</strong> to securely access your EGradePro Student Portal.</p>
-                        <p><a href='" . $portal_link . "' class='btn' style='color:#ffffff !important;text-decoration:none;'>🔐 Go to Student Portal</a></p>
-                        <p style='font-size: 13px; color: #666;'>This link is only for you, works once and expires in 7 days. After that, sign in at <a href='" . htmlspecialchars($login_link, ENT_QUOTES) . "'>" . htmlspecialchars($login_link) . "</a> with your LRN.</p>
+                        <p><strong>Your enrollment has been approved.</strong> Click <strong>Create My Password</strong> to set your own password for the EGradePro Student Portal.</p>
+                        <p><a href='" . $portal_link . "' class='btn' style='color:#ffffff !important;text-decoration:none;'>🔐 Create My Password</a></p>
+                        <p style='font-size: 13px; color: #666;'>This link is only for you, works once and expires in 7 days. After you create your password, sign in at <a href='" . htmlspecialchars($login_link, ENT_QUOTES) . "'>" . htmlspecialchars($login_link) . "</a> with your LRN and password. Lost this link? Use <strong>Create / Forgot password</strong> on the Student Login page.</p>
                         <p style='margin-top: 10px; font-size: 14px;'>
                             Or copy this link to your browser:<br>
                             <code>" . $portal_link . "</code>
@@ -153,8 +153,8 @@ function sendEnrollmentNotification($student_email, $student_name, $status, $gra
                     <div class='card'>
                         <h3>📝 Instructions</h3>
                         <ol class='steps'>
-                            <li>Click the <strong>Go to Student Portal</strong> button above — it opens your own Student Dashboard right away</li>
-                            <li>Next time, use the Student Login page and enter your <strong>LRN</strong>: <code>" . htmlspecialchars($lrn) . "</code></li>
+                            <li>Click <strong>Create My Password</strong> above and choose your own password — then your Student Dashboard opens</li>
+                            <li>Next time, use the Student Login page: your <strong>LRN</strong> <code>" . htmlspecialchars($lrn) . "</code> and your password</li>
                             <li>You can now view your:
                                 <ul>
                                     <li>📊 Dashboard</li>
@@ -169,14 +169,14 @@ function sendEnrollmentNotification($student_email, $student_name, $status, $gra
                     <div class='card' style='background: #fff3cd; border: 1px solid #ffc107;'>
                         <h4>⚠️ Important Notes</h4>
                         <ul>
-                            <li>Keep your LRN confidential. Do not share it with others.</li>
+                            <li>Never share your password with anyone. The school will never ask for it.</li>
                             <li>If you encounter any issues, contact the registrar's office.</li>
                             <li>For inquiries, email: registrar@egradepro.com</li>
                         </ul>
                     </div>
                     
                     <p style='text-align: center;'>
-                        <a href='" . $portal_link . "' class='btn' style='color:#ffffff !important;text-decoration:none;'>🚀 Go to Student Portal Now</a>
+                        <a href='" . $portal_link . "' class='btn' style='color:#ffffff !important;text-decoration:none;'>🚀 Create My Password Now</a>
                     </p>
                 </div>
                 <div class='footer'>

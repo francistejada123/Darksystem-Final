@@ -1,9 +1,10 @@
 <?php
 // student/access.php?token=...
-// The "Go to Student Portal" link from the enrollment approval email. A valid,
-// unused, unexpired token of an approved, active student signs that student in
-// (the normal Student Portal session) and opens their dashboard. Anything else
-// shows one message -- it never says which part failed.
+// The "Create My Password" link from the enrollment approval email (or from
+// Create / Forgot password, or sent by the registrar). A valid, unused,
+// unexpired token of an approved, active student opens set_password.php, where
+// the student creates their own password. Anything else shows one message --
+// it never says which part failed.
 
 session_start();
 require_once __DIR__ . '/../config/database.php';
@@ -20,9 +21,13 @@ if ($token !== '' && !isStudentIpRateLimited()) {
 }
 
 if ($student) {
-    sptStartStudentSession($student);
-    logActivity(null, 'student', 'Portal login', 'Student ' . $student['lrn'] . ' opened the portal from the approval email link');
-    header('Location: ../modules/students/portal/dashboard.php');
+    // The link proves the email is theirs: next, the student creates (or resets)
+    // their own password on set_password.php, then they are signed in.
+    session_regenerate_id(true);
+    $_SESSION['spw_sid'] = (int) $student['student_id'];
+    $_SESSION['spw_until'] = time() + 30 * 60;
+    logActivity(null, 'student', 'Password link opened', 'Student ' . $student['lrn'] . ' opened the create-password link');
+    header('Location: set_password.php');
     exit;
 }
 
@@ -47,9 +52,10 @@ http_response_code(403);
     <div class="box">
         <i class="fas fa-link-slash text-danger" style="font-size:48px"></i>
         <h4 class="mt-3 fw-bold">Link not valid</h4>
-        <p class="text-muted">This Student Portal access link is invalid or has expired. Please use the Student Login page or request a new access link.</p>
+        <p class="text-muted">This link is invalid, already used, or expired. You can get a new one from <strong>Create / Forgot password</strong> on the Student Login page.</p>
         <a href="../student_login.php" class="btn btn-primary px-4"><i class="fas fa-right-to-bracket me-1"></i>Go to Student Login</a>
-        <div class="small text-muted mt-3">Need a new link? Ask the registrar / enrollment officer to send it again.</div>
+        <div class="mt-2"><a href="forgot_password.php" class="btn btn-outline-primary px-4"><i class="fas fa-key me-1"></i>Get a new link</a></div>
+        <div class="small text-muted mt-3">No email on file? Ask the registrar to send you a new link.</div>
     </div>
 </body>
 </html>

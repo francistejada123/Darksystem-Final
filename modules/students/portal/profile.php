@@ -102,6 +102,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_correction'])
     }
 }
 
+// Change password (current password + new one; nobody else can see or set it)
+require_once __DIR__ . '/../../../includes/student_password.php';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
+    spwEnsureSchema();
+    $pw_st = getRecord("SELECT student_id, lrn, portal_password_hash, portal_failed_logins, portal_locked_until FROM students WHERE student_id = ?", [(int) $_SESSION['student_id']]);
+    if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
+        $errors[] = 'Invalid security token.';
+    } elseif (!$pw_st || !spwVerify($pw_st, $_POST['current_password'] ?? '')) {
+        $errors[] = 'Your current password is not correct.';
+    } elseif (($pw_problem = spwProblem($_POST['new_password'] ?? '', $_POST['confirm_password'] ?? '', $pw_st['lrn'])) !== '') {
+        $errors[] = $pw_problem;
+    } else {
+        spwSet($pw_st['student_id'], $_POST['new_password']);
+        logActivity(null, 'student', 'Changed portal password', 'Student ' . $pw_st['lrn']);
+        $success = 'Your password was changed.';
+    }
+}
+
 // Handle profile update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
@@ -443,6 +461,22 @@ $page_title = 'My Profile';
                             </form>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Change Password -->
+            <div class="card-portal">
+                <div class="card-portal-header"><span><i class="fas fa-lock me-1"></i> Change Password</span></div>
+                <div class="card-portal-body">
+                    <form method="POST" action="" autocomplete="off" class="row g-2 align-items-end">
+                        <input type="hidden" name="csrf_token" value="<?php echo generateCSRFToken(); ?>">
+                        <input type="hidden" name="change_password" value="1">
+                        <div class="col-12 col-md-4"><label class="form-label small fw-semibold mb-1">Current password</label><input type="password" name="current_password" class="form-control" required autocomplete="current-password"></div>
+                        <div class="col-12 col-md-3"><label class="form-label small fw-semibold mb-1">New password</label><input type="password" name="new_password" class="form-control" required minlength="8" autocomplete="new-password"></div>
+                        <div class="col-12 col-md-3"><label class="form-label small fw-semibold mb-1">Confirm new password</label><input type="password" name="confirm_password" class="form-control" required minlength="8" autocomplete="new-password"></div>
+                        <div class="col-12 col-md-2"><button type="submit" class="btn btn-primary w-100"><i class="fas fa-save me-1"></i> Save</button></div>
+                        <div class="col-12"><small class="text-muted">At least 8 characters with letters and numbers. Forgot it? Sign out and use <strong>Create / Forgot password</strong> on the Student Login.</small></div>
+                    </form>
                 </div>
             </div>
 

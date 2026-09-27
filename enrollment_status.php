@@ -174,6 +174,7 @@ $status_meta['For Correction'] = $status_meta['Rejected'] = $status_meta['Incomp
                     <h5 class="fw-bold text-success mb-2"><i class="fas fa-user-graduate me-2"></i>Enrollment Approved</h5>
                     <p class="mb-3">Your enrollment application has been approved. You may now access your EGradePro Student Portal.</p>
                     <a href="student_login.php" class="btn btn-success px-4"><i class="fas fa-right-to-bracket me-1"></i>Go to Student Login</a>
+                    <div class="small mt-2" style="opacity:.9;"><i class="fas fa-key me-1"></i>First time? Create your password with the <strong>Create My Password</strong> link in your approval email, or use <a href="student/forgot_password.php">Create / Forgot password</a>.</div>
                 </div>
             <?php endif; ?>
 

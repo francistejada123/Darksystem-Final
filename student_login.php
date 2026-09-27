@@ -1,11 +1,14 @@
 <?php
 // student_login.php
-// Student Portal Login using LRN only
+// Student Portal Login: LRN + the student's own password (includes/student_password.php).
+// The password is created from the one-time link in the "Enrollment Approved" email.
 
 session_start();
 require_once 'config/database.php';
 require_once 'includes/auth.php';
 require_once 'includes/enrollment_helpers_online.php'; // deleted_at column (Recycle Bin) used in the application status message
+require_once 'includes/student_password.php';          // LRN + password
+spwEnsureSchema();
 
 // If already logged in as student, redirect to dashboard
 if (isset($_SESSION['student_id']) && isset($_SESSION['role']) && $_SESSION['role'] === 'Student') {
@@ -23,6 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $lrn = preg_replace('/\s+/', '', sanitize($_POST['lrn'] ?? ''));
+    $password = (string) ($_POST['password'] ?? '');
 
     // The LRN must be the same one the learner entered under Personal
     // Information in Online Enrollment -- no online application with this
@@ -44,6 +48,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Please enter your LRN.';
     } elseif (!preg_match('/^\d{12}$/', $lrn)) {
         $error = 'Your LRN must be exactly 12 digits (numbers only).';
+    } elseif ($password === '') {
+        $error = 'Please enter your password.';
     } elseif (isStudentIpRateLimited()) {
         $error = 'Too many attempts from this device. Please try again in a few minutes.';
     } elseif (!$walkin && !$application) {
@@ -67,7 +73,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             WHERE s.lrn = ? AND s.is_active = 1
         ", [$lrn]);
         
-        if ($student) {
+        if ($student && empty($student['portal_password_hash'])) {
+            // Approved, but no password yet: it is created from the emailed link.
+            $error = 'You have not created your password yet. Open the "Create My Password" link in your Enrollment Approved email, or get a new link below.';
+            $error_link = ['student/forgot_password.php', 'Create / Forgot password'];
+        } elseif ($student && ($mins = spwLockedMinutes($student)) > 0) {
+            $error = "Too many wrong passwords. Please try again in $mins minute(s), or reset your password.";
+            $error_link = ['student/forgot_password.php', 'Create / Forgot password'];
+        } elseif ($student && !spwVerify($student, $password)) {
+            logActivity(null, 'student', 'Failed login', "Wrong password for LRN $lrn");
+            $error = 'Wrong LRN or password.';
+            $error_link = ['student/forgot_password.php', 'Forgot your password?'];
+        } elseif ($student) {
+            session_regenerate_id(true);
             // Set student session
             $_SESSION['student_id'] = $student['student_id'];
             $_SESSION['student_lrn'] = $student['lrn'];
@@ -309,7 +327,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="login-header">
                 <img src="static/images/logo.png" alt="Imelda Integrated Secondary School" class="logo-img">
                 <h3>Student Portal</h3>
-                <p>Enter your LRN to access your records</p>
+                <p>Sign in with your LRN and password</p>
             </div>
             
             <?php if ($error): ?>
@@ -334,9 +352,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                inputmode="numeric" pattern="\d{12}" minlength="12" maxlength="12"
                                title="Enter your 12-digit LRN (numbers only)"
                                value="<?php echo htmlspecialchars(preg_replace('/\D/', '', (string) ($_POST['lrn'] ?? ''))); ?>"
-                               required autofocus autocomplete="off">
+                               required autofocus autocomplete="username">
                     </div>
                     <div class="lrn-help" id="lrnHelp">Use the same LRN you entered in Online Enrollment.</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Password</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                        <input type="password" name="password" class="form-control" id="pwInput" placeholder="Enter your password" required autocomplete="current-password">
+                        <button type="button" class="input-group-text" id="pwToggle" aria-label="Show password" style="cursor:pointer;"><i class="fas fa-eye"></i></button>
+                    </div>
+                </div>
+                <div class="mb-4" style="text-align:right;">
+                    <a href="student/forgot_password.php" class="login-error-link" style="font-size:13.5px;">First time or forgot your password? Create / Forgot password</a>
                 </div>
                 
                 <button type="submit" class="btn btn-login">
@@ -356,6 +385,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="static/js/theme.js"></script>
     <script>
+    (function () {
+        var b = document.getElementById('pwToggle'), i = document.getElementById('pwInput');
+        if (b && i) b.addEventListener('click', function () {
+            i.type = i.type === 'password' ? 'text' : 'password';
+            b.innerHTML = '<i class="fas fa-eye' + (i.type === 'password' ? '' : '-slash') + '"></i>';
+        });
+    })();
     // Digits only, exactly 12 -- the server checks the same rule.
     (function () {
         var input = document.getElementById('lrnInput'), help = document.getElementById('lrnHelp');
