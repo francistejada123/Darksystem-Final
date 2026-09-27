@@ -83,8 +83,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Email is required.';
     } elseif (!validateEmail($form['email'])) {
         $errors[] = 'Email format is invalid.';
-    } elseif ($used = getRecord("SELECT first_name, last_name FROM students WHERE email = ? AND is_active = 1 LIMIT 1", [$form['email']])) {
-        $errors[] = 'This email is already used by another student (' . $used['last_name'] . ', ' . $used['first_name'] . '). Use the learner\'s own email.';
+    } elseif ($owner = diEmailOwner($form['email'])) {
+        $errors[] = 'This email is already used by ' . $owner . '. Use the learner\'s own email.';
     }
 
     if ($form['contact_number'] === '') {

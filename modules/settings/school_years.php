@@ -35,6 +35,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'add_sy') {
     if (empty($sy_name)) $errors[] = 'School year name is required.';
     if (empty($start_date)) $errors[] = 'Start date is required.';
     if (empty($end_date)) $errors[] = 'End date is required.';
+    if ($sy_name !== '' && !preg_match('/^(\d{4})-(\d{4})$/', $sy_name, $sy_m)) {
+        $errors[] = 'School year name must look like 2027-2028.';
+    } elseif ($sy_name !== '' && (int) $sy_m[2] !== (int) $sy_m[1] + 1) {
+        $errors[] = 'School year name must be two consecutive years (e.g. 2027-2028).';
+    }
+    if ($start_date && $end_date && strtotime($end_date) <= strtotime($start_date)) {
+        $errors[] = 'End date must be after the start date.';
+    }
+    if (!empty($sy_m) && $start_date && ((int) date('Y', strtotime($start_date)) !== (int) $sy_m[1] || (int) date('Y', strtotime($end_date)) !== (int) $sy_m[2])) {
+        $errors[] = 'The dates must fall in the school year: start in ' . $sy_m[1] . ', end in ' . $sy_m[2] . '.';
+    }
     
     // Check duplicate
     if (empty($errors)) {

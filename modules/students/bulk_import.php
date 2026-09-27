@@ -63,6 +63,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_import'])) {
                 $skip_reasons[] = $row['lrn'] . ' — LRN already exists';
                 continue;
             }
+            // One email = one person (the database enforces it too).
+            if (!empty($row['email']) && diEmailOwner($row['email'])) {
+                $skipped++;
+                $skip_reasons[] = $row['lrn'] . ' — email ' . $row['email'] . ' is already used';
+                continue;
+            }
 
             $sql = "INSERT INTO students (lrn, first_name, last_name, middle_name, birth_date, gender,
                     contact_number, email, address, guardian_name, guardian_contact,

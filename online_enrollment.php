@@ -268,6 +268,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errors[] = 'We could not verify your email right now. Please check it carefully and tick "I confirm this email is correct".';
             }
         }
+        if ($email !== '' && validateEmail($email)) {
+            $own_rec = $lrn !== '' ? getRecord("SELECT student_id FROM students WHERE lrn = ?", [$lrn]) : null;
+            if (diEmailOwner($email, (int) ($own_rec['student_id'] ?? 0))) {
+                $errors[] = 'This email is already used by another learner or school account. Please use your own email address.';
+            }
+        }
         if ($address === '') $errors[] = 'Complete address is required.';
         if ($guardian_name === '') $errors[] = 'Parent/Guardian name is required.';
         if ($guardian_contact === '') $errors[] = 'Parent/Guardian contact number is required.';

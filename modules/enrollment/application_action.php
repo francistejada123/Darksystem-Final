@@ -102,6 +102,7 @@ if (!$school_year_id) {
     exit;
 }
 
+$email_note = '';
 $db->beginTransaction();
 
 try {
@@ -138,6 +139,10 @@ try {
             $vals = [];
             foreach ($editable as $col) {
                 $new = trim((string) ($app[$col] ?? ''));
+                if ($col === 'email' && $new !== '' && diEmailOwner($new, $student_id)) {
+                    $email_note = 'The new email on the application was not saved: it is already used by another account.';
+                    continue;
+                }
                 if ($new !== '' && $current && $norm($new) !== $norm($current[$col] ?? '')) {
                     $sets[] = "$col = ?";
                     $vals[] = $new;
@@ -149,13 +154,18 @@ try {
             }
         }
     } else {
+        $new_email = $app['email'];
+        if ($new_email !== '' && $new_email !== null && ($email_owner = diEmailOwner($new_email))) {
+            $new_email = null;   // one email = one person (the database enforces it too)
+            $email_note = 'The student was saved without an email: ' . $app['email'] . ' is already used by ' . $email_owner . '.';
+        }
         $student_id = insertRecord(
             "INSERT INTO students (lrn, first_name, last_name, middle_name, birth_date, gender, contact_number, email, address,
                                    guardian_name, guardian_contact, grade_level, strand, section_id, school_year_id, enrollment_status, is_active)
              VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'Enrolled',1)",
             [
                 $lrn, $app['first_name'], $app['last_name'], $app['middle_name'], $app['birth_date'], $app['gender'],
-                $app['contact_number'], $app['email'], $app['address'], $app['guardian_name'], $app['guardian_contact'],
+                $app['contact_number'], $new_email, $app['address'], $app['guardian_name'], $app['guardian_contact'],
                 $app['grade_level'], $app['strand'], $section_id, $school_year_id,
             ]
         );
@@ -212,7 +222,7 @@ try {
         }
     }
 
-    $_SESSION['success_message'] = 'Application ' . $app['reference_no'] . ' approved. ' . ($existing_student ? 'Existing student record (LRN ' . $lrn . ') updated' : 'Student record created') . ' and assigned to section ' . $section_name . '.';
+    $_SESSION['success_message'] = 'Application ' . $app['reference_no'] . ' approved. ' . ($existing_student ? 'Existing student record (LRN ' . $lrn . ') updated' : 'Student record created') . ' and assigned to section ' . $section_name . '.' . ($email_note !== '' ? ' ' . $email_note : '');
     header('Location: index.php');
     exit;
 } catch (Exception $e) {

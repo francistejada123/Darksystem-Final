@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Invalid security token.';
     } else {
         $action = $_POST['action'] ?? '';
-        
+
         if ($action === 'assign') {
             $subject_code = sanitize($_POST['subject_code'] ?? '');
             $section_id = intval($_POST['section_id'] ?? 0);
@@ -111,24 +111,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Check if already assigned
             if (empty($errors)) {
+                // One teacher per subject in a section (the database enforces it too).
                 $check = getRecord("
-                    SELECT ts_id FROM teacher_subjects 
-                    WHERE teacher_id = ? AND subject_code = ? AND section_id = ? AND school_year_id = ?
-                ", [$teacher_id, $subject_code, $section_id, $school_year_id]);
-                
+                    SELECT ts.teacher_id, u.first_name, u.last_name FROM teacher_subjects ts
+                    LEFT JOIN users u ON u.user_id = ts.teacher_id
+                    WHERE ts.subject_code = ? AND ts.section_id = ? AND ts.school_year_id = ?
+                ", [$subject_code, $section_id, $school_year_id]);
+
                 if ($check) {
-                    $errors[] = 'This subject is already assigned to this teacher for this section.';
+                    $errors[] = ((int) $check['teacher_id'] === (int) $teacher_id)
+                        ? 'This subject is already assigned to this teacher for this section.'
+                        : 'This subject is already assigned to ' . trim(($check['first_name'] ?? '') . ' ' . ($check['last_name'] ?? '')) . ' for this section. Unassign it first.';
                 }
             }
-            
+
             // If no errors, insert
             if (empty($errors)) {
-                $sql = "INSERT INTO teacher_subjects (teacher_id, subject_code, section_id, school_year_id) 
+                $sql = "INSERT INTO teacher_subjects (teacher_id, subject_code, section_id, school_year_id)
                         VALUES (?, ?, ?, ?)";
                 $result = executeQuery($sql, [$teacher_id, $subject_code, $section_id, $school_year_id]);
-                
+
                 if ($result) {
-                    logActivity($_SESSION['user_id'], 'Assigned subject to teacher', 'teachers', 
+                    logActivity($_SESSION['user_id'], 'Assigned subject to teacher', 'teachers',
                                "Assigned $subject_code to {$teacher['first_name']} {$teacher['last_name']}");
                     $_SESSION['success_message'] = 'Subject assigned successfully!';
                     header('Location: assign.php?id=' . $teacher_id);
@@ -139,10 +143,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } elseif ($action === 'remove') {
             $ts_id = intval($_POST['ts_id'] ?? 0);
-            
+
             $result = executeQuery("DELETE FROM teacher_subjects WHERE ts_id = ? AND teacher_id = ?", [$ts_id, $teacher_id]);
             if ($result) {
-                logActivity($_SESSION['user_id'], 'Removed subject from teacher', 'teachers', 
+                logActivity($_SESSION['user_id'], 'Removed subject from teacher', 'teachers',
                            "Removed subject from {$teacher['first_name']} {$teacher['last_name']}");
                 $_SESSION['success_message'] = 'Subject removed successfully!';
             } else {
@@ -348,7 +352,7 @@ include '../../includes/header.php';
                                 <td><span class="badge bg-secondary"><?php echo htmlspecialchars($assigned['grade_level']); ?></span></td>
                                 <td><?php echo htmlspecialchars($assigned['section_name']); ?></td>
                                 <td class="text-center">
-                                    <form method="POST" action="" class="d-inline" 
+                                    <form method="POST" action="" class="d-inline"
                                           onsubmit="return confirm('Remove this subject from <?php echo htmlspecialchars($teacher['first_name']); ?>?');">
                                         <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
                                         <input type="hidden" name="action" value="remove">

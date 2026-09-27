@@ -1510,6 +1510,7 @@ document.querySelectorAll('.subj-page .sp-more-teachers').forEach(function (m) {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    if (!document.getElementById('assignModal')) return;   // the modals below are only on a section's page
 
     // ---------------- Time-slot picker (shared by both modals) ----------------
     // Shows the selected teacher's class periods for the chosen day/s + shift.

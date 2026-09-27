@@ -18,9 +18,9 @@ $errors = [];
 $success = false;
 
 // Kunin ang listahan ng teachers (role_id = 3)
-$teachers = getRecords("SELECT user_id, first_name, last_name, specialization 
-                        FROM users 
-                        WHERE role_id = 3 AND is_active = 1 
+$teachers = getRecords("SELECT user_id, first_name, last_name, specialization
+                        FROM users
+                        WHERE role_id = 3 AND is_active = 1
                         ORDER BY last_name, first_name");
 
 // Kunin ang listahan ng subjects -- strand and term included so the form
@@ -51,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $subject_code = $_POST['subject_code'] ?? '';
     $section_id = $_POST['section_id'] ?? 0;
     $school_year_id = $active_sy['sy_id'] ?? 0;
-    
+
     // Validation
     if (empty($teacher_id)) $errors[] = 'Please select a teacher.';
     if (empty($subject_code)) $errors[] = 'Please select a subject.';
@@ -84,24 +84,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Check if duplicate
     if (empty($errors)) {
-        $check = getRecord("SELECT ts_id FROM teacher_subjects 
-                           WHERE teacher_id = ? AND subject_code = ? 
-                           AND section_id = ? AND school_year_id = ?", 
-                           [$teacher_id, $subject_code, $section_id, $school_year_id]);
+        // One teacher per subject in a section (the database enforces it too).
+        $check = getRecord("SELECT ts.teacher_id, u.first_name, u.last_name FROM teacher_subjects ts
+                           LEFT JOIN users u ON u.user_id = ts.teacher_id
+                           WHERE ts.subject_code = ? AND ts.section_id = ? AND ts.school_year_id = ?",
+                           [$subject_code, $section_id, $school_year_id]);
         if ($check) {
-            $errors[] = 'This teacher is already assigned to this subject and section.';
+            $errors[] = ((int) $check['teacher_id'] === (int) $teacher_id)
+                ? 'This teacher is already assigned to this subject and section.'
+                : 'This subject is already assigned to ' . trim(($check['first_name'] ?? '') . ' ' . ($check['last_name'] ?? '')) . ' for this section. Unassign it first.';
         }
     }
-    
+
     // If no errors, insert
     if (empty($errors)) {
-        $sql = "INSERT INTO teacher_subjects (teacher_id, subject_code, section_id, school_year_id) 
+        $sql = "INSERT INTO teacher_subjects (teacher_id, subject_code, section_id, school_year_id)
                 VALUES (?, ?, ?, ?)";
         $result = executeQuery($sql, [$teacher_id, $subject_code, $section_id, $school_year_id]);
-        
+
         if ($result) {
             $teacher = getRecord("SELECT first_name, last_name FROM users WHERE user_id = ?", [$teacher_id]);
-            logActivity($_SESSION['user_id'], 'Assigned subject to teacher', 'teachers', 
+            logActivity($_SESSION['user_id'], 'Assigned subject to teacher', 'teachers',
                        "Assigned $subject_code to {$teacher['first_name']} {$teacher['last_name']}");
             $success = true;
             $_SESSION['success_message'] = 'Subject assigned successfully!';
@@ -211,7 +214,7 @@ include '../../includes/header.php';
                     <input type="hidden" name="school_year_id" value="<?php echo $active_sy['sy_id'] ?? 0; ?>">
                 </div>
             </div>
-            
+
             <div class="d-flex justify-content-end gap-2 mt-4">
                 <a href="index.php" class="btn btn-secondary">Cancel</a>
                 <button type="submit" class="btn btn-primary">

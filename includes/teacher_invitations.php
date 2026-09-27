@@ -89,6 +89,9 @@ function tiInvite($email, $adminId)
     if (getRecord("SELECT user_id FROM users WHERE LOWER(email) = ?", [$email])) {
         return ['success' => false, 'error' => 'This email already has an EGradePro account.'];
     }
+    if ($owner = diEmailOwner($email)) {
+        return ['success' => false, 'error' => 'This email is already used by ' . $owner . '. Use the teacher\'s own official email.'];
+    }
     executeQuery("UPDATE teacher_invitations SET revoked_at = NOW() WHERE email = ? AND used_at IS NULL AND revoked_at IS NULL", [$email]);
     $raw = bin2hex(random_bytes(32));
     executeQuery(

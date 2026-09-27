@@ -49,7 +49,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $sex = sanitize($_POST['sex'] ?? '');
         $contact_number = sanitize($_POST['contact_number'] ?? '');
         $is_active = intval($_POST['is_active'] ?? 1);
-        $password = $_POST['password'] ?? '';
 
         $highest_educ_attainment = sanitize($_POST['highest_educ_attainment'] ?? '');
         $degree_course = sanitize($_POST['degree_course'] ?? '');
@@ -64,7 +63,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         elseif (!validateEmail($email)) $errors[] = 'Invalid email address.';
         $errors = array_merge($errors, tvValidate($_POST, 'edit'));
         $contact_number = tvNormalizeMobile($contact_number);
-        if (!empty($password) && strlen($password) < 6) $errors[] = 'New password must be at least 6 characters.';
 
         if (empty($errors)) {
             $check = getRecord("SELECT user_id FROM users WHERE username = ? AND user_id != ?", [$username, $teacher_id]);
@@ -74,64 +72,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (empty($errors)) {
             $check = getRecord("SELECT user_id FROM users WHERE email = ? AND user_id != ?", [$email, $teacher_id]);
             if ($check) $errors[] = 'Email already exists.';
+            elseif ($owner = diEmailOwner($email, 0, $teacher_id)) $errors[] = 'This email is already used by ' . $owner . '. Use the teacher\'s own email.';
         }
 
         if (empty($errors)) {
-            if (!empty($password) && strlen($password) >= 6) {
-                $hashed_password = hashPassword($password);
-                $sql = "UPDATE users SET
-                        username = ?,
-                        password_hash = ?,
-                        email = ?,
-                        contact_number = ?,
-                        first_name = ?,
-                        last_name = ?,
-                        middle_name = ?,
-                        suffix = ?,
-                        sex = ?,
-                        highest_educ_attainment = ?,
-                        specialization = ?,
-                        degree_course = ?,
-                        prc_license_number = ?,
-                        position_designation = ?,
-                        years_experience = ?,
-                        qualification_status = ?,
-                        is_active = ?
-                        WHERE user_id = ?";
-                $params = [
-                    $username, $hashed_password, $email, $contact_number ?: null,
-                    $first_name, $last_name, $middle_name ?: null, $suffix ?: null, $sex ?: null,
-                    $highest_educ_attainment ?: null, $specialization ?: null, $degree_course ?: null,
-                    $prc_license_number ?: null, $position_designation ?: null, $years_experience,
-                    $qualification_status, $is_active, $teacher_id
-                ];
-            } else {
-                $sql = "UPDATE users SET
-                        username = ?,
-                        email = ?,
-                        contact_number = ?,
-                        first_name = ?,
-                        last_name = ?,
-                        middle_name = ?,
-                        suffix = ?,
-                        sex = ?,
-                        highest_educ_attainment = ?,
-                        specialization = ?,
-                        degree_course = ?,
-                        prc_license_number = ?,
-                        position_designation = ?,
-                        years_experience = ?,
-                        qualification_status = ?,
-                        is_active = ?
-                        WHERE user_id = ?";
-                $params = [
-                    $username, $email, $contact_number ?: null,
-                    $first_name, $last_name, $middle_name ?: null, $suffix ?: null, $sex ?: null,
-                    $highest_educ_attainment ?: null, $specialization ?: null, $degree_course ?: null,
-                    $prc_license_number ?: null, $position_designation ?: null, $years_experience,
-                    $qualification_status, $is_active, $teacher_id
-                ];
-            }
+            $sql = "UPDATE users SET
+                    username = ?,
+                    email = ?,
+                    contact_number = ?,
+                    first_name = ?,
+                    last_name = ?,
+                    middle_name = ?,
+                    suffix = ?,
+                    sex = ?,
+                    highest_educ_attainment = ?,
+                    specialization = ?,
+                    degree_course = ?,
+                    prc_license_number = ?,
+                    position_designation = ?,
+                    years_experience = ?,
+                    qualification_status = ?,
+                    is_active = ?
+                    WHERE user_id = ?";
+            $params = [
+                $username, $email, $contact_number ?: null,
+                $first_name, $last_name, $middle_name ?: null, $suffix ?: null, $sex ?: null,
+                $highest_educ_attainment ?: null, $specialization ?: null, $degree_course ?: null,
+                $prc_license_number ?: null, $position_designation ?: null, $years_experience,
+                $qualification_status, $is_active, $teacher_id
+            ];
 
             $result = executeQuery($sql, $params);
 
@@ -334,8 +303,8 @@ if (!empty($errors) && $_SERVER['REQUEST_METHOD'] === 'POST') {
                         <input type="text" name="username" value="<?php echo htmlspecialchars($teacher['username']); ?>" required>
                     </div>
                     <div class="form-group">
-                        <label>Password <span class="muted">(Leave blank to keep current)</span></label>
-                        <input type="password" name="password" placeholder="New password (min 6 chars)">
+                        <label>Password</label>
+                        <div style="font-size:13px;color:var(--text-muted);line-height:1.45;padding-top:6px;"><i class="fas fa-lock me-1"></i>Only the teacher sets their password. If they forget it, they use <strong>Forgot Password</strong> on the Teacher Login.</div>
                     </div>
                     <div class="form-group">
                         <label>Status</label>

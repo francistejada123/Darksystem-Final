@@ -921,3 +921,8 @@ if (!getRecord("SELECT setting_value FROM system_settings WHERE setting_key = 'm
         ['migration_2026_classroom_ui_v1', '1', 'system']
     );
 }
+// Database rules (foreign keys / unique rules) added once -- see includes/data_integrity.php
+require_once __DIR__ . '/../includes/data_integrity.php';
+if (!empty($db)) {
+    diEnsureIntegrity();
+}
