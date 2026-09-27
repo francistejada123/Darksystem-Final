@@ -174,7 +174,11 @@ $status_meta['For Correction'] = $status_meta['Rejected'] = $status_meta['Incomp
                     <h5 class="fw-bold text-success mb-2"><i class="fas fa-user-graduate me-2"></i>Enrollment Approved</h5>
                     <p class="mb-3">Your enrollment application has been approved. You may now access your EGradePro Student Portal.</p>
                     <a href="student_login.php" class="btn btn-success px-4"><i class="fas fa-right-to-bracket me-1"></i>Go to Student Login</a>
-                    <div class="small mt-2" style="opacity:.9;"><i class="fas fa-key me-1"></i>First time? Create your password with the <strong>Create My Password</strong> link in your approval email, or use <a href="student/forgot_password.php">Create / Forgot password</a>.</div>
+                    <div style="margin:16px auto 0;max-width:520px;padding:14px 16px;border-radius:12px;background:#F0F7FF;border:1px solid #BFDBFE;color:#1E3A5F;text-align:left;">
+                        <div style="font-size:16px;font-weight:700;margin-bottom:4px;"><i class="fas fa-key me-2" style="color:#1D4ED8;"></i>First time signing in?</div>
+                        <div style="font-size:15px;line-height:1.55;">Create your password using the <strong>Create My Password</strong> button in your approval email. No email or the link expired? Get a new link here:</div>
+                        <a href="student/forgot_password.php" class="btn btn-outline-primary mt-2" style="font-size:15px;font-weight:600;"><i class="fas fa-key me-1"></i> Create / Forgot Password</a>
+                    </div>
                 </div>
             <?php endif; ?>
 

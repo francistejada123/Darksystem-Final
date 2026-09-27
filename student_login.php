@@ -136,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link href="static/css/theme.css" rel="stylesheet">
     <style>
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', ;
             background-image: url('static/images/bg_logo.jpg');
             background-size: cover;
             background-position: center;
@@ -201,11 +201,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border: 2px solid rgba(224, 224, 224, 0.8);
             background: rgba(255, 255, 255, 0.7);
             transition: all 0.3s;
-            font-size: 15px;
-            text-align: center;
-            letter-spacing: 2px;
+            font-size: 16px;
+            text-align: left;
+            letter-spacing: normal;
             color: #1a1a2e;
+            height: 50px;
         }
+        #lrnInput { letter-spacing: 1.5px; }
+        /* Edge / IE draw their own eye button inside password boxes: hide it (we have one). */
+        input[type="password"]::-ms-reveal, input[type="password"]::-ms-clear { display: none; }
+        .field { margin-bottom: 20px; }
+        .field .form-label { display: block; margin-bottom: 7px; font-size: 15px; }
+        .input-group-text { width: 52px; justify-content: center; }
+        .input-group .pw-toggle {
+            width: 52px; justify-content: center; cursor: pointer;
+            border: 2px solid rgba(224, 224, 224, 0.8); border-left: none;
+            border-radius: 0 10px 10px 0; background: rgba(245, 245, 245, 0.8); color: #1a1a2e;
+        }
+        .input-group .pw-toggle:hover { background: #fff; }
+        .input-group #pwInput { border-radius: 0; }
+        .field-note { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 8px; min-height: 18px; }
+        .forgot-link { color: #fff; font-size: 14px; font-weight: 600; text-decoration: underline; text-shadow: 0 2px 6px rgba(0,0,0,0.6); white-space: nowrap; }
+        .forgot-link:hover { color: #90caf9; }
         .form-control:focus {
             border-color: #1565c0;
             box-shadow: 0 0 0 0.25rem rgba(21, 101, 192, 0.1);
@@ -343,8 +360,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             <form method="POST" action="">
                 <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
-                <div class="mb-4">
-                    <label class="form-label fw-semibold">LRN</label>
+                <div class="field">
+                    <label class="form-label fw-semibold" for="lrnInput">LRN</label>
                     <div class="input-group">
                         <span class="input-group-text"><i class="fas fa-id-card"></i></span>
                         <input type="text" name="lrn" class="form-control" id="lrnInput"
@@ -354,18 +371,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                value="<?php echo htmlspecialchars(preg_replace('/\D/', '', (string) ($_POST['lrn'] ?? ''))); ?>"
                                required autofocus autocomplete="username">
                     </div>
-                    <div class="lrn-help" id="lrnHelp">Use the same LRN you entered in Online Enrollment.</div>
+                    <div class="field-note"><div class="lrn-help" id="lrnHelp" style="margin-top:0;">Use the same LRN you entered in Online Enrollment.</div></div>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Password</label>
+                <div class="field">
+                    <label class="form-label fw-semibold" for="pwInput">Password</label>
                     <div class="input-group">
                         <span class="input-group-text"><i class="fas fa-lock"></i></span>
                         <input type="password" name="password" class="form-control" id="pwInput" placeholder="Enter your password" required autocomplete="current-password">
-                        <button type="button" class="input-group-text" id="pwToggle" aria-label="Show password" style="cursor:pointer;"><i class="fas fa-eye"></i></button>
+                        <button type="button" class="input-group-text pw-toggle" id="pwToggle" aria-label="Show password"><i class="fas fa-eye"></i></button>
                     </div>
-                </div>
-                <div class="mb-4" style="text-align:right;">
-                    <a href="student/forgot_password.php" class="login-error-link" style="font-size:13.5px;">First time or forgot your password? Create / Forgot password</a>
+                    <div class="field-note" style="justify-content:flex-end;">
+                        <a href="student/forgot_password.php" class="forgot-link"><i class="fas fa-key me-1"></i>First time / Forgot password?</a>
+                    </div>
                 </div>
                 
                 <button type="submit" class="btn btn-login">
