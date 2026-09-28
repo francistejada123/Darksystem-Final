@@ -180,3 +180,28 @@ function smsSend($to, $message, array $opts = [])
     }
     return ['success' => $status === 'Sent', 'status' => $status, 'error' => $error];
 }
+
+/**
+ * Save SMS settings into the server's .env (Settings > SMS). Only the given keys
+ * are replaced/added; an empty value for a secret keeps the saved one.
+ * @return string '' when saved, otherwise the reason
+ */
+function smsSaveEnv(array $values)
+{
+    $file = __DIR__ . '/../.env';
+    $lines = is_file($file) ? file($file, FILE_IGNORE_NEW_LINES) : [];
+    if ($lines === false) return 'The .env file could not be read.';
+    foreach ($values as $key => $val) {
+        if (!preg_match('/^[A-Z0-9_]+$/', $key)) continue;
+        $val = str_replace(["\r", "\n"], '', trim((string) $val));
+        $line = $key . '=' . $val;
+        $found = false;
+        foreach ($lines as $i => $l) {
+            if (preg_match('/^\s*' . preg_quote($key, '/') . '\s*=/', $l)) { $lines[$i] = $line; $found = true; }
+        }
+        if (!$found) $lines[] = $line;
+        putenv($line);
+        $_ENV[$key] = $val;
+    }
+    return file_put_contents($file, implode(PHP_EOL, $lines) . PHP_EOL, LOCK_EX) === false ? 'The .env file could not be saved.' : '';
+}

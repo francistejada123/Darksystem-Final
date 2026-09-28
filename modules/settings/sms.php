@@ -24,6 +24,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $r = smsSend($_POST['to'] ?? '', 'EGradePro: This is a sample message from the school system. ' . date('M j, g:i A'), ['kind' => 'test', 'created_by' => (int) $_SESSION['user_id']]);
         $flash = $r['success'] ? ['success', 'Sent! It should arrive in a few seconds to a few minutes.'] : ['danger', 'Not sent: ' . ($r['error'] ?: $r['status'])];
         logActivity($_SESSION['user_id'], 'settings', 'Sent test SMS', $r['status']);
+    } elseif (($_POST['action'] ?? '') === 'sender') {
+        // Sender set-up (written to .env; secrets are never shown back -- blank keeps the saved one).
+        $prov = in_array($_POST['provider'] ?? '', ['', 'android_gateway', 'semaphore'], true) ? $_POST['provider'] : '';
+        $vals = ['SMS_PROVIDER' => $prov];
+        if ($prov === 'android_gateway') {
+            $url = trim((string) ($_POST['gw_url'] ?? ''));
+            if ($url !== '' && !preg_match('#^https?://#i', $url)) $url = 'http://' . $url;
+            $vals['SMS_GATEWAY_URL'] = rtrim($url, '/');
+            $vals['SMS_GATEWAY_USER'] = trim((string) ($_POST['gw_user'] ?? ''));
+            if (trim((string) ($_POST['gw_pass'] ?? '')) !== '') $vals['SMS_GATEWAY_PASSWORD'] = trim($_POST['gw_pass']);
+        } elseif ($prov === 'semaphore') {
+            if (trim((string) ($_POST['sem_key'] ?? '')) !== '') $vals['SEMAPHORE_API_KEY'] = trim($_POST['sem_key']);
+            $vals['SEMAPHORE_SENDER'] = preg_replace('/[^A-Za-z0-9]/', '', (string) ($_POST['sem_sender'] ?? ''));
+        }
+        $err = smsSaveEnv($vals);
+        $flash = $err === '' ? ['success', 'Saved. Now send a test SMS to your own number.'] : ['danger', $err];
+        logActivity($_SESSION['user_id'], 'settings', 'Updated SMS sender', 'Provider: ' . ($prov ?: 'none'));
     } elseif (($_POST['action'] ?? '') === 'kinds') {
         foreach (['welcome', 'absent'] as $k) smsSetKind($k, !empty($_POST['on_' . $k]));
         $flash = ['success', 'Saved.'];
@@ -56,6 +73,26 @@ include __DIR__ . '/../../includes/header.php';
             <?php if ($p['provider'] !== '' && $p['problem'] === ''): ?><span class="badge bg-success ms-2">Ready</span>
             <?php else: ?><span class="badge bg-warning text-dark ms-2">Not ready</span><?php endif; ?></p>
         <?php if ($p['problem']): ?><p class="text-muted mb-2" style="font-size:14px"><?php echo htmlspecialchars($p['problem']); ?> Until then, texts are recorded as "Not sent" and staff can send them from a phone.</p><?php endif; ?>
+        <form method="POST" class="row g-2 mt-1 mb-2" autocomplete="off">
+            <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>"><input type="hidden" name="action" value="sender">
+            <div class="col-md-4"><label class="form-label fw-semibold mb-1" style="font-size:14px">Send texts using</label>
+                <select class="form-select" name="provider" id="smsProv" onchange="document.querySelectorAll('.prov-f').forEach(function(e){e.style.display=e.dataset.p===this.value?'':'none'},this)">
+                    <option value="" <?php echo $p['provider'] === '' ? 'selected' : ''; ?>>None (staff send from a phone)</option>
+                    <option value="android_gateway" <?php echo $p['provider'] === 'android_gateway' ? 'selected' : ''; ?>>Android phone (SMS Gateway app)</option>
+                    <option value="semaphore" <?php echo $p['provider'] === 'semaphore' ? 'selected' : ''; ?>>Semaphore</option>
+                </select></div>
+            <div class="col-md-8 prov-f" data-p="android_gateway" style="<?php echo $p['provider'] === 'android_gateway' ? '' : 'display:none'; ?>"><div class="row g-2">
+                <div class="col-md-5"><label class="form-label fw-semibold mb-1" style="font-size:14px">Address (from the app)</label><input class="form-control" name="gw_url" placeholder="192.168.1.5:8080" value="<?php echo htmlspecialchars((string) mailEnv('SMS_GATEWAY_URL')); ?>"></div>
+                <div class="col-md-3"><label class="form-label fw-semibold mb-1" style="font-size:14px">Username</label><input class="form-control" name="gw_user" value="<?php echo htmlspecialchars((string) mailEnv('SMS_GATEWAY_USER')); ?>"></div>
+                <div class="col-md-4"><label class="form-label fw-semibold mb-1" style="font-size:14px">Password</label><input class="form-control" type="password" name="gw_pass" placeholder="<?php echo mailEnv('SMS_GATEWAY_PASSWORD') ? '(saved — leave blank to keep)' : ''; ?>"></div>
+            </div></div>
+            <div class="col-md-8 prov-f" data-p="semaphore" style="<?php echo $p['provider'] === 'semaphore' ? '' : 'display:none'; ?>"><div class="row g-2">
+                <div class="col-md-7"><label class="form-label fw-semibold mb-1" style="font-size:14px">API key</label><input class="form-control" type="password" name="sem_key" placeholder="<?php echo mailEnv('SEMAPHORE_API_KEY') ? '(saved — leave blank to keep)' : ''; ?>"></div>
+                <div class="col-md-5"><label class="form-label fw-semibold mb-1" style="font-size:14px">Sender name (optional)</label><input class="form-control" name="sem_sender" maxlength="11" placeholder="EGradePro" value="<?php echo htmlspecialchars((string) mailEnv('SEMAPHORE_SENDER')); ?>"></div>
+            </div></div>
+            <div class="col-12"><button class="btn btn-primary"><i class="fas fa-save me-1"></i> Save sender</button>
+                <small class="text-muted ms-2">Saved on the server only (.env). Passwords and keys are never shown again.</small></div>
+        </form>
         <details style="font-size:14px"><summary>How to set up (in the <code>.env</code> file of the server)</summary>
             <div class="mt-2"><b>For the defense (Android phone):</b> install "SMS Gateway for Android" on a phone with load / unli-text, start it, and copy the address, username and password it shows:
 <pre style="background:var(--surface-hover);padding:10px;border-radius:8px">SMS_PROVIDER=android_gateway
