@@ -84,13 +84,25 @@ function smsProvider()
         return ['provider' => $p, 'label' => 'Android phone (SMS Gateway app)', 'problem' => $ok ? '' : 'SMS_GATEWAY_URL, SMS_GATEWAY_USER and SMS_GATEWAY_PASSWORD must be set in .env.'];
     }
     if ($p === 'traccar') {
+        if (smsTraccarCloud()) {
+            $ok = (bool) mailEnv('SMS_TRACCAR_CLOUD_TOKEN');
+            return ['provider' => $p, 'label' => 'Android phone (Traccar SMS Gateway app, Cloud Service)', 'problem' => $ok ? '' : 'The Cloud Service token from the Traccar SMS Gateway app must be saved.'];
+        }
         $ok = mailEnv('SMS_GATEWAY_URL') && mailEnv('SMS_GATEWAY_TOKEN');
-        return ['provider' => $p, 'label' => 'Android phone (Traccar SMS Gateway app)', 'problem' => $ok ? '' : 'The address and the key from the Traccar SMS Gateway app must be saved.'];
+        return ['provider' => $p, 'label' => 'Android phone (Traccar SMS Gateway app, Local Service)', 'problem' => $ok ? '' : 'The address and the key from the Traccar SMS Gateway app must be saved.'];
     }
     if ($p === 'semaphore') {
         return ['provider' => $p, 'label' => 'Semaphore', 'problem' => mailEnv('SEMAPHORE_API_KEY') ? '' : 'SEMAPHORE_API_KEY must be set in .env.'];
     }
     return ['provider' => '', 'label' => 'None (texts are sent by staff from a phone)', 'problem' => 'No SMS sender is set up (SMS_PROVIDER in .env).'];
+}
+
+/** Traccar "Cloud Service": texts go through traccar.org to the phone over the internet (any Wi-Fi or mobile data). */
+const SMS_TRACCAR_CLOUD_URL = 'https://www.traccar.org/sms/';
+
+function smsTraccarCloud()
+{
+    return strtolower((string) mailEnv('SMS_TRACCAR_MODE')) === 'cloud';
 }
 
 function smsReady()
@@ -164,12 +176,18 @@ function smsSend($to, $message, array $opts = [])
             elseif ($code >= 200 && $code < 300) { $status = 'Sent'; $error = null; }
             else $error = 'Phone gateway error (HTTP ' . $code . '): ' . mb_substr(strip_tags($body), 0, 150);
         } elseif ($p['provider'] === 'traccar') {
-            // Traccar SMS Gateway "local service": POST {to, message} with the key as Authorization.
-            [$code, $body, $cerr] = smsHttp(rtrim((string) mailEnv('SMS_GATEWAY_URL'), '/'),
+            // Traccar SMS Gateway: POST {to, message} with the token as Authorization -- straight to the
+            // phone (Local Service, same Wi-Fi) or through traccar.org (Cloud Service, any network).
+            $cloud = smsTraccarCloud();
+            [$code, $body, $cerr] = smsHttp($cloud ? SMS_TRACCAR_CLOUD_URL : rtrim((string) mailEnv('SMS_GATEWAY_URL'), '/'),
                 json_encode(['to' => '+63' . substr($num, 1), 'message' => $message]),
-                ['Content-Type: application/json', 'Authorization: ' . (string) mailEnv('SMS_GATEWAY_TOKEN')]);
-            if ($cerr !== '') $error = 'Could not reach the phone (' . $cerr . '). Is the phone on, the Traccar SMS Gateway app running (service on), and on the same Wi-Fi?';
-            elseif ($code === 401 || $code === 403) $error = 'The phone refused the key (check the key saved in SMS Settings).';
+                ['Content-Type: application/json', 'Authorization: ' . (string) mailEnv($cloud ? 'SMS_TRACCAR_CLOUD_TOKEN' : 'SMS_GATEWAY_TOKEN')]);
+            if ($cerr !== '') $error = $cloud
+                ? 'Could not reach the Traccar cloud (' . $cerr . '). Is this computer connected to the internet?'
+                : 'Could not reach the phone (' . $cerr . '). Is the phone on, the Traccar SMS Gateway app running (service on), and on the same Wi-Fi?';
+            elseif ($code === 401 || $code === 403) $error = $cloud
+                ? 'The Traccar cloud refused the token (use the Cloud Service token from the app).'
+                : 'The phone refused the key (use the Local Service token from the app).';
             elseif ($code >= 200 && $code < 300) { $status = 'Sent'; $error = null; }
             else $error = 'Phone gateway error (HTTP ' . $code . '): ' . mb_substr(strip_tags($body), 0, 150);
         } else {

@@ -29,6 +29,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $prov = in_array($_POST['provider'] ?? '', ['', 'traccar', 'android_gateway', 'semaphore'], true) ? $_POST['provider'] : '';
         $vals = ['SMS_PROVIDER' => $prov];
         if ($prov === 'traccar') {
+            $vals['SMS_TRACCAR_MODE'] = ($_POST['tc_mode'] ?? '') === 'cloud' ? 'cloud' : 'local';
+            if (trim((string) ($_POST['tc_cloud_key'] ?? '')) !== '') $vals['SMS_TRACCAR_CLOUD_TOKEN'] = trim($_POST['tc_cloud_key']);
             $url = trim((string) ($_POST['tc_url'] ?? ''));
             if ($url !== '' && !preg_match('#^https?://#i', $url)) $url = 'http://' . $url;
             if ($url !== '' && !preg_match('#:\d+$#', parse_url($url, PHP_URL_HOST) . (parse_url($url, PHP_URL_PORT) ? ':' . parse_url($url, PHP_URL_PORT) : ''))) $url .= ':8082';
@@ -91,14 +93,22 @@ include __DIR__ . '/../../includes/header.php';
             <div class="col-md-8 prov-f" data-p="android_gateway" style="<?php echo $p['provider'] === 'android_gateway' ? '' : 'display:none'; ?>"><div class="row g-2">
                 <div class="col-md-5"><label class="form-label fw-semibold mb-1" style="font-size:15px">Address (from the app)</label><input class="form-control" name="gw_url" placeholder="192.168.1.5:8080" value="<?php echo htmlspecialchars((string) mailEnv('SMS_GATEWAY_URL')); ?>"></div>
                 <div class="col-md-3"><label class="form-label fw-semibold mb-1" style="font-size:15px">Username</label><input class="form-control" name="gw_user" value="<?php echo htmlspecialchars((string) mailEnv('SMS_GATEWAY_USER')); ?>"></div>
-                <div class="col-md-4"><label class="form-label fw-semibold mb-1" style="font-size:15px">Password</label><input class="form-control" type="password" name="gw_pass" placeholder="<?php echo mailEnv('SMS_GATEWAY_PASSWORD') ? '(saved — leave blank to keep)' : ''; ?>"></div>
+                <div class="col-md-4"><label class="form-label fw-semibold mb-1" style="font-size:15px">Password</label><input class="form-control" type="password" name="gw_pass" autocomplete="new-password" placeholder="<?php echo mailEnv('SMS_GATEWAY_PASSWORD') ? '(saved — leave blank to keep)' : ''; ?>"></div>
             </div></div>
+            <?php $tc_cloud = smsTraccarCloud(); ?>
             <div class="col-md-8 prov-f" data-p="traccar" style="<?php echo $p['provider'] === 'traccar' ? '' : 'display:none'; ?>"><div class="row g-2">
-                <div class="col-md-6"><label class="form-label fw-semibold mb-1" style="font-size:15px">Phone address (from the app)</label><input class="form-control" name="tc_url" placeholder="192.168.1.5:8082" value="<?php echo htmlspecialchars((string) mailEnv('SMS_GATEWAY_URL')); ?>"></div>
-                <div class="col-md-6"><label class="form-label fw-semibold mb-1" style="font-size:15px">Key / token (from the app)</label><input class="form-control" type="password" name="tc_key" placeholder="<?php echo mailEnv('SMS_GATEWAY_TOKEN') ? '(saved — leave blank to keep)' : ''; ?>"></div>
+                <div class="col-12"><label class="form-label fw-semibold mb-1" style="font-size:15px">Connection to the phone</label>
+                    <select class="form-select" name="tc_mode" id="tcMode" onchange="document.querySelectorAll('.tc-f').forEach(function(e){e.style.display=e.dataset.m===this.value?'':'none'},this)">
+                        <option value="cloud" <?php echo $tc_cloud ? 'selected' : ''; ?>>Internet — Cloud Service (any Wi-Fi or mobile data; recommended)</option>
+                        <option value="local" <?php echo $tc_cloud ? '' : 'selected'; ?>>Same Wi-Fi — Local Service (phone and this computer on one network)</option>
+                    </select></div>
+                <div class="col-12 tc-f" data-m="cloud" style="<?php echo $tc_cloud ? '' : 'display:none'; ?>"><label class="form-label fw-semibold mb-1" style="font-size:15px">Cloud Service token (from the app)</label><input class="form-control" type="password" name="tc_cloud_key" autocomplete="new-password" placeholder="<?php echo mailEnv('SMS_TRACCAR_CLOUD_TOKEN') ? '(saved — leave blank to keep)' : 'The long token under Cloud Service'; ?>">
+                    <div class="form-text">The phone only needs internet (Wi-Fi or mobile data) and the app installed.</div></div>
+                <div class="col-md-6 tc-f" data-m="local" style="<?php echo $tc_cloud ? 'display:none' : ''; ?>"><label class="form-label fw-semibold mb-1" style="font-size:15px">Phone address (from the app)</label><input class="form-control" name="tc_url" placeholder="192.168.1.5:8082" value="<?php echo htmlspecialchars((string) mailEnv('SMS_GATEWAY_URL')); ?>"></div>
+                <div class="col-md-6 tc-f" data-m="local" style="<?php echo $tc_cloud ? 'display:none' : ''; ?>"><label class="form-label fw-semibold mb-1" style="font-size:15px">Local Service token (from the app)</label><input class="form-control" type="password" name="tc_key" autocomplete="new-password" placeholder="<?php echo mailEnv('SMS_GATEWAY_TOKEN') ? '(saved — leave blank to keep)' : ''; ?>"></div>
             </div></div>
             <div class="col-md-8 prov-f" data-p="semaphore" style="<?php echo $p['provider'] === 'semaphore' ? '' : 'display:none'; ?>"><div class="row g-2">
-                <div class="col-md-7"><label class="form-label fw-semibold mb-1" style="font-size:15px">API key</label><input class="form-control" type="password" name="sem_key" placeholder="<?php echo mailEnv('SEMAPHORE_API_KEY') ? '(saved — leave blank to keep)' : ''; ?>"></div>
+                <div class="col-md-7"><label class="form-label fw-semibold mb-1" style="font-size:15px">API key</label><input class="form-control" type="password" name="sem_key" autocomplete="new-password" placeholder="<?php echo mailEnv('SEMAPHORE_API_KEY') ? '(saved — leave blank to keep)' : ''; ?>"></div>
                 <div class="col-md-5"><label class="form-label fw-semibold mb-1" style="font-size:15px">Sender name (optional)</label><input class="form-control" name="sem_sender" maxlength="11" placeholder="EGradePro" value="<?php echo htmlspecialchars((string) mailEnv('SEMAPHORE_SENDER')); ?>"></div>
             </div></div>
             <div class="col-12"><button class="btn btn-primary"><i class="fas fa-save me-1"></i> Save sender</button>
