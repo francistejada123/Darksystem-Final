@@ -42,9 +42,9 @@ $recent = array_slice(getRecords("SELECT date, status, subject_code FROM attenda
     <div class="pp-alert t-warn"><i class="fas fa-clipboard-list me-1"></i><?php echo $en ? "$missing missing task(s). Please remind your child." : "May $missing gawain na hindi naipasa. Paalalahanan po ang anak."; ?></div>
 <?php endif; ?>
 <div class="pp-stats">
-    <a class="pp-stat" href="grades.php"><b><?php echo $g['average'] > 0 ? number_format($g['average'], 1) : '—'; ?></b><span><?php echo ppT('gen_ave'); ?></span></a>
-    <a class="pp-stat" href="attendance.php"><b><?php echo $att['rate'] !== null ? $att['rate'] . '%' : '—'; ?></b><span><?php echo ppT('att_rate'); ?></span></a>
-    <a class="pp-stat" href="tasks.php"><b><?php echo $pending; ?></b><span><?php echo ppT('pending'); ?></span></a>
+    <a class="pp-stat" href="grades.php"><span class="pp-ic"><i class="fas fa-chart-line"></i></span><b><?php echo $g['average'] > 0 ? number_format($g['average'], 1) : '—'; ?></b><span><?php echo ppT('gen_ave'); ?></span></a>
+    <a class="pp-stat" href="attendance.php"><span class="pp-ic"><i class="fas fa-calendar-check"></i></span><b><?php echo $att['rate'] !== null ? $att['rate'] . '%' : '—'; ?></b><span><?php echo ppT('att_rate'); ?></span></a>
+    <a class="pp-stat" href="tasks.php"><span class="pp-ic"><i class="fas fa-clipboard-list"></i></span><b><?php echo $pending; ?></b><span><?php echo ppT('pending'); ?></span></a>
 </div>
 <div class="pp-card">
     <h2><i class="fas fa-calendar-check me-2"></i><?php echo $en ? 'Latest attendance' : 'Pinakabagong attendance'; ?></h2>

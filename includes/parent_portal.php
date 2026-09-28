@@ -120,6 +120,12 @@ function ppT($key)
         'due' => ['Due', 'Due'], 'status' => ['Status', 'Status'],
         'read_only' => ['Para makita lang. Hindi ito mapapalitan dito.', 'View only. Nothing can be changed here.'],
         'add_home' => ['Idagdag sa Home Screen', 'Add to Home Screen'],
+        'welcome_to' => ['Maligayang pagdating sa', 'Welcome to'],
+        'welcome_sub' => ['Katuwang ninyo sa pag-aaral ng inyong anak.', "Your partner in your child's education journey."],
+        'f_grades' => ['Tingnan ang Grades', 'Check Grades'], 'f_grades_d' => ['Makita ang progreso ng anak sa pag-aaral', "View your child's academic progress"],
+        'f_att' => ['Bantayan ang Attendance', 'Track Attendance'], 'f_att_d' => ['Alamin kung pumapasok ang anak araw-araw', 'Know if your child is in school every day'],
+        'f_conn' => ['Laging Updated', 'Stay Connected'], 'f_conn_d' => ['Mga gawain at balita mula sa mga guro', 'Tasks and announcements from teachers'],
+        'login_sub' => ['Makita ang records, grades, at balita ng inyong anak kahit kailan, kahit saan.', "Access your child's records, grades, and school updates anytime, anywhere."],
     ];
     $i = ppLang() === 'en' ? 1 : 0;
     return $d[$key][$i] ?? $key;

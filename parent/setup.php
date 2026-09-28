@@ -65,42 +65,44 @@ $existing = $c && ($c['channel'] !== 'reset') && smsNormalizeNumber($v['mobile']
     && getRecord("SELECT 1 FROM parents WHERE mobile = ?", [smsNormalizeNumber($v['mobile'])]);
 $csrf = generateCSRFToken();
 
-ppHead($en ? 'Set up' : 'Setup');
-ppTop();
+ppHead($en ? 'Set up' : 'Setup', true);
+if (!$c) {
+    ppAuthStart('fa-key', $en ? 'Enter your setup code' : 'Ilagay ang setup code',
+        $en ? 'The 8-character code is on the text message or the Parent Access Slip from the school.' : 'Ang 8-character na code ay nasa text message o sa Parent Access Slip mula sa school.');
+} else {
+    ppAuthStart($c['channel'] === 'reset' ? 'fa-lock' : 'fa-user-plus',
+        $c['channel'] === 'reset' ? ($en ? 'Choose a new PIN' : 'Gumawa ng bagong PIN') : ($en ? 'Parent Portal setup' : 'Setup ng Parent Portal'),
+        ($en ? 'For the child:' : 'Para sa anak:') . ' <strong style="color:var(--pp-ink)">' . htmlspecialchars($c['first_name'] . ' ' . mb_substr($c['last_name'], 0, 1) . '.') . '</strong> · ' . htmlspecialchars($c['grade_level']));
+}
 ?>
 <style>
-    .su label { font-weight: 700; font-size: 15px; margin-bottom: 5px; }
     .su .form-control, .su .form-select { height: 52px; font-size: 17px; }
-    .su .pin { letter-spacing: 8px; font-size: 22px; text-align: center; font-weight: 700; }
-    .su .step { display: flex; gap: 10px; align-items: center; font-weight: 800; font-size: 15px; color: var(--pp-blue); margin: 18px 0 8px; }
-    .su .step span { width: 26px; height: 26px; border-radius: 50%; background: var(--pp-blue); color: #fff; display: grid; place-items: center; font-size: 14.5px; }
-    .btn-go { height: 54px; font-size: 17px; font-weight: 800; }
+    .su .step { display: flex; gap: 10px; align-items: center; font-weight: 800; font-size: 15px; color: var(--pp-ink); margin: 18px 0 8px; }
+    .su form > .step:first-of-type { margin-top: 0; }
+    .su .step span { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #1D4ED8, #3B82F6); color: #fff; display: grid; place-items: center; font-size: 14.5px; flex: 0 0 auto; }
+    .su .code { text-transform: uppercase; letter-spacing: 4px; text-align: center; font-weight: 800; font-size: 20px; height: 56px; }
 </style>
-<div class="pp-card su">
+<div class="su">
 <?php if (!$c): ?>
-    <h2><i class="fas fa-key me-2"></i><?php echo $en ? 'Enter your setup code' : 'Ilagay ang setup code'; ?></h2>
-    <?php if ($code !== ''): ?><div class="pp-alert t-bad"><?php echo $en ? 'This code is invalid, already used, or expired. Ask the adviser or registrar for a new one.' : 'Hindi valid, nagamit na, o expired ang code na ito. Humingi ng bago sa adviser o registrar.'; ?></div><?php endif; ?>
-    <p style="color:var(--pp-muted)"><?php echo $en ? 'The 8-character code is on the text message or the Parent Access Slip from the school.' : 'Ang 8-character na code ay nasa text message o sa Parent Access Slip mula sa school.'; ?></p>
+    <?php if ($code !== ''): ?><div class="pp-alert t-bad"><i class="fas fa-circle-exclamation me-1"></i><?php echo $en ? 'This code is invalid, already used, or expired. Ask the adviser or registrar for a new one.' : 'Hindi valid, nagamit na, o expired ang code na ito. Humingi ng bago sa adviser o registrar.'; ?></div><?php endif; ?>
     <form method="GET">
-        <input class="form-control mb-3" name="c" maxlength="9" autocapitalize="characters" autocomplete="off" placeholder="K7P4-Q2XZ" style="text-transform:uppercase;letter-spacing:3px;text-align:center;font-weight:700;" required>
+        <label class="pp-lbl" for="sc">Setup code</label>
+        <input class="form-control code mb-4" id="sc" name="c" maxlength="9" autocapitalize="characters" autocomplete="off" placeholder="K7P4-Q2XZ" required>
         <button class="btn btn-primary w-100 btn-go"><?php echo $en ? 'Continue' : 'Tuloy'; ?> <i class="fas fa-arrow-right ms-1"></i></button>
     </form>
-    <p class="pp-note mt-3"><a href="login.php"><?php echo $en ? 'I already have an account' : 'May account na ako'; ?></a></p>
 <?php else: ?>
-    <h2><i class="fas fa-user-shield me-2"></i><?php echo $c['channel'] === 'reset' ? ($en ? 'Choose a new PIN' : 'Gumawa ng bagong PIN') : ($en ? 'Parent Portal setup' : 'Setup ng Parent Portal'); ?></h2>
-    <p style="color:var(--pp-muted);margin:0"><?php echo $en ? 'For the child:' : 'Para sa anak:'; ?> <strong style="color:var(--pp-ink)"><?php echo htmlspecialchars($c['first_name'] . ' ' . mb_substr($c['last_name'], 0, 1) . '.'); ?></strong> · <?php echo htmlspecialchars($c['grade_level']); ?></p>
-    <?php if ($error): ?><div class="pp-alert t-bad mt-3"><i class="fas fa-circle-exclamation me-1"></i><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
+    <?php if ($error): ?><div class="pp-alert t-bad"><i class="fas fa-circle-exclamation me-1"></i><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
     <form method="POST" autocomplete="off">
         <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
         <input type="hidden" name="code" value="<?php echo htmlspecialchars($code); ?>">
         <div class="step"><span>1</span><?php echo $en ? "Your child's birthday" : 'Birthday ng inyong anak'; ?></div>
-        <input type="date" class="form-control" name="birth_date" required max="<?php echo date('Y-m-d'); ?>">
+        <div class="pp-field"><i class="fas fa-cake-candles"></i><input type="date" class="form-control" name="birth_date" required max="<?php echo date('Y-m-d'); ?>"></div>
         <div class="step"><span>2</span><?php echo $en ? 'Your mobile number' : 'Inyong cellphone number'; ?></div>
-        <input type="tel" class="form-control" name="mobile" inputmode="numeric" maxlength="13" placeholder="09XXXXXXXXX" value="<?php echo htmlspecialchars($v['mobile']); ?>" required>
+        <div class="pp-field"><i class="fas fa-mobile-screen-button"></i><input type="tel" class="form-control" name="mobile" inputmode="numeric" maxlength="13" placeholder="09XXXXXXXXX" value="<?php echo htmlspecialchars($v['mobile']); ?>" required></div>
         <?php if ($c['channel'] !== 'reset' && !$existing && empty($v['existing'])): ?>
             <div class="row g-2 mt-1">
-                <div class="col-7"><input class="form-control" name="full_name" maxlength="150" placeholder="<?php echo $en ? 'Your name (optional)' : 'Inyong pangalan (optional)'; ?>" value="<?php echo htmlspecialchars($v['full_name']); ?>" style="height:46px;font-size:15px"></div>
-                <div class="col-5"><select class="form-select" name="relationship" style="height:46px;font-size:15px">
+                <div class="col-7"><input class="form-control" name="full_name" maxlength="150" placeholder="<?php echo $en ? 'Your name (optional)' : 'Inyong pangalan (optional)'; ?>" value="<?php echo htmlspecialchars($v['full_name']); ?>" style="height:48px;font-size:15px"></div>
+                <div class="col-5"><select class="form-select" name="relationship" style="height:48px;font-size:15px">
                     <?php foreach (['' => $en ? 'Relationship' : 'Relasyon', 'Mother' => $en ? 'Mother' : 'Nanay', 'Father' => $en ? 'Father' : 'Tatay', 'Guardian' => 'Guardian', 'Grandparent' => $en ? 'Grandparent' : 'Lolo/Lola', 'Other' => $en ? 'Other' : 'Iba pa'] as $k => $lbl): ?>
                         <option value="<?php echo $k; ?>" <?php echo $v['relationship'] === $k ? 'selected' : ''; ?>><?php echo $lbl; ?></option>
                     <?php endforeach; ?>
@@ -112,20 +114,15 @@ ppTop();
             elseif ($existing || !empty($v['existing'])) echo $en ? 'This number already has an account: enter its PIN' : 'May account na ang number na ito: ilagay ang PIN';
             else echo $en ? 'Create a 6-digit PIN' : 'Gumawa ng 6-digit PIN';
         ?></div>
-        <input type="password" class="form-control pin" name="pin" inputmode="numeric" pattern="\d{6}" maxlength="6" required autocomplete="new-password" placeholder="••••••">
+        <?php ppPinField('pin', '••••••', 'new-password'); ?>
         <?php if ($c['channel'] === 'reset' || (!$existing && empty($v['existing']))): ?>
-            <input type="password" class="form-control pin mt-2" name="confirm_pin" inputmode="numeric" pattern="\d{6}" maxlength="6" required autocomplete="new-password" placeholder="<?php echo $en ? 'Repeat PIN' : 'Ulitin ang PIN'; ?>" style="letter-spacing:normal;font-size:16px;">
+            <div class="mt-2"><?php ppPinField('confirm_pin', $en ? 'Repeat PIN' : 'Ulitin ang PIN', 'new-password'); ?></div>
             <p class="pp-note" style="text-align:left"><?php echo $en ? 'Only you know this PIN. The school cannot see it. Avoid 123456 or 111111.' : 'Kayo lang ang nakakaalam ng PIN. Hindi ito nakikita ng school. Iwasan ang 123456 o 111111.'; ?></p>
         <?php endif; ?>
         <button type="submit" class="btn btn-primary w-100 btn-go mt-3"><i class="fas fa-check me-1"></i> <?php echo $en ? 'Finish' : 'Tapusin'; ?></button>
     </form>
 <?php endif; ?>
 </div>
-<p class="pp-note"><i class="fas fa-shield-halved me-1"></i><?php echo $en ? 'The school never asks for money or an OTP.' : 'Hindi humihingi ng pera o OTP ang school.'; ?></p>
-</main>
-<script>
-document.querySelectorAll('.pin, input[name=mobile]').forEach(function (i) { i.addEventListener('input', function () { this.value = this.value.replace(/[^\d+]/g, ''); }); });
-</script>
-<?php ppInstallScript(); ?>
-</body>
-</html>
+<div class="divider"></div>
+<p class="foot mb-0"><?php echo $en ? 'Already have an account?' : 'May account na?'; ?> <a href="login.php"><?php echo ppT('login'); ?></a></p>
+<?php ppAuthEnd('<i class="fas fa-shield-halved me-1"></i>' . ($en ? 'The school never asks for money or an OTP.' : 'Hindi humihingi ng pera o OTP ang school.'));

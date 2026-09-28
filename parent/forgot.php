@@ -37,27 +37,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && smsReady()) {
     }
 }
 $csrf = generateCSRFToken();
-ppHead(ppT('forgot_pin'));
-ppTop();
+ppHead(ppT('forgot_pin'), true);
+ppAuthStart('fa-key', ppT('forgot_pin'), $sent ? '' : (smsReady()
+    ? ($en ? 'Enter your mobile number. We will text you a link to choose a new PIN.' : 'Ilagay ang inyong cellphone number. Magte-text kami ng link para gumawa ng bagong PIN.')
+    : ($en ? 'We will help you choose a new PIN.' : 'Tutulungan namin kayong gumawa ng bagong PIN.')));
 ?>
-<div class="pp-card" style="margin-top:8px">
-    <h2 style="font-size:20px"><i class="fas fa-key me-2"></i><?php echo ppT('forgot_pin'); ?></h2>
 <?php if ($sent): ?>
-    <p style="font-size:16px"><?php echo $en ? 'If this number has a Parent Portal account, we sent a text with a link to choose a new PIN. It may take a few minutes.' : 'Kung may Parent Portal account ang number na ito, nagpadala kami ng text na may link para gumawa ng bagong PIN. Maaaring umabot ng ilang minuto.'; ?></p>
-    <a href="login.php" class="btn btn-primary w-100" style="height:52px;font-weight:800;padding-top:13px"><?php echo ppT('login'); ?></a>
+                <div class="pp-alert t-ok"><i class="fas fa-circle-check me-1"></i><?php echo $en ? 'If this number has a Parent Portal account, we sent a text with a link to choose a new PIN. It may take a few minutes.' : 'Kung may Parent Portal account ang number na ito, nagpadala kami ng text na may link para gumawa ng bagong PIN. Maaaring umabot ng ilang minuto.'; ?></div>
+                <a href="login.php" class="btn btn-primary w-100 btn-go d-flex align-items-center justify-content-center"><?php echo ppT('login'); ?></a>
 <?php elseif (smsReady()): ?>
-    <p style="color:var(--pp-muted)"><?php echo $en ? 'Enter your mobile number. We will text you a link to choose a new PIN.' : 'Ilagay ang inyong cellphone number. Magte-text kami ng link para gumawa ng bagong PIN.'; ?></p>
-    <?php if ($error): ?><div class="pp-alert t-bad"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
-    <form method="POST">
-        <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
-        <input type="tel" class="form-control mb-3" name="mobile" inputmode="numeric" maxlength="13" placeholder="09XXXXXXXXX" required style="height:54px;font-size:18px">
-        <button class="btn btn-primary w-100" style="height:54px;font-size:17px;font-weight:800"><?php echo $en ? 'Text me a link' : 'I-text sa akin ang link'; ?></button>
-    </form>
+                <?php if ($error): ?><div class="pp-alert t-bad"><i class="fas fa-circle-exclamation me-1"></i><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
+                    <label class="pp-lbl" for="m"><?php echo ppT('mobile'); ?></label>
+                    <div class="pp-field mb-4"><i class="fas fa-mobile-screen-button"></i>
+                        <input type="tel" id="m" class="form-control" name="mobile" inputmode="numeric" maxlength="13" placeholder="09XXXXXXXXX" required></div>
+                    <button class="btn btn-primary w-100 btn-go"><i class="fas fa-paper-plane me-1"></i> <?php echo $en ? 'Text me a link' : 'I-text sa akin ang link'; ?></button>
+                </form>
 <?php else: ?>
-    <p style="font-size:16px"><?php echo $en ? 'Please ask your child\'s adviser or the registrar for a new Parent Access Slip ("Reset PIN"). Bring a valid ID. You will choose a new PIN yourself.' : 'Humingi po ng bagong Parent Access Slip ("Reset PIN") sa adviser ng inyong anak o sa registrar. Magdala ng valid ID. Kayo mismo ang gagawa ng bagong PIN.'; ?></p>
-    <a href="login.php" class="btn btn-outline-primary w-100"><?php echo ppT('login'); ?></a>
+                <div class="pp-alert t-info"><i class="fas fa-circle-info me-1"></i><?php echo $en ? 'Please ask your child\'s adviser or the registrar for a new Parent Access Slip ("Reset PIN"). Bring a valid ID. You will choose a new PIN yourself.' : 'Humingi po ng bagong Parent Access Slip ("Reset PIN") sa adviser ng inyong anak o sa registrar. Magdala ng valid ID. Kayo mismo ang gagawa ng bagong PIN.'; ?></div>
 <?php endif; ?>
-</div>
-</main>
-</body>
-</html>
+                <div class="divider"></div>
+                <p class="foot mb-0"><a href="login.php"><i class="fas fa-arrow-left me-1"></i><?php echo $en ? 'Back to Sign in' : 'Bumalik sa Mag-login'; ?></a></p>
+<?php ppAuthEnd();

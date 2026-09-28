@@ -36,35 +36,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 $csrf = generateCSRFToken();
-ppHead(ppT('login'));
-ppTop();
+ppHead(ppT('login'), true);
+ppAuthStart('fa-user-lock', ppT('login_title'), ppT('login_sub'));
 ?>
-<style>
-    .lg label { font-weight: 700; font-size: 15px; margin-bottom: 5px; }
-    .lg .form-control { height: 54px; font-size: 18px; }
-    .lg .pin { letter-spacing: 8px; font-size: 22px; text-align: center; font-weight: 700; }
-</style>
-<div class="pp-card lg" style="margin-top:8px">
-    <h2 style="font-size:20px"><i class="fas fa-user-shield me-2"></i><?php echo ppT('login_title'); ?></h2>
-    <?php if ($error): ?><div class="pp-alert t-bad"><i class="fas fa-circle-exclamation me-1"></i><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
-    <form method="POST" autocomplete="on">
-        <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
-        <div class="mb-3"><label for="m"><?php echo ppT('mobile'); ?></label>
-            <input type="tel" id="m" class="form-control" name="mobile" inputmode="numeric" maxlength="13" placeholder="09XXXXXXXXX" value="<?php echo htmlspecialchars($mobile_v); ?>" required autocomplete="username"></div>
-        <div class="mb-3"><label for="p"><?php echo ppT('pin'); ?></label>
-            <input type="password" id="p" class="form-control pin" name="pin" inputmode="numeric" pattern="\d{6}" maxlength="6" placeholder="••••••" required autocomplete="current-password"></div>
-        <button class="btn btn-primary w-100" style="height:54px;font-size:17px;font-weight:800"><i class="fas fa-right-to-bracket me-1"></i> <?php echo ppT('login'); ?></button>
-    </form>
-    <div class="d-flex justify-content-between mt-3" style="font-size:15px">
-        <a href="forgot.php"><?php echo ppT('forgot_pin'); ?></a>
-        <a href="setup.php"><?php echo ppT('setup'); ?></a>
-    </div>
-    <button type="button" class="btn btn-outline-primary pp-install mt-3"><i class="fas fa-mobile-screen me-1"></i> <?php echo ppT('add_home'); ?></button>
-    <p class="pp-note pp-ios-tip mt-2"><?php echo $en ? 'iPhone: tap Share, then "Add to Home Screen".' : 'iPhone: pindutin ang Share, tapos "Add to Home Screen".'; ?></p>
-</div>
-<p class="pp-note"><?php echo ppT('first_time'); ?> <a href="setup.php"><?php echo ppT('setup'); ?></a></p>
-</main>
-<script>document.querySelectorAll('#m, #p').forEach(function (i) { i.addEventListener('input', function () { this.value = this.value.replace(/[^\d+]/g, ''); }); });</script>
-<?php ppInstallScript(); ?>
-</body>
-</html>
+                <?php if ($error): ?><div class="pp-alert t-bad"><i class="fas fa-circle-exclamation me-1"></i><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
+                <form method="POST" autocomplete="on">
+                    <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
+                    <div class="mb-3"><label class="pp-lbl" for="m"><?php echo ppT('mobile'); ?></label>
+                        <div class="pp-field"><i class="fas fa-mobile-screen-button"></i>
+                            <input type="tel" id="m" class="form-control" name="mobile" inputmode="numeric" maxlength="13" placeholder="09XXXXXXXXX" value="<?php echo htmlspecialchars($mobile_v); ?>" required autocomplete="username"></div></div>
+                    <div class="mb-4"><label class="pp-lbl" for="p"><?php echo ppT('pin'); ?></label>
+                        <?php ppPinField('pin', '••••••', 'current-password', 'p'); ?></div>
+                    <button class="btn btn-primary w-100 btn-go"><?php echo ppT('login'); ?> <i class="fas fa-arrow-right ms-1"></i></button>
+                </form>
+                <div class="links">
+                    <a href="forgot.php"><?php echo ppT('forgot_pin'); ?></a>
+                    <a href="setup.php"><?php echo ppT('setup'); ?></a>
+                </div>
+                <button type="button" class="btn btn-outline-primary pp-install mt-3"><i class="fas fa-mobile-screen me-1"></i> <?php echo ppT('add_home'); ?></button>
+                <p class="pp-note pp-ios-tip mt-2"><?php echo $en ? 'iPhone: tap Share, then "Add to Home Screen".' : 'iPhone: pindutin ang Share, tapos "Add to Home Screen".'; ?></p>
+                <div class="divider"></div>
+                <p class="foot mb-0"><?php echo ppT('first_time'); ?> <a href="setup.php"><?php echo ppT('setup'); ?></a></p>
+<?php ppAuthEnd();
