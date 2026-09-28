@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['action'])) {
         $retired_settings = ['grading_ww_weight', 'grading_pt_weight', 'grading_qa_weight'];
 
         foreach ($_POST as $key => $value) {
-            if (strpos($key, 'setting_') === 0) {
+            if (strpos($key, 'setting_') === 0 && $key !== 'setting_group') {
                 $setting_key = substr($key, 8);
                 $setting_value = sanitize($value);
 
@@ -61,13 +61,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['action'])) {
                     continue;
                 }
 
-                $existing = getRecord("SELECT setting_id FROM system_settings WHERE setting_key = ?", [$setting_key]);
-                if ($existing) {
-                    $sql = "UPDATE system_settings SET setting_value = ? WHERE setting_key = ?";
-                } else {
-                    $sql = "INSERT INTO system_settings (setting_key, setting_value, setting_group) VALUES (?, ?, ?)";
-                }
-                executeQuery($sql, [$setting_value, $setting_key, $setting_group]);
+                // One statement for new and existing keys (the old UPDATE/INSERT pair passed the
+                // values in the wrong order, so nothing was saved and new keys came out swapped).
+                executeQuery(
+                    "INSERT INTO system_settings (setting_key, setting_value, setting_group) VALUES (?, ?, ?)
+                     ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)",
+                    [$setting_key, $setting_value, $setting_group]
+                );
             }
         }
 
