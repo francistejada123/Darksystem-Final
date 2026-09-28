@@ -226,6 +226,38 @@ if (!$is_embedded) {
                 <?php if (!empty($_SESSION['portal_link_flash'])): [$plf_type, $plf_msg] = $_SESSION['portal_link_flash']; unset($_SESSION['portal_link_flash']); ?>
                     <div class="alert alert-<?php echo $plf_type; ?> py-2 small text-start"><?php echo htmlspecialchars($plf_msg); ?></div>
                 <?php endif; ?>
+                <?php
+                    // ---- Parent Portal access (Admin, Registrar, the section's adviser) ----
+                    require_once __DIR__ . '/../parents/common.php';
+                    if (ppStaffCanStudent((int) $student['student_id'])):
+                        $pp_parents = ppParentsOf((int) $student['student_id']);
+                        $pp_csrf = generateCSRFToken();
+                        $pp_back = 'view.php?id=' . (int) $student['student_id'] . ($is_embedded ? '&embed=1' : '');
+                ?>
+                    <div class="text-start border rounded-3 p-2 mb-3" style="font-size:14px">
+                        <div class="fw-bold mb-1"><i class="fas fa-people-roof me-1"></i> Parent Portal</div>
+                        <?php if (!empty($_SESSION['pp_flash'])): $ppf = $_SESSION['pp_flash']; unset($_SESSION['pp_flash']); ?>
+                            <div class="alert alert-<?php echo $ppf[0]; ?> py-2 small mb-2"><?php echo htmlspecialchars($ppf[1]); ?>
+                                <?php if (!empty($ppf[2])): ?><textarea class="form-control form-control-sm mt-1" rows="4" readonly onclick="this.select()"><?php echo htmlspecialchars($ppf[2]); ?></textarea><?php endif; ?></div>
+                        <?php endif; ?>
+                        <?php if (!$pp_parents): ?>
+                            <div class="text-muted small mb-2">No parent linked yet. Guardian mobile: <?php echo htmlspecialchars(smsMask($student['guardian_contact'] ?? '') ?: 'none'); ?></div>
+                        <?php endif; ?>
+                        <?php foreach ($pp_parents as $pp): ?>
+                            <div class="d-flex align-items-center gap-1 border-top py-1">
+                                <div class="flex-grow-1"><?php echo htmlspecialchars(($pp['full_name'] ?: 'Parent') . ($pp['relationship'] ? ' (' . $pp['relationship'] . ')' : '')); ?>
+                                    <small class="d-block text-muted"><?php echo htmlspecialchars(smsMask($pp['mobile'])); ?> · <?php echo $pp['last_login'] ? 'last sign-in ' . date('M j', strtotime($pp['last_login'])) : 'never signed in'; ?></small></div>
+                                <form method="POST" action="../parents/actions.php" class="m-0"><input type="hidden" name="csrf_token" value="<?php echo $pp_csrf; ?>"><input type="hidden" name="student_id" value="<?php echo (int) $student['student_id']; ?>"><input type="hidden" name="parent_id" value="<?php echo (int) $pp['parent_id']; ?>"><input type="hidden" name="action" value="reset_pin"><button class="btn btn-sm btn-outline-secondary" title="Print a Reset PIN slip">PIN</button></form>
+                                <form method="POST" action="../parents/actions.php" class="m-0" onsubmit="return confirm('Remove this parent\'s access to this child?');"><input type="hidden" name="csrf_token" value="<?php echo $pp_csrf; ?>"><input type="hidden" name="student_id" value="<?php echo (int) $student['student_id']; ?>"><input type="hidden" name="parent_id" value="<?php echo (int) $pp['parent_id']; ?>"><input type="hidden" name="back" value="../students/<?php echo htmlspecialchars($pp_back); ?>"><input type="hidden" name="action" value="unlink"><button class="btn btn-sm btn-outline-danger" title="Unlink"><i class="fas fa-link-slash"></i></button></form>
+                            </div>
+                        <?php endforeach; ?>
+                        <div class="d-flex gap-1 mt-2 flex-wrap">
+                            <form method="POST" action="../parents/actions.php" class="m-0"><input type="hidden" name="csrf_token" value="<?php echo $pp_csrf; ?>"><input type="hidden" name="student_id" value="<?php echo (int) $student['student_id']; ?>"><input type="hidden" name="back" value="../students/<?php echo htmlspecialchars($pp_back); ?>"><input type="hidden" name="action" value="send_sms"><button class="btn btn-sm btn-primary"><i class="fas fa-comment-sms me-1"></i>Send SMS</button></form>
+                            <a class="btn btn-sm btn-outline-primary" target="_blank" href="../parents/print_slips.php?student_id=<?php echo (int) $student['student_id']; ?>"><i class="fas fa-print me-1"></i>Print Slip</a>
+                            <a class="btn btn-sm btn-outline-secondary" target="_blank" href="../parents/progress_report.php?student_id=<?php echo (int) $student['student_id']; ?>"><i class="fas fa-file-lines me-1"></i>Progress Report</a>
+                        </div>
+                    </div>
+                <?php endif; ?>
                 <?php if (hasAnyRole(['Administrator', 'Registrar'])): ?>
                     <form method="POST" action="send_portal_link.php" onsubmit="return confirm('Email a Create / Set New Password link to this student?');">
                         <input type="hidden" name="csrf_token" value="<?php echo generateCSRFToken(); ?>">

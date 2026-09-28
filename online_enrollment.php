@@ -312,6 +312,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if (empty($_POST['certify'])) $errors[] = 'You must certify that the information given is true and correct.';
+        if (empty($_POST['privacy_consent'])) $errors[] = 'Please read and agree to the Privacy Notice.';
 
         if ($lrn !== '' && ctype_digit($lrn) && strlen($lrn) === 12) {
             $dupe_student = getRecord("SELECT student_id FROM students WHERE lrn = ?", [$lrn]);
@@ -1375,8 +1376,9 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                                     <input type="text" id="f_guardian_relationship" name="guardian_relationship" class="form-control" placeholder="e.g., Mother, Father, Aunt, Uncle, Guardian" value="<?php echo ov('guardian_relationship', $old); ?>">
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="form-label req" for="f_guardian_contact">Guardian Contact No.</label>
+                                    <label class="form-label req" for="f_guardian_contact">Parent/Guardian Mobile No.</label>
                                     <input type="tel" id="f_guardian_contact" name="guardian_contact" class="form-control" inputmode="numeric" placeholder="09XXXXXXXXX" value="<?php echo ov('guardian_contact', $old); ?>">
+                                    <div class="form-hint">The Parent Portal link is texted to this number once the enrollment is approved. Please check it.</div>
                                     <div class="field-error">Guardian contact number is required.</div>
                                 </div>
                             </div>
@@ -1596,6 +1598,12 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                                 <input class="form-check-input" type="checkbox" name="certify" value="1" id="certify" style="margin-top:3px">
                                 <label class="form-check-label" for="certify">
                                     I certify that all the information and documents I submitted are true, correct and authentic. I understand that any false statement may cancel my enrollment.
+                                </label>
+                            </div>
+                            <div class="form-check mt-3">
+                                <input class="form-check-input" type="checkbox" name="privacy_consent" value="1" id="privacyConsent" style="margin-top:3px">
+                                <label class="form-check-label" for="privacyConsent">
+                                    <strong>Privacy Notice (Data Privacy Act of 2012):</strong> I agree that the school may use the information and documents above only for enrollment and school records, and may send enrollment results, the Parent Portal link and school notices (email / SMS) to the learner's email and the parent/guardian mobile number. SMS is sent through the school's SMS provider; only the mobile number and the short message are shared with it.
                                 </label>
                             </div>
                         </div>
@@ -3190,7 +3198,8 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                 return false;
             }
             var certify = document.getElementById('certify');
-            if (!certify.checked) {
+            var consent = document.getElementById('privacyConsent');
+            if (!certify.checked || (consent && !consent.checked)) {
                 e.preventDefault();
                 var certifyBox = document.querySelector('.certify-box');
                 if (certifyBox) {

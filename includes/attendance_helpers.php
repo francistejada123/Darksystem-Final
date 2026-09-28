@@ -596,6 +596,10 @@ function gh_setStudentAttendance($student_id, $subject_code, $section_id, $date,
         "SELECT attendance_id FROM attendance WHERE student_id = ? AND subject_code = ? AND section_id = ? AND date = ?",
         [$student_id, $subject_code, $section_id, $date]
     );
+    if ($status === 'Absent' && $date === date('Y-m-d')) {
+        require_once __DIR__ . '/parent_portal.php';
+        ppAbsentAlert((int) $student_id, $date);   // text to linked parents, once a day
+    }
     if ($existing) {
         return executeQuery(
             "UPDATE attendance SET status = ?, remarks = ?, updated_at = NOW() WHERE attendance_id = ?",

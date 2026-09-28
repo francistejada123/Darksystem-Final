@@ -259,6 +259,11 @@ include '../../includes/header.php';
             <i class="fas fa-envelope me-1"></i> Email Settings
         </a>
     </li>
+    <li class="nav-item" role="presentation">
+        <a class="nav-link" href="<?php echo BASE_URL; ?>modules/settings/sms.php">
+            <i class="fas fa-comment-sms me-1"></i> SMS Settings
+        </a>
+    </li>
 </ul>
 
 <div class="tab-content pt-4" id="settingsTabContent">

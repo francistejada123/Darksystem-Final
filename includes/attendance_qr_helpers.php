@@ -491,6 +491,8 @@ function attQrEndSession($teacherId, $subjectCode, $sectionId, $schoolYearId)
             );
             if ($r && $r->rowCount() > 0) {
                 $marked++;
+                require_once __DIR__ . '/parent_portal.php';
+                ppAbsentAlert((int) $s['student_id'], $today);   // text to linked parents, once a day
             }
         }
         executeQuery("UPDATE attendance_sessions SET status = 'Closed', ended_at = ? WHERE session_id = ?", [date('Y-m-d H:i:s'), $session['session_id']]);

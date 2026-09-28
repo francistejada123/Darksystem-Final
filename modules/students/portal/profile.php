@@ -120,6 +120,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['change_password'])) {
     }
 }
 
+// Parent Portal: see who is linked; make a one-time code to give to a parent.
+require_once __DIR__ . '/../../../includes/parent_portal.php';
+ppEnsureSchema();
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['parent_code']) && verifyCSRFToken($_POST['csrf_token'] ?? '')) {
+    $pp_st = getRecord("SELECT guardian_contact FROM students WHERE student_id = ?", [(int) $student_id]);
+    $_SESSION['pp_student_code'] = ppIssueCode((int) $student_id, 'student', $pp_st['guardian_contact'] ?? null);
+    logActivity(null, 'student', 'Parent code created', 'Student #' . (int) $student_id . ' made a Parent Portal code');
+}
+$pp_code = (!empty($_SESSION['pp_student_code']) && ppFindCode($_SESSION['pp_student_code'])) ? $_SESSION['pp_student_code'] : null;
+$pp_linked = ppParentsOf((int) $student_id);
+
 // Handle profile update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
     if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
@@ -461,6 +472,47 @@ $page_title = 'My Profile';
                             </form>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Parent Portal -->
+            <div class="card-portal">
+                <div class="card-portal-header"><span><i class="fas fa-people-roof me-1"></i> Parent Portal</span></div>
+                <div class="card-portal-body">
+                    <p class="text-muted" style="font-size:14px">Your parent or guardian can see your grades, attendance and tasks (view only). Only the school can remove a linked parent.</p>
+                    <?php if ($pp_linked): ?>
+                        <?php foreach ($pp_linked as $pl): ?>
+                            <div class="info-row"><span class="info-label"><i class="fas fa-user-shield info-icon"></i><?php echo htmlspecialchars($pl['full_name'] ?: 'Parent'); ?><?php echo $pl['relationship'] ? ' (' . htmlspecialchars($pl['relationship']) . ')' : ''; ?></span><span class="info-value"><?php echo htmlspecialchars(smsMask($pl['mobile'])); ?></span></div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <div class="profile-empty-note">No parent linked yet.</div>
+                    <?php endif; ?>
+                    <?php if ($pp_code): $pp_link = ppSetupLink($pp_code); ?>
+                        <div style="margin-top:12px;background:#F1F5F9;border-radius:12px;padding:14px;text-align:center">
+                            <div id="ppQr" data-link="<?php echo htmlspecialchars($pp_link); ?>" style="width:150px;height:150px;margin:0 auto 8px"></div>
+                            <div style="font-size:13px;color:#64748b">Code</div>
+                            <div style="font-size:24px;font-weight:800;letter-spacing:3px"><?php echo htmlspecialchars(ppFormatCode($pp_code)); ?></div>
+                            <div style="font-size:12.5px;word-break:break-all"><?php echo htmlspecialchars($pp_link); ?></div>
+                            <button type="button" class="btn btn-sm btn-primary mt-2" id="ppShare"><i class="fas fa-share me-1"></i> Share to parent</button>
+                            <div style="font-size:12.5px;color:#64748b;margin-top:6px">Let your parent scan this, or send it by Messenger. They enter your birthday and make a PIN. Works once, expires in <?php echo PP_CODE_DAYS; ?> days.</div>
+                        </div>
+                        <script src="../../../static/js/vendor/qrcode.min.js"></script>
+                        <script>
+                        (function () {
+                            var el = document.getElementById('ppQr'), link = el.getAttribute('data-link');
+                            var qr = qrcode(0, 'M'); qr.addData(link); qr.make(); el.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2 });
+                            var svg = el.querySelector('svg'); if (svg) { svg.style.width = '100%'; svg.style.height = '100%'; }
+                            var msg = 'EGradePro Parent Portal: ' + link + ' Code: ' + <?php echo json_encode($pp_code); ?>;
+                            document.getElementById('ppShare').addEventListener('click', function () {
+                                if (navigator.share) navigator.share({ title: 'EGradePro Parent Portal', text: msg }).catch(function () {});
+                                else if (navigator.clipboard) { navigator.clipboard.writeText(msg); this.textContent = 'Copied!'; }
+                            });
+                        })();
+                        </script>
+                    <?php else: ?>
+                        <form method="POST" class="mt-2"><input type="hidden" name="csrf_token" value="<?php echo generateCSRFToken(); ?>"><input type="hidden" name="parent_code" value="1">
+                            <button class="btn btn-outline-primary"><i class="fas fa-qrcode me-1"></i> Make a code for my parent</button></form>
+                    <?php endif; ?>
                 </div>
             </div>
 

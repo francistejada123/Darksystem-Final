@@ -6,6 +6,20 @@ require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once '../../config/email.php';
 
+// Parent Portal: text the guardian number a setup link (or keep it for staff to send).
+function ppApprovalNote($studentId)
+{
+    try {
+        require_once __DIR__ . '/../../includes/parent_portal.php';
+        $w = ppWelcomeOnApproval((int) $studentId, (int) ($_SESSION['user_id'] ?? 0));
+        if ($w['sent']) return ' Parent Portal SMS sent to ' . smsMask($w['number']) . '.';
+        if ($w['number'] !== '' && $w['text'] !== '') return ' Parent Portal SMS not sent (' . rtrim($w['error'] ?: 'no SMS sender', '.') . ') - use "Send SMS" or "Print Slip" in the student record.';
+    } catch (\Throwable $e) {
+        error_log('ppApprovalNote: ' . $e->getMessage());
+    }
+    return '';
+}
+
 if (!defined('BASE_URL')) {
     define('BASE_URL', '/watdahel/');
 }
@@ -114,7 +128,7 @@ try {
             "Approved enrollment ID: $enrollment_id for student: {$enrollment['last_name']}, {$enrollment['first_name']}");
         
         $db->commit();
-        $_SESSION['success_message'] = 'Enrollment approved successfully! Email sent to student.';
+        $_SESSION['success_message'] = 'Enrollment approved successfully! Email sent to student.' . ppApprovalNote($student_id);
     } else {
         $db->rollBack();
         $_SESSION['error_message'] = 'Failed to approve enrollment.';

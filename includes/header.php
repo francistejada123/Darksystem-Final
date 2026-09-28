@@ -123,6 +123,11 @@
                         title="View, add, edit, and manage all student records.">
                         <i class="fas fa-user-graduate"></i> Students
                     </a>
+                    <a href="<?php echo BASE_URL; ?>modules/parents/index.php"
+                        class="nav-link <?php echo $current_page == 'parents' ? 'active' : ''; ?>"
+                        title="Parent Portal accounts and the children they can see.">
+                        <i class="fas fa-people-roof"></i> Parents
+                    </a>
                     <a href="<?php echo BASE_URL; ?>modules/teachers/index.php"
                         class="nav-link <?php echo $current_page == 'teachers' ? 'active' : ''; ?>"
                         title="Manage teacher accounts, qualifications, subject and section assignments.">

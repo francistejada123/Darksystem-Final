@@ -102,6 +102,20 @@ if (!$school_year_id) {
     exit;
 }
 
+// Parent Portal: text the guardian number a setup link (or keep it for staff to send).
+function ppApprovalNote($studentId)
+{
+    try {
+        require_once __DIR__ . '/../../includes/parent_portal.php';
+        $w = ppWelcomeOnApproval((int) $studentId, (int) ($_SESSION['user_id'] ?? 0));
+        if ($w['sent']) return ' Parent Portal SMS sent to ' . smsMask($w['number']) . '.';
+        if ($w['number'] !== '' && $w['text'] !== '') return ' Parent Portal SMS not sent (' . rtrim($w['error'] ?: 'no SMS sender', '.') . ') - use "Send SMS" or "Print Slip" in the student record.';
+    } catch (\Throwable $e) {
+        error_log('ppApprovalNote: ' . $e->getMessage());
+    }
+    return '';
+}
+
 $email_note = '';
 $db->beginTransaction();
 
@@ -222,7 +236,7 @@ try {
         }
     }
 
-    $_SESSION['success_message'] = 'Application ' . $app['reference_no'] . ' approved. ' . ($existing_student ? 'Existing student record (LRN ' . $lrn . ') updated' : 'Student record created') . ' and assigned to section ' . $section_name . '.' . ($email_note !== '' ? ' ' . $email_note : '');
+    $_SESSION['success_message'] = 'Application ' . $app['reference_no'] . ' approved. ' . ($existing_student ? 'Existing student record (LRN ' . $lrn . ') updated' : 'Student record created') . ' and assigned to section ' . $section_name . '.' . ($email_note !== '' ? ' ' . $email_note : '') . ppApprovalNote($student_id);
     header('Location: index.php');
     exit;
 } catch (Exception $e) {

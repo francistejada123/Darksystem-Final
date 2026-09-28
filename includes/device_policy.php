@@ -25,10 +25,11 @@ function devMobileAllowed($path)
     $allowPrefixes = [
         'modules/students/portal/',          // Student Portal (dashboard, classwork, grades, ...)
         'student/',                          // approval-email access link
+        'parent/',                           // Parent Portal (phones first)
     ];
     $allowFiles = [
         'student_login.php', 'online_enrollment.php', 'enrollment_status.php', 'logout.php',
-        'teacher_register.php',                                   // invited teacher's registration link (from email)
+        'teacher_register.php', 'm.php', 'parent_login.php',    // Parent Portal short link / login                                   // invited teacher's registration link (from email)
         'modules/attendance/student_qr.php',                      // QR code from the tracking page
         'modules/ai/download_resource.php', 'modules/ai/view_resource.php',   // student's own AI activities
         'modules/ai/download_submission_answer.php', 'modules/ai/view_submission_answer.php',

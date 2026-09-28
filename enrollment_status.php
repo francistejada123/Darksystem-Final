@@ -230,6 +230,33 @@ $status_meta['For Correction'] = $status_meta['Rejected'] = $status_meta['Incomp
             <a href="online_enrollment.php?new=1" class="btn btn-outline-primary btn-sm" onclick="return confirm('Start a new application for another learner? Your current application stays saved; keep its tracking number.');"><i class="fas fa-file-pen me-1"></i>New application for another learner</a>
         </div>
     </div>
+    <?php
+    // Parent Portal pop-up: approved, the device that applied, and no parent linked yet.
+    $pp_pop = null;
+    if ($application && $application['status'] === 'Approved' && !empty($application['student_id'])
+        && oeSubmittedRef() === $application['reference_no']) {
+        require_once __DIR__ . '/includes/parent_portal.php';
+        ppEnsureSchema();
+        if (!ppParentsOf((int) $application['student_id']) && getRecord("SELECT 1 FROM students WHERE student_id = ? AND is_active = 1", [(int) $application['student_id']])) {
+            $pp_pop = $application;
+        }
+    }
+    if ($pp_pop): $pp_ref = urlencode($pp_pop['reference_no']); ?>
+    <div id="ppPop" style="position:fixed;inset:0;z-index:2000;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;padding:16px">
+        <div style="background:#fff;border-radius:16px;max-width:460px;width:100%;padding:22px 20px;box-shadow:0 20px 50px rgba(0,0,0,.3)">
+            <div style="font-size:34px;text-align:center">👨‍👩‍👧</div>
+            <h5 class="fw-bold text-center mb-1">Parent Portal</h5>
+            <p class="text-center mb-2" style="font-size:15px">Para kay <strong><?php echo htmlspecialchars($pp_pop['guardian_name'] ?: 'Magulang'); ?></strong><?php echo $pp_pop['guardian_relationship'] ? ' (' . htmlspecialchars($pp_pop['guardian_relationship']) . ')' : ''; ?></p>
+            <p class="text-center text-muted" style="font-size:14.5px">Makikita ng magulang ang grades, attendance at activities ni <?php echo htmlspecialchars($pp_pop['first_name']); ?>.<br>Number: <strong><?php echo htmlspecialchars(smsMask($pp_pop['guardian_contact']) ?: '—'); ?></strong></p>
+            <div class="d-grid gap-2">
+                <a href="parent/start.php?ref=<?php echo $pp_ref; ?>" class="btn btn-primary fw-bold" style="height:50px;padding-top:12px"><i class="fas fa-mobile-screen me-1"></i> I-setup ngayon sa phone na ito</a>
+                <a href="parent/start.php?ref=<?php echo $pp_ref; ?>&share=1" class="btn btn-outline-primary fw-semibold"><i class="fas fa-share-nodes me-1"></i> I-share sa magulang (Messenger / Copy code)</a>
+                <button type="button" class="btn btn-link text-muted" onclick="try{sessionStorage.setItem('ppPopLater','1')}catch(e){};document.getElementById('ppPop').style.display='none'">Mamaya na lang</button>
+            </div>
+        </div>
+    </div>
+    <script>try { if (!sessionStorage.getItem('ppPopLater')) document.getElementById('ppPop').style.display = 'flex'; } catch (e) { document.getElementById('ppPop').style.display = 'flex'; }</script>
+    <?php endif; ?>
     <script src="static/js/theme.js"></script>
 </body>
 
