@@ -33,22 +33,36 @@ if (!$report_type) {
     exit;
 }
 
-if (($report_type === 'sf9' || $report_type === 'report_card' || $report_type === 'at_risk_student') && !$student_id) {
+if ($report_type === 'report_card') $report_type = 'sf9';   // old links: "Report Card" is the SF9
+
+if (($report_type === 'sf9' || $report_type === 'at_risk_student') && !$student_id) {
     http_response_code(400);
-    echo '<!DOCTYPE html><html><head><title>Student required</title></head><body style="font-family:Arial,sans-serif;">';
-    echo '<p>This report needs a student. Please enter a Student ID.</p>';
-    echo '<p><a href="index.php">&larr; Back to Reports</a></p>';
-    echo '</body></html>';
+    reportNotFoundPage('This report needs a student. Please enter the learner\'s LRN.');
     exit;
 }
 
-// A specific student was given for SF5 — that almost always means the
-// person picked one student they're concerned about (e.g. from the
-// At-Risk list), so give them a focused single-student report with
-// recommendations instead of the whole section's SF5 table.
-if ($report_type === 'sf5' && $student_id) {
-    generateAtRiskStudentReport($student_id);
-    exit;
+// Access: Administrator and Registrar -- every section and learner. A Teacher
+// -- only their own advisory section and its learners (SF1 / SF5 / Grade
+// Summary default to it when no section is chosen).
+if (!hasAnyRole(['Administrator', 'Registrar'])) {
+    if ($student_id) {
+        $st = findStudentByIdentifier($student_id);
+        if ($st && !rpCanStudent($st['student_id'])) {
+            http_response_code(403);
+            reportNotFoundPage('You can only generate reports for learners of your own advisory section.');
+            exit;
+        }
+    } else {
+        if (!$section_id) {
+            $mine = getRecords("SELECT section_id FROM sections WHERE adviser_id = ? AND is_active = 1", [(int)($_SESSION['user_id'] ?? 0)]);
+            if (count($mine) === 1) $section_id = (int)$mine[0]['section_id'];
+        }
+        if (!rpCanSection($section_id)) {
+            http_response_code(403);
+            reportNotFoundPage('Please choose your own advisory section. Teachers can only generate reports for the section they advise.');
+            exit;
+        }
+    }
 }
 
 switch ($report_type) {
@@ -62,10 +76,7 @@ switch ($report_type) {
         generateSF9($student_id);
         break;
     case 'grade_summary':
-        generateGradeSummary($section_id);
-        break;
-    case 'report_card':
-        generateReportCard($student_id);
+        generateGradeSummary($section_id, $grade_level);
         break;
     case 'at_risk_student':
         generateAtRiskStudentReport($student_id);

@@ -115,6 +115,10 @@ function pdfTable(array $headers, array $rows, array $align = [], $emptyMessage 
 // ============================================================
 
 function pdfShell($reportTitle, $reportSubtitle, $bodyHtml) {
+    // A report may carry its own <style> block; it belongs in <head>
+    // (Dompdf lays out a <style> inside <body> badly).
+    $extraCss = '';
+    $bodyHtml = preg_replace_callback('#<style>(.*?)</style>#s', function ($m) use (&$extraCss) { $extraCss .= $m[1]; return ''; }, $bodyHtml);
     $school = htmlspecialchars(function_exists('getSchoolName') ? getSchoolName() : 'EGRADEPRO', ENT_QUOTES);
     $logo = pdfLogoDataUri();
     $title = htmlspecialchars($reportTitle, ENT_QUOTES);
@@ -130,8 +134,8 @@ function pdfShell($reportTitle, $reportSubtitle, $bodyHtml) {
         * { box-sizing: border-box; }
         body { font-family: 'DejaVu Sans', sans-serif; font-size: 12.5px; color: #172033; margin: 0; }
 
-        header { position: fixed; top: -100px; left: 0; right: 0; height: 84px; background: #14213D; color: #fff; padding: 14px 26px; }
-        .pdf-accent { position: fixed; top: -14px; left: 0; right: 0; height: 4px; background: #5B5FEF; }
+        header { position: fixed; top: -100px; left: 0; right: 0; height: 56px; background: #14213D; color: #fff; padding: 14px 26px; }   /* 56 + 2x14 padding = 84px: Dompdf adds the padding to a fixed box, and a taller band hid the first lines of every page */
+        .pdf-accent { position: fixed; top: -16px; left: 0; right: 0; height: 4px; background: #5B5FEF; }
         .pdf-header-table { width: 100%; border-collapse: collapse; }
         .pdf-header-table td { border: none; padding: 0; vertical-align: middle; }
         .pdf-logo { height: 40px; width: 40px; vertical-align: middle; margin-right: 10px; }
@@ -141,8 +145,8 @@ function pdfShell($reportTitle, $reportSubtitle, $bodyHtml) {
         .pdf-report-subtitle { font-size: 12px; color: #C7CAF5; margin: 3px 0 0 0; text-align: right; }
 
         footer { position: fixed; bottom: -46px; left: 0; right: 0; height: 40px; border-top: 1px solid #DCE3EC; padding-top: 8px; font-size: 8.5px; color: #667085; }
-        .pdf-footer-left { float: left; }
-        .pdf-footer-right { float: right; }
+        .pdf-footer-left { display: block; }   /* no float: a float in the fixed footer leaks into the page flow in Dompdf */
+        .pdf-footer-right { display: block; }
 
         h1, h2, h3, h4 { font-family: 'DejaVu Sans', sans-serif; }
         .pdf-section-title { font-size: 14.5px; font-weight: bold; color: #14213D; margin: 18px 0 8px 0; padding-bottom: 5px; border-bottom: 2px solid #5B5FEF; }
@@ -186,7 +190,7 @@ CSS;
 <head>
 <meta charset="utf-8">
 <title>{$title}</title>
-<style>{$style}</style>
+<style>{$style}{$extraCss}</style>
 </head>
 <body>
     <header>

@@ -25,9 +25,22 @@ $base_url = '../../';
 // Get active school year
 $active_sy = getRecord("SELECT * FROM school_years WHERE is_active = 1");
 
-// Get sections for filtering
-$sections = getRecords("SELECT section_id, section_name, grade_level FROM sections WHERE is_active = 1
-                        ORDER BY CAST(REPLACE(grade_level, 'Grade ', '') AS UNSIGNED), section_name");
+// Get sections for filtering (a Teacher: only the sections they advise)
+$rep_all = hasAnyRole(['Administrator', 'Registrar']);
+$sections = $rep_all
+    ? getRecords("SELECT section_id, section_name, grade_level FROM sections WHERE is_active = 1
+                  ORDER BY CAST(REPLACE(grade_level, 'Grade ', '') AS UNSIGNED), section_name")
+    : getRecords("SELECT section_id, section_name, grade_level FROM sections WHERE is_active = 1 AND adviser_id = ?
+                  ORDER BY CAST(REPLACE(grade_level, 'Grade ', '') AS UNSIGNED), section_name", [(int)($_SESSION['user_id'] ?? 0)]);
+
+// What each report is for -- shown under the Report Type box.
+$report_help = [
+    'sf1' => ['DepEd Form', 'SF1 - School Register', 'Official list of the learners enrolled in a section this school year (males first, then females). Used at the start of the year and submitted to DepEd (LIS).', 'Section (or Grade Level)'],
+    'sf5' => ['DepEd Form', 'SF5 - Promotion & Level of Proficiency', 'End-of-year result per section: General Average, Promoted / Conditionally Promoted / Retained, with summary tables by sex. Submitted to the Division.', 'Section'],
+    'sf9' => ['DepEd Form', "SF9 - Learner's Report Card", 'Given to the parent every term and at year end: grades per term, Final Grade, General Average, and attendance per month.', 'Learner LRN'],
+    'grade_summary' => ['Monitoring', 'Grade Summary', 'Per-term check of a section: each learner\'s term averages and the subjects currently below passing, so the adviser/principal can act before the year ends.', 'Section (or Grade Level)'],
+    'at_risk_student' => ['Intervention', 'At-Risk Student Report', 'One learner\'s weak subjects this school year with recommended actions (conference, remedial classes, guidance, parent coordination).', 'Learner LRN'],
+];
 
 // Get grade levels
 $grade_levels = ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
@@ -65,6 +78,9 @@ include '../../includes/header.php';
 .rep-page .rep-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .rep-page .rep-btn-green { background: #238863; border-color: #238863; }
 
+.rep-page .rep-help { background: var(--surface-muted, #F3F6F9); border: 1px solid var(--border-soft, #E3E9F2); border-radius: 8px; padding: 10px 14px; font-size: 15px; color: var(--ink); }
+.rep-page .rep-help-tag { background: var(--primary-soft); color: var(--primary); border-radius: 6px; padding: 2px 8px; font-size: 13.5px; font-weight: 700; }
+.rep-page .rep-help-need { display: block; color: var(--text-muted); font-size: 14.5px; margin-top: 3px; }
 .rep-page .list-group-item { font-size: 15px; border-color: var(--border-soft); padding: 14px 16px; }
 .rep-page .rep-tag { background: var(--primary-soft); color: var(--primary); padding: 5px 12px; border-radius: 6px; font-size: 14.5px; font-weight: 600; }
 
@@ -268,12 +284,12 @@ include '../../includes/header.php';
                 <label class="rep-label">Report Type</label>
                 <select name="report_type" class="form-select rep-input" required>
                     <option value="">Select Report</option>
-                    <option value="sf1">SF1 - School Register</option>
-                    <option value="sf5">SF5 - Promotion Report</option>
-                    <option value="sf9">SF9 - Report Card</option>
-                    <option value="grade_summary">Grade Summary</option>
-                    <option value="report_card">Report Card</option>
-                    <option value="at_risk_student">At-Risk Student Report</option>
+                    <?php $rep_grp = null; foreach ($report_help as $rk => $rh):
+                        if ($rh[0] !== $rep_grp): if ($rep_grp !== null) echo '</optgroup>'; $rep_grp = $rh[0]; ?>
+                        <optgroup label="<?php echo htmlspecialchars($rh[0] === 'DepEd Form' ? 'DepEd Forms' : $rh[0]); ?>">
+                    <?php endif; ?>
+                        <option value="<?php echo $rk; ?>" <?php echo $report_type === $rk ? 'selected' : ''; ?>><?php echo htmlspecialchars($rh[1]); ?></option>
+                    <?php endforeach; echo '</optgroup>'; ?>
                 </select>
             </div>
             <div class="col-md-3">
@@ -288,7 +304,7 @@ include '../../includes/header.php';
             <div class="col-md-3">
                 <label class="rep-label">Section</label>
                 <select name="section_id" id="reportSection" class="form-select rep-input">
-                    <option value="">All Sections</option>
+                    <option value=""><?php echo $rep_all ? 'All Sections' : 'My advisory section'; ?></option>
                     <?php $sec_group = null; foreach ($sections as $sec):
                         if ($sec['grade_level'] !== $sec_group):
                             if ($sec_group !== null) echo '</optgroup>';
@@ -307,7 +323,10 @@ include '../../includes/header.php';
                 <label class="rep-label">Student LRN / ID</label>
                 <input type="text" inputmode="numeric" pattern="[0-9]*" name="student_id" id="reportStudentId" class="form-control rep-input" placeholder="e.g. 110100100052"
                        value="<?php echo htmlspecialchars($student_id); ?>">
-                <small class="rep-hint">For SF9, Report Card, At-Risk</small>
+                <small class="rep-hint">For SF9 and At-Risk Student Report</small>
+            </div>
+            <div class="col-12">
+                <div id="repHelp" class="rep-help" style="display:none"></div>
             </div>
             <div class="col-12">
                 <button type="submit" class="btn rep-btn">
@@ -317,6 +336,23 @@ include '../../includes/header.php';
         </form>
     </div>
 </div>
+
+<script>
+// Under Report Type: what the chosen report is for, who uses it, and what it needs.
+(function () {
+    var help = <?php echo json_encode($report_help); ?>;
+    var sel = document.querySelector('select[name=report_type]'), box = document.getElementById('repHelp');
+    if (!sel || !box) return;
+    function show() {
+        var h = help[sel.value];
+        if (!h) { box.style.display = 'none'; return; }
+        box.innerHTML = '<span class="rep-help-tag">' + h[0] + '</span> <b>' + h[1] + '</b> &mdash; ' + h[2] + ' <span class="rep-help-need">Needs: ' + h[3] + '</span>';
+        box.style.display = '';
+    }
+    sel.addEventListener('change', show);
+    show();
+})();
+</script>
 
 <!-- Quick Reports -->
 <div class="row g-3">
@@ -331,9 +367,9 @@ include '../../includes/header.php';
                         <span>SF1 - School Register</span>
                         <span class="rep-tag">All</span>
                     </a>
-                    <a href="generate.php?report_type=sf5" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" target="_blank">
+                    <a href="index.php?report_type=sf5" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                         <span>SF5 - Promotion Report</span>
-                        <span class="rep-tag">All</span>
+                        <span class="rep-tag">Choose a section</span>
                     </a>
                     <a href="generate.php?report_type=grade_summary" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" target="_blank">
                         <span>Grade Summary</span>

@@ -301,6 +301,32 @@ include '../../includes/header.php';
                             <input type="email" name="setting_school_email" class="form-control"
                                 value="<?php echo htmlspecialchars($grouped_settings['general']['school_email'] ?? ''); ?>">
                         </div>
+                        <div class="col-12"><hr class="my-1"><div class="text-muted" style="font-size:14.5px">For the DepEd forms (SF1, SF5, SF9) in Reports.</div></div>
+                        <div class="col-md-4">
+                            <label class="form-label">School ID</label>
+                            <input type="text" name="setting_school_id" class="form-control" maxlength="20" placeholder="e.g. 301234"
+                                value="<?php echo htmlspecialchars($grouped_settings['general']['school_id'] ?? ''); ?>">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Region</label>
+                            <input type="text" name="setting_school_region" class="form-control" maxlength="60" placeholder="e.g. Region IV-A (CALABARZON)"
+                                value="<?php echo htmlspecialchars($grouped_settings['general']['school_region'] ?? ''); ?>">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Division</label>
+                            <input type="text" name="setting_school_division" class="form-control" maxlength="80" placeholder="e.g. Schools Division of ..."
+                                value="<?php echo htmlspecialchars($grouped_settings['general']['school_division'] ?? ''); ?>">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">District</label>
+                            <input type="text" name="setting_school_district" class="form-control" maxlength="80"
+                                value="<?php echo htmlspecialchars($grouped_settings['general']['school_district'] ?? ''); ?>">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">School Head (name for signatures)</label>
+                            <input type="text" name="setting_school_head" class="form-control" maxlength="100" placeholder="e.g. Juan D. Dela Cruz"
+                                value="<?php echo htmlspecialchars($grouped_settings['general']['school_head'] ?? ''); ?>">
+                        </div>
                     </div>
 
                     <div class="d-flex justify-content-end mt-4">
