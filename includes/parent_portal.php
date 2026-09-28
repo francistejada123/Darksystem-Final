@@ -3,7 +3,7 @@
 // Parent Portal: parents/guardians see their child's grades, attendance, tasks
 // and class updates (read-only).
 //
-// Account = the parent's mobile number + a 6-digit PIN (no email needed).
+// Account = the parent's mobile number (or their checked email) + a 6-digit PIN.
 // A parent is linked to a child with a one-time SETUP CODE (8 characters,
 // expires in 7 days, stored only as a hash). The code reaches the parent by:
 //   - SMS when the enrollment is approved (includes/sms.php),
@@ -104,7 +104,9 @@ function ppT($key)
         'forgot_pin' => ['Nakalimutan ang PIN?', 'Forgot your PIN?'],
         'first_time' => ['Unang beses? Mayroon kang setup code?', 'First time? Have a setup code?'],
         'setup' => ['I-setup ang account', 'Set up my account'],
-        'wrong_login' => ['Mali ang cellphone number o PIN.', 'Wrong mobile number or PIN.'],
+        'wrong_login' => ['Mali ang number/email o PIN.', 'Wrong mobile number/email or PIN.'],
+        'login_id' => ['Cellphone number o Email', 'Mobile number or Email'],
+        'account' => ['Aking Account', 'My Account'],
         'locked' => ['Maraming maling subok. Subukan ulit pagkalipas ng %d minuto.', 'Too many wrong tries. Try again in %d minute(s).'],
         'child' => ['Anak', 'Child'], 'choose_child' => ['Piliin ang anak', 'Choose child'], 'add_child' => ['Magdagdag ng anak', 'Add a child'],
         'section' => ['Section', 'Section'], 'adviser' => ['Adviser', 'Adviser'],
@@ -196,7 +198,8 @@ function ppPinProblem($pin, $confirm)
 
 /**
  * Finish setup: check the code + child's birthday, create (or reuse) the parent account, link the child.
- * $in: code, birth_date, mobile, pin, confirm_pin, full_name, relationship
+ * $in: code, birth_date, mobile, pin, confirm_pin, full_name, relationship,
+ *      email (+ email_verified), or pin_hash instead of pin/confirm_pin (setup after the email check)
  * @return array{success:bool, error?:string, parent?:array, existing?:bool}
  */
 function ppRegister(array $in)
@@ -221,13 +224,15 @@ function ppRegister(array $in)
         if (!ppCheckPin($parent, $in['pin'] ?? '')) return ['success' => false, 'error' => $en ? 'This number already has an account. Enter its current PIN to add this child.' : 'May account na ang number na ito. Ilagay ang kasalukuyang PIN para maidagdag ang anak.', 'existing' => true];
         $parentId = (int) $parent['parent_id'];
     } else {
-        if (($p = ppPinProblem($in['pin'] ?? '', $in['confirm_pin'] ?? '')) !== '') return ['success' => false, 'error' => $p];
+        if (empty($in['pin_hash']) && ($p = ppPinProblem($in['pin'] ?? '', $in['confirm_pin'] ?? '')) !== '') return ['success' => false, 'error' => $p];
         $name = mb_substr(trim((string) ($in['full_name'] ?? '')), 0, 150);
-        $email = trim((string) ($in['email'] ?? ''));
-        $email = filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : null;
+        ppEmailEnsureSchema();
+        $email = ppNormEmail($in['email'] ?? '') ?: null;
+        if ($email && ppEmailTaken($email)) return ['success' => false, 'error' => $en ? 'This email is already used by another Parent Portal account.' : 'Ginagamit na ng ibang Parent Portal account ang email na ito.'];
         $parentId = (int) insertRecord(
-            "INSERT INTO parents (mobile, full_name, email, pin_hash, lang) VALUES (?, ?, ?, ?, ?)",
-            [$mobile, $name ?: null, $email, password_hash((string) $in['pin'], PASSWORD_DEFAULT), ppLang()]
+            "INSERT INTO parents (mobile, full_name, email, email_verified_at, pin_hash, lang) VALUES (?, ?, ?, ?, ?, ?)",
+            [$mobile, $name ?: null, $email, $email && !empty($in['email_verified']) ? date('Y-m-d H:i:s') : null,
+             !empty($in['pin_hash']) ? $in['pin_hash'] : password_hash((string) $in['pin'], PASSWORD_DEFAULT), ppLang()]
         );
         if (!$parentId) return ['success' => false, 'error' => $en ? 'The account could not be created. Please try again.' : 'Hindi nagawa ang account. Pakisubukan ulit.'];
     }
@@ -292,8 +297,9 @@ function ppChildren($parentId)
 function ppParentsOf($studentId)
 {
     ppEnsureSchema();
+    ppEmailEnsureSchema();
     return getRecords(
-        "SELECT p.parent_id, p.mobile, p.full_name, p.last_login, p.is_active, ps.relationship, ps.linked_via, ps.linked_at
+        "SELECT p.parent_id, p.mobile, p.email, p.full_name, p.last_login, p.is_active, ps.relationship, ps.linked_via, ps.linked_at
            FROM parent_students ps JOIN parents p ON p.parent_id = ps.parent_id
           WHERE ps.student_id = ? ORDER BY ps.linked_at",
         [(int) $studentId]
@@ -321,100 +327,211 @@ function ppRequireParent()
     return [$parent, $kids, $sel];
 }
 
-// ---------------------------------------------------------------- forgot PIN (6-digit code by SMS)
-// The parent types their number, gets a 6-digit code by text (no link: the
-// networks block texts with links), types it, then chooses a new PIN.
-// Requests for numbers without an account are recorded too (no code, no
-// text), so the screen and the limits are the same either way.
-const PP_OTP_MINUTES = 10;    // a code works this long
-const PP_OTP_TRIES = 5;       // wrong tries before the code stops working
-const PP_OTP_GAP = 60;        // seconds between two codes for one number
-const PP_OTP_PER_HOUR = 3;    // codes per number per hour
+// ---------------------------------------------------------------- email: sign-in, verify, forgot PIN
+// A parent signs in with their mobile number OR their email, plus the PIN.
+// The email is checked with a 6-digit code before it is saved (setup and
+// "Aking Account"), and Forgot PIN sends a 6-digit code to it. Codes are kept
+// as hashes: 10 minutes, 5 wrong tries, 60 s between codes, 3 per hour.
+// Requests for unknown accounts are recorded too (nothing is sent), so the
+// screens and the limits are the same either way.
+const PP_OTP_MINUTES = 10;
+const PP_OTP_TRIES = 5;
+const PP_OTP_GAP = 60;
+const PP_OTP_PER_HOUR = 3;
 
-function ppOtpEnsureSchema()
+function ppEmailEnsureSchema()
 {
     static $done = false;
     if ($done) return;
     $done = true;
-    if (schemaIsReady('parent_pin_otp_v1')) return;
+    ppEnsureSchema();
+    if (schemaIsReady('parent_email_v1')) return;
     try {
+        executeQuery("UPDATE parents SET email = NULLIF(LOWER(TRIM(email)), '')");
+        if (!getRecord("SHOW COLUMNS FROM parents LIKE 'email_verified_at'")) {
+            executeQuery("ALTER TABLE parents ADD COLUMN email_verified_at DATETIME NULL AFTER email");
+        }
+        if (!getRecord("SHOW INDEX FROM parents WHERE Key_name = 'uniq_parent_email'")) {
+            // Older duplicates (none expected): keep the first, clear the rest.
+            executeQuery("UPDATE parents p JOIN parents q ON q.email = p.email AND q.parent_id < p.parent_id SET p.email = NULL");
+            executeQuery("ALTER TABLE parents ADD UNIQUE KEY uniq_parent_email (email)");
+        }
         executeQuery(
-            "CREATE TABLE IF NOT EXISTS parent_pin_otps (
-                otp_id INT AUTO_INCREMENT PRIMARY KEY,
-                mobile VARCHAR(11) NOT NULL,
-                parent_id INT NULL COMMENT 'NULL when the number has no account (nothing was texted)',
+            "CREATE TABLE IF NOT EXISTS parent_email_codes (
+                code_id INT AUTO_INCREMENT PRIMARY KEY,
+                purpose VARCHAR(10) NOT NULL COMMENT 'reset | setup | change',
+                target VARCHAR(120) NOT NULL COMMENT 'what the limits count (email, or what was typed)',
+                email VARCHAR(100) NULL COMMENT 'where the code went (NULL: nothing was sent)',
+                parent_id INT NULL,
                 code_hash VARCHAR(255) NULL COMMENT '6-digit code (hash only)',
                 attempts INT NOT NULL DEFAULT 0,
                 expires_at DATETIME NOT NULL,
                 used_at DATETIME NULL,
                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                KEY idx_otp_mobile (mobile, created_at),
-                CONSTRAINT fk_otp_parent FOREIGN KEY (parent_id) REFERENCES parents (parent_id) ON DELETE CASCADE
+                KEY idx_pec_target (target, created_at),
+                CONSTRAINT fk_pec_parent FOREIGN KEY (parent_id) REFERENCES parents (parent_id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
         );
-        schemaMarkReady('parent_pin_otp_v1');
+        schemaMarkReady('parent_email_v1');
     } catch (\Throwable $e) {
-        error_log('ppOtpEnsureSchema: ' . $e->getMessage());
+        error_log('ppEmailEnsureSchema: ' . $e->getMessage());
     }
 }
 
-/** Seconds before this number may get another code (0 = now). */
-function ppOtpWait($mobile)
+/** Lower-case email, or '' when it is not a valid address. */
+function ppNormEmail($raw)
 {
-    ppOtpEnsureSchema();
-    $r = getRecord("SELECT TIMESTAMPDIFF(SECOND, MAX(created_at), NOW()) AS ago, SUM(created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)) AS hr FROM parent_pin_otps WHERE mobile = ?", [$mobile]);
+    $e = strtolower(trim((string) $raw));
+    return (strlen($e) <= 100 && filter_var($e, FILTER_VALIDATE_EMAIL)) ? $e : '';
+}
+
+/** ju••••@gmail.com */
+function ppMaskEmail($email)
+{
+    $email = (string) $email;
+    $at = strpos($email, '@');
+    if ($at === false) return '';
+    return mb_substr($email, 0, min(2, $at)) . '••••' . substr($email, $at);
+}
+
+/** The parent account for what was typed at sign-in: an email (has "@") or a mobile number. */
+function ppFindParentByLogin($login)
+{
+    ppEmailEnsureSchema();
+    $login = trim((string) $login);
+    if (strpos($login, '@') !== false) {
+        $e = ppNormEmail($login);
+        return $e !== '' ? getRecord("SELECT * FROM parents WHERE email = ? AND is_active = 1", [$e]) : null;
+    }
+    $m = smsNormalizeNumber($login);
+    return $m !== '' ? getRecord("SELECT * FROM parents WHERE mobile = ? AND is_active = 1", [$m]) : null;
+}
+
+/** Is this email already used by another parent account? */
+function ppEmailTaken($email, $exceptParentId = 0)
+{
+    ppEmailEnsureSchema();
+    return (bool) getRecord("SELECT 1 FROM parents WHERE email = ? AND parent_id <> ?", [$email, (int) $exceptParentId]);
+}
+
+function ppMailReady()
+{
+    require_once __DIR__ . '/mail_config.php';
+    return mailConfigProblem(mailConfig()) === null;
+}
+
+/** Email in the Parent Portal look (short, plain). */
+function ppMailHtml($title, $bodyHtml)
+{
+    return '<div style="font-family:Segoe UI,Arial,sans-serif;max-width:520px;margin:0 auto;color:#14213D">'
+        . '<div style="background:#14213D;color:#fff;padding:16px 20px;border-radius:12px 12px 0 0;font-weight:700;font-size:18px">EGradePro · Parent Portal</div>'
+        . '<div style="border:1px solid #E3E9F2;border-top:0;border-radius:0 0 12px 12px;padding:22px 20px">'
+        . '<h2 style="margin:0 0 12px;font-size:20px">' . $title . '</h2>' . $bodyHtml
+        . '<p style="color:#52607A;font-size:13px;margin-top:22px">Hindi hihingi ang school ng code o PIN ninyo. / The school will never ask for your code or PIN.</p></div></div>';
+}
+
+function ppMailSend($to, $subject, $title, $bodyHtml)
+{
+    require_once __DIR__ . '/mail_config.php';
+    $r = mailSendOne($to, $subject, ppMailHtml($title, $bodyHtml));
+    if (!$r['success']) error_log('Parent Portal email failed: ' . ($r['error'] ?? ''));
+    return $r['success'];
+}
+
+/** Seconds before this target may get another code (0 = now). */
+function ppCodeWait($target)
+{
+    ppEmailEnsureSchema();
+    $r = getRecord("SELECT TIMESTAMPDIFF(SECOND, MAX(created_at), NOW()) AS ago, SUM(created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)) AS hr FROM parent_email_codes WHERE target = ?", [$target]);
     if (!$r || $r['ago'] === null) return 0;
     if ((int) $r['hr'] >= PP_OTP_PER_HOUR) {
-        $first = getRecord("SELECT TIMESTAMPDIFF(SECOND, NOW(), DATE_ADD(MIN(created_at), INTERVAL 1 HOUR)) AS s FROM (SELECT created_at FROM parent_pin_otps WHERE mobile = ? AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR) ORDER BY created_at DESC LIMIT " . (int) PP_OTP_PER_HOUR . ") t", [$mobile]);
+        $first = getRecord("SELECT TIMESTAMPDIFF(SECOND, NOW(), DATE_ADD(MIN(created_at), INTERVAL 1 HOUR)) AS s FROM (SELECT created_at FROM parent_email_codes WHERE target = ? AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR) ORDER BY created_at DESC LIMIT " . (int) PP_OTP_PER_HOUR . ") t", [$target]);
         return max(1, (int) ($first['s'] ?? 60));
     }
     return max(0, PP_OTP_GAP - (int) $r['ago']);
 }
 
 /**
- * Send a new code to this number (only when it has an active account).
- * @return array{ok:bool, wait:int}
+ * Make a 6-digit code and email it. $email null = nothing is sent (unknown
+ * account), but the request still counts toward the limits.
+ * @return array{ok:bool, wait:int, sent?:bool}
  */
-function ppOtpRequest($mobile)
+function ppCodeSend($purpose, $target, $email, $parentId = null)
 {
-    ppOtpEnsureSchema();
-    $wait = ppOtpWait($mobile);
+    ppEmailEnsureSchema();
+    $target = strtolower(trim((string) $target));
+    $wait = ppCodeWait($target);
     if ($wait > 0) return ['ok' => false, 'wait' => $wait];
-    executeQuery("UPDATE parent_pin_otps SET used_at = NOW() WHERE mobile = ? AND used_at IS NULL", [$mobile]);   // one code at a time
-    $p = getRecord("SELECT parent_id, lang FROM parents WHERE mobile = ? AND is_active = 1", [$mobile]);
-    $code = $p ? sprintf('%06d', random_int(0, 999999)) : null;
-    executeQuery("INSERT INTO parent_pin_otps (mobile, parent_id, code_hash, expires_at) VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL " . (int) PP_OTP_MINUTES . " MINUTE))",
-                 [$mobile, $p ? (int) $p['parent_id'] : null, $code ? password_hash($code, PASSWORD_DEFAULT) : null]);
-    if ($p) {
-        // Plain letters only and no link: one SMS part, and the networks deliver it.
-        $text = ppLang() === 'en'
-            ? 'EGradePro: Your code for a new Parent Portal PIN is ' . $code . '. Valid for ' . PP_OTP_MINUTES . ' minutes. Do not give it to anyone, even school staff.'
-            : 'EGradePro: Ang code mo para sa bagong PIN ng Parent Portal ay ' . $code . '. Valid ng ' . PP_OTP_MINUTES . ' minuto. Huwag itong ibigay kaninuman, kahit sa school staff.';
-        smsSend($mobile, $text, ['kind' => 'otp']);
-        logActivity(null, 'parents', 'Parent PIN code sent', 'Forgot PIN code texted to ' . smsMask($mobile));
-    } else {
-        logActivity(null, 'student', 'Failed login', 'Parent Forgot PIN for a number without an account (' . smsMask($mobile) . ')');
+    executeQuery("UPDATE parent_email_codes SET used_at = NOW() WHERE target = ? AND used_at IS NULL", [$target]);   // one code at a time
+    $code = $email ? sprintf('%06d', random_int(0, 999999)) : null;
+    executeQuery("INSERT INTO parent_email_codes (purpose, target, email, parent_id, code_hash, expires_at) VALUES (?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL " . (int) PP_OTP_MINUTES . " MINUTE))",
+                 [$purpose, $target, $email ?: null, $parentId ?: null, $code ? password_hash($code, PASSWORD_DEFAULT) : null]);
+    $sent = false;
+    if ($email) {
+        $en = ppLang() === 'en';
+        $what = [
+            'reset' => $en ? 'to choose a new PIN' : 'para gumawa ng bagong PIN',
+            'setup' => $en ? 'to confirm this email for your Parent Portal account' : 'para kumpirmahin ang email na ito sa inyong Parent Portal account',
+            'change' => $en ? 'to confirm your new email' : 'para kumpirmahin ang bagong email',
+        ][$purpose] ?? '';
+        $sent = ppMailSend($email,
+            ($en ? 'EGradePro Parent Portal code: ' : 'EGradePro Parent Portal code: ') . $code,
+            $en ? 'Your code' : 'Ang inyong code',
+            '<p style="font-size:15px">' . ($en ? 'Use this code ' : 'Gamitin ang code na ito ') . $what . ':</p>'
+            . '<div style="font-size:34px;font-weight:800;letter-spacing:8px;background:#F1F5F9;border-radius:12px;padding:14px;text-align:center;margin:10px 0">' . $code . '</div>'
+            . '<p style="font-size:15px">' . sprintf($en ? 'It works for %d minutes. If you did not ask for this, ignore this email.' : 'Gagana ito sa loob ng %d minuto. Kung hindi kayo ang humingi nito, huwag pansinin ang email na ito.', PP_OTP_MINUTES) . '</p>');
+        logActivity(null, 'parents', 'Parent email code', ucfirst($purpose) . ' code emailed to ' . ppMaskEmail($email) . ($sent ? '' : ' (NOT sent)'));
     }
-    return ['ok' => true, 'wait' => PP_OTP_GAP];
+    return ['ok' => true, 'wait' => PP_OTP_GAP, 'sent' => $sent];
 }
 
 /**
- * Check a typed code. On success returns the parent_id (the code is used up).
- * @return array{ok:bool, parent_id?:int, left?:int, dead?:bool}
+ * Check a typed code for this target. On success the code is used up.
+ * @return array{ok:bool, parent_id?:int, email?:string, left?:int, dead?:bool}
  */
-function ppOtpVerify($mobile, $code)
+function ppCodeVerify($purpose, $target, $code)
 {
-    ppOtpEnsureSchema();
-    $row = getRecord("SELECT * FROM parent_pin_otps WHERE mobile = ? AND used_at IS NULL AND expires_at > NOW() ORDER BY otp_id DESC LIMIT 1", [$mobile]);
+    ppEmailEnsureSchema();
+    $target = strtolower(trim((string) $target));
+    $row = getRecord("SELECT * FROM parent_email_codes WHERE target = ? AND purpose = ? AND used_at IS NULL AND expires_at > NOW() ORDER BY code_id DESC LIMIT 1", [$target, $purpose]);
     if (!$row) return ['ok' => false, 'dead' => true];
     if ($row['code_hash'] && preg_match('/^\d{6}$/', (string) $code) && password_verify((string) $code, $row['code_hash'])) {
-        executeQuery("UPDATE parent_pin_otps SET used_at = NOW() WHERE otp_id = ?", [(int) $row['otp_id']]);
-        return ['ok' => true, 'parent_id' => (int) $row['parent_id']];
+        executeQuery("UPDATE parent_email_codes SET used_at = NOW() WHERE code_id = ?", [(int) $row['code_id']]);
+        return ['ok' => true, 'parent_id' => (int) $row['parent_id'], 'email' => (string) $row['email']];
     }
     $tries = (int) $row['attempts'] + 1;
-    executeQuery("UPDATE parent_pin_otps SET attempts = ?, used_at = IF(? >= ?, NOW(), NULL) WHERE otp_id = ?", [$tries, $tries, PP_OTP_TRIES, (int) $row['otp_id']]);
-    logActivity(null, 'student', 'Failed login', 'Parent Forgot PIN: wrong code for ' . smsMask($mobile));
+    executeQuery("UPDATE parent_email_codes SET attempts = ?, used_at = IF(? >= ?, NOW(), NULL) WHERE code_id = ?", [$tries, $tries, PP_OTP_TRIES, (int) $row['code_id']]);
+    logActivity(null, 'student', 'Failed login', 'Parent Portal: wrong ' . $purpose . ' code');   // counts toward the per-device limit
     return ['ok' => false, 'left' => max(0, PP_OTP_TRIES - $tries), 'dead' => $tries >= PP_OTP_TRIES];
+}
+
+/** Save a checked email on an account (and tell the old address when it changes). */
+function ppSetEmail($parentId, $email)
+{
+    ppEmailEnsureSchema();
+    $old = getRecord("SELECT email FROM parents WHERE parent_id = ?", [(int) $parentId]);
+    try {
+        executeQuery("UPDATE parents SET email = ?, email_verified_at = NOW() WHERE parent_id = ?", [$email, (int) $parentId]);
+    } catch (\Throwable $e) {
+        return false;   // UNIQUE: taken meanwhile
+    }
+    if (!empty($old['email']) && $old['email'] !== $email) {
+        $en = ppLang() === 'en';
+        ppMailSend($old['email'], 'EGradePro Parent Portal: email changed', $en ? 'Your email was changed' : 'Napalitan ang inyong email',
+            '<p style="font-size:15px">' . sprintf($en ? 'Your Parent Portal account now uses %s. If you did not do this, contact the school right away.' : 'Ang Parent Portal account ninyo ay gumagamit na ng %s. Kung hindi kayo ang gumawa nito, makipag-ugnayan agad sa school.', htmlspecialchars(ppMaskEmail($email))) . '</p>');
+    }
+    logActivity(null, 'parents', 'Parent email saved', 'Parent #' . (int) $parentId . ': ' . ppMaskEmail($email));
+    return true;
+}
+
+/** "Your PIN was changed" notice (after Forgot PIN). */
+function ppMailPinChanged($email)
+{
+    if (!$email) return;
+    $en = ppLang() === 'en';
+    ppMailSend($email, 'EGradePro Parent Portal: PIN changed', $en ? 'Your PIN was changed' : 'Napalitan ang inyong PIN',
+        '<p style="font-size:15px">' . ($en ? 'The PIN of your Parent Portal account was changed on ' : 'Napalitan ang PIN ng inyong Parent Portal account noong ') . date('M j, Y g:i A') . '. '
+        . ($en ? 'If you did not do this, contact the school right away.' : 'Kung hindi kayo ang gumawa nito, makipag-ugnayan agad sa school.') . '</p>');
 }
 
 // ---------------------------------------------------------------- data (same sources as the Student Portal)

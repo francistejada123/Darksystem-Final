@@ -14,11 +14,12 @@ if (!empty($_SESSION['parent_id']) && ($_SESSION['role'] ?? '') === 'Parent') {
 }
 $en = ppLang() === 'en';
 $error = '';
-$mobile_v = '';
+$login_v = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $mobile_v = smsNormalizeNumber($_POST['mobile'] ?? '') ?: preg_replace('/[^\d+]/', '', (string) ($_POST['mobile'] ?? ''));
+    // Mobile number or email (has "@") + PIN.
+    $login_v = mb_substr(trim((string) ($_POST['login'] ?? '')), 0, 120);
     $pin = (string) ($_POST['pin'] ?? '');
-    $p = $mobile_v !== '' ? getRecord("SELECT * FROM parents WHERE mobile = ? AND is_active = 1", [$mobile_v]) : null;
+    $p = $login_v !== '' ? ppFindParentByLogin($login_v) : null;
     if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
         $error = $en ? 'Your session expired. Please try again.' : 'Nag-expire ang session. Pakisubukan ulit.';
     } elseif (isStudentIpRateLimited()) {
@@ -26,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($p && ($m = ppLockedMinutes($p)) > 0) {
         $error = sprintf(ppT('locked'), $m);
     } elseif (!$p || !ppCheckPin($p, $pin)) {
-        logActivity(null, 'student', 'Failed login', 'Parent Portal: wrong number or PIN (' . smsMask($mobile_v) . ')');
+        logActivity(null, 'student', 'Failed login', 'Parent Portal: wrong number/email or PIN (' . (strpos($login_v, '@') !== false ? ppMaskEmail(ppNormEmail($login_v)) : smsMask($login_v)) . ')');
         $error = ppT('wrong_login');
     } else {
         ppStartSession($p);
@@ -42,9 +43,9 @@ ppAuthStart('fa-user-lock', ppT('login_title'), ppT('login_sub'));
                 <?php if ($error): ?><div class="pp-alert t-bad"><i class="fas fa-circle-exclamation me-1"></i><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
                 <form method="POST" autocomplete="on">
                     <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
-                    <div class="mb-3"><label class="pp-lbl" for="m"><?php echo ppT('mobile'); ?></label>
-                        <div class="pp-field"><i class="fas fa-mobile-screen-button"></i>
-                            <input type="tel" id="m" class="form-control" name="mobile" inputmode="numeric" maxlength="13" placeholder="09XXXXXXXXX" value="<?php echo htmlspecialchars($mobile_v); ?>" required autocomplete="username"></div></div>
+                    <div class="mb-3"><label class="pp-lbl" for="m"><?php echo ppT('login_id'); ?></label>
+                        <div class="pp-field"><i class="fas fa-user" id="mIcon"></i>
+                            <input type="text" id="m" class="form-control" name="login" maxlength="120" placeholder="09XXXXXXXXX / name@gmail.com" value="<?php echo htmlspecialchars($login_v); ?>" required autocomplete="username" autocapitalize="none" spellcheck="false"></div></div>
                     <div class="mb-4"><label class="pp-lbl" for="p"><?php echo ppT('pin'); ?></label>
                         <?php ppPinField('pin', '••••••', 'current-password', 'p'); ?></div>
                     <button class="btn btn-primary w-100 btn-go"><?php echo ppT('login'); ?> <i class="fas fa-arrow-right ms-1"></i></button>
@@ -57,4 +58,6 @@ ppAuthStart('fa-user-lock', ppT('login_title'), ppT('login_sub'));
                 <p class="pp-note pp-ios-tip mt-2"><?php echo $en ? 'iPhone: tap Share, then "Add to Home Screen".' : 'iPhone: pindutin ang Share, tapos "Add to Home Screen".'; ?></p>
                 <div class="divider"></div>
                 <p class="foot mb-0"><?php echo ppT('first_time'); ?> <a href="setup.php"><?php echo ppT('setup'); ?></a></p>
-<?php ppAuthEnd();
+<?php ppAuthEnd('', '<script>(function () { var m = document.getElementById("m"), ic = document.getElementById("mIcon");
+    function sync() { ic.className = "fas " + (m.value.indexOf("@") >= 0 ? "fa-envelope" : (/^[\d+]/.test(m.value) ? "fa-mobile-screen-button" : "fa-user")); }
+    m.addEventListener("input", sync); sync(); })();</script>');

@@ -18,9 +18,13 @@ if (($_GET['welcome'] ?? '') !== ''): ?>
     <div class="pp-alert t-ok"><i class="fas fa-circle-check me-1"></i><?php
         echo $_GET['welcome'] === 'reset' ? ($en ? 'Your new PIN is set.' : 'Nai-set na ang bagong PIN.')
            : ($_GET['welcome'] === 'added' ? ($en ? 'Your child was added to your account.' : 'Naidagdag na ang anak sa inyong account.')
-           : ($en ? 'Welcome! Your Parent Portal is ready. Next time, sign in with your mobile number and PIN.' : 'Maligayang pagdating! Handa na ang inyong Parent Portal. Sa susunod, mag-login gamit ang cellphone number at PIN.')); ?></div>
+           : ($en ? 'Welcome! Your Parent Portal is ready. Next time, sign in with your mobile number or email and your PIN.' : 'Maligayang pagdating! Handa na ang inyong Parent Portal. Sa susunod, mag-login gamit ang cellphone number o email at ang PIN.')); ?></div>
     <button type="button" class="btn btn-primary pp-install mb-3" style="height:50px;font-weight:800"><i class="fas fa-mobile-screen me-1"></i> <?php echo ppT('add_home'); ?></button>
     <p class="pp-note pp-ios-tip mb-3"><?php echo $en ? 'iPhone: tap Share, then "Add to Home Screen".' : 'iPhone: pindutin ang Share, tapos "Add to Home Screen".'; ?></p>
+<?php endif;
+
+if (empty($parent['email'])): ?>
+    <a href="account.php" class="pp-alert t-warn d-block text-decoration-none"><i class="fas fa-envelope me-1"></i><?php echo $en ? 'Add your email so you can reset your PIN if you forget it (and sign in with it).' : 'Magdagdag ng email para ma-reset ang PIN kung makalimutan (at magamit sa pag-login).'; ?> <b><?php echo $en ? 'Add now' : 'Idagdag'; ?> →</b></a>
 <?php endif;
 
 if (!$sel): ?>

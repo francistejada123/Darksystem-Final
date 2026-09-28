@@ -92,6 +92,14 @@ function ppHead($title, $auth = false)
         .pp-nav a { flex: 1; text-align: center; text-decoration: none; color: #64748B; font-size: 13.5px; font-weight: 700; padding: 6px 0; border-radius: 12px; }
         .pp-nav a i { display: block; font-size: 20px; margin-bottom: 3px; }
         .pp-nav a.on { color: var(--pp-blue); background: var(--pp-soft); }
+        .otp { display: flex; gap: 8px; justify-content: center; margin-bottom: 8px; }
+        .otp input { width: 50px; height: 58px; text-align: center; font-size: 24px; font-weight: 800; padding: 0; }
+        @media (max-width: 400px) { .otp { gap: 6px; } .otp input { width: 42px; height: 52px; font-size: 21px; } }
+        .pp-steps { display: flex; justify-content: center; gap: 6px; margin: -8px 0 18px; }
+        .pp-steps span { width: 34px; height: 5px; border-radius: 3px; background: var(--pp-line); }
+        .pp-steps span.on { background: linear-gradient(90deg, #1D4ED8, #3B82F6); }
+        .linkbtn { background: none; border: 0; padding: 0; color: var(--pp-blue); font-weight: 600; font-size: 15px; }
+        .linkbtn:disabled { color: #94A3B8; }
         .pp-install { display: none; width: 100%; }
         .pp-ios-tip { display: none; }
         @media (min-width: 760px) {
@@ -162,6 +170,7 @@ function ppBar(array $parent = null)
     <div class="t">EGradePro<small><?php echo ppT('portal'); ?></small></div>
     <div class="r">
         <a class="lang" href="?<?php echo htmlspecialchars(http_build_query($q)); ?>" title="Tagalog / English"><i class="fas fa-globe"></i><?php echo $other === 'en' ? 'English' : 'Tagalog'; ?></a>
+        <?php if ($parent): ?><a class="lang" href="account.php" title="<?php echo ppT('account'); ?>" aria-label="<?php echo ppT('account'); ?>"><i class="fas fa-user-gear"></i></a><?php endif; ?>
         <?php if ($parent): ?><a class="lang" href="logout.php" title="<?php echo ppT('logout'); ?>" aria-label="<?php echo ppT('logout'); ?>"><i class="fas fa-right-from-bracket"></i></a><?php endif; ?>
     </div>
 </header>
@@ -172,7 +181,7 @@ function ppTop(array $parent = null, array $kids = [], array $sel = null)
 {
     ppBar($parent);
     $page = basename($_SERVER['SCRIPT_NAME'] ?? '', '.php');
-    $icons = ['grades' => 'fa-chart-line', 'attendance' => 'fa-calendar-check', 'tasks' => 'fa-clipboard-list', 'updates' => 'fa-bullhorn'];
+    $icons = ['grades' => 'fa-chart-line', 'attendance' => 'fa-calendar-check', 'tasks' => 'fa-clipboard-list', 'updates' => 'fa-bullhorn', 'account' => 'fa-user-gear'];
     ?>
 <main class="pp-wrap">
 <?php if ($sel): ?>
@@ -248,6 +257,40 @@ function ppAuthEnd($under = '', $script = '')
 <?php
 }
 
+/** Progress bars for a multi-step card (e.g. 2 of 3). */
+function ppSteps($n, $of = 3)
+{
+    echo '<div class="pp-steps" aria-hidden="true">';
+    for ($i = 1; $i <= $of; $i++) echo '<span class="' . ($i <= $n ? 'on' : '') . '"></span>';
+    echo '</div>';
+}
+
+/**
+ * The 6-box code form (+ "Send a new code" with its countdown). The boxes fill
+ * a hidden "code" field; the 6th digit submits. $backHref/$backText: the other link.
+ */
+function ppCodeForm($csrf, $verifyAction, $resendAction, $wait, $backHref, $backText, $btnText = '')
+{
+    $en = ppLang() === 'en';
+    ?>
+    <form method="POST" class="pp-code-form" autocomplete="off">
+        <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
+        <input type="hidden" name="action" value="<?php echo $verifyAction; ?>">
+        <input type="hidden" name="code" class="pp-code-val">
+        <div class="otp" aria-label="<?php echo $en ? '6-digit code' : '6-digit na code'; ?>">
+            <?php for ($i = 0; $i < 6; $i++): ?><input class="form-control" type="text" inputmode="numeric" <?php echo $i === 0 ? 'autocomplete="one-time-code" autofocus' : ''; ?> aria-label="<?php echo $i + 1; ?>"><?php endfor; ?>
+        </div>
+        <button class="btn btn-primary w-100 btn-go mt-3"><?php echo $btnText !== '' ? $btnText : ($en ? 'Verify code' : 'I-verify ang code'); ?> <i class="fas fa-arrow-right ms-1"></i></button>
+    </form>
+    <form method="POST" class="links">
+        <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
+        <input type="hidden" name="action" value="<?php echo $resendAction; ?>">
+        <a href="<?php echo htmlspecialchars($backHref); ?>"><?php echo $backText; ?></a>
+        <button class="linkbtn pp-resend" data-wait="<?php echo (int) $wait; ?>" <?php echo $wait > 0 ? 'disabled' : ''; ?>><?php echo $en ? 'Send a new code' : 'Magpadala ng bagong code'; ?><span class="pp-resend-t"></span></button>
+    </form>
+<?php
+}
+
 /** A PIN box with the lock icon and the show/hide eye. */
 function ppPinField($name, $placeholder = '••••••', $autocomplete = 'current-password', $id = '')
 {
@@ -264,7 +307,7 @@ function ppBottom($active)
     $items = [['index.php', 'home', 'fa-house'], ['grades.php', 'grades', 'fa-chart-line'], ['attendance.php', 'attendance', 'fa-calendar-check'],
               ['tasks.php', 'tasks', 'fa-clipboard-list'], ['updates.php', 'updates', 'fa-bullhorn']];
     ?>
-    <p class="pp-note"><i class="fas fa-eye me-1"></i><?php echo ppT('read_only'); ?></p>
+    <?php if ($active !== 'account'): ?><p class="pp-note"><i class="fas fa-eye me-1"></i><?php echo ppT('read_only'); ?></p><?php endif; ?>
 </main>
 <nav class="pp-nav" aria-label="Menu">
     <?php foreach ($items as $it): ?>
@@ -301,6 +344,33 @@ function ppInstallScript()
         var show = inp.type === 'password';
         inp.type = show ? 'text' : 'password';
         eye.querySelector('i').className = 'fas ' + (show ? 'fa-eye-slash' : 'fa-eye');
+    });
+    // 6-box code forms: type/paste/autofill moves along; the 6th digit submits.
+    document.querySelectorAll('.pp-code-form').forEach(function (form) {
+        var boxes = [].slice.call(form.querySelectorAll('.otp input')), val = form.querySelector('.pp-code-val');
+        function code() { return boxes.map(function (b) { return b.value; }).join(''); }
+        function fill(start, digits) {
+            for (var i = 0; i < digits.length && start + i < boxes.length; i++) boxes[start + i].value = digits[i];
+            boxes[Math.min(start + digits.length, boxes.length - 1)].focus();
+            if (code().length === 6) { val.value = code(); form.submit(); }
+        }
+        boxes.forEach(function (b, i) {
+            b.addEventListener('input', function () { var d = this.value.replace(/\D/g, ''); this.value = ''; if (d) fill(i, d.split('')); });
+            b.addEventListener('keydown', function (e) { if (e.key === 'Backspace' && !this.value && i > 0) { boxes[i - 1].value = ''; boxes[i - 1].focus(); } });
+            b.addEventListener('paste', function (e) { var d = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6); if (d) { e.preventDefault(); fill(0, d.split('')); } });
+        });
+        form.addEventListener('submit', function (e) {
+            if (code().length !== 6) { e.preventDefault(); boxes[code().length].focus(); return; }
+            val.value = code();
+        });
+    });
+    // "Send a new code" unlocks after the wait.
+    document.querySelectorAll('.pp-resend').forEach(function (rb) {
+        var rt = rb.querySelector('.pp-resend-t'), left = parseInt(rb.getAttribute('data-wait'), 10) || 0;
+        (function tick() {
+            if (left <= 0) { rb.disabled = false; rt.textContent = ''; return; }
+            rt.textContent = ' (' + left + 's)'; left--; setTimeout(tick, 1000);
+        })();
     });
     var ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.navigator.standalone;
     if (ios) document.querySelectorAll('.pp-ios-tip').forEach(function (t) { t.style.display = 'block'; });

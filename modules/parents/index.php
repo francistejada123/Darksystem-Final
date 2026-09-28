@@ -19,8 +19,9 @@ if ($q !== '') {
     $like = '%' . $q . '%';
     $params = [$like, '%' . preg_replace('/\D/', '', $q) . '%', $like, $like, $like];
 }
+ppEmailEnsureSchema();
 $rows = getRecords(
-    "SELECT p.parent_id, p.mobile, p.full_name, p.last_login, p.created_at, p.is_active,
+    "SELECT p.parent_id, p.mobile, p.email, p.email_verified_at, p.full_name, p.last_login, p.created_at, p.is_active,
             ps.relationship, ps.linked_via, s.student_id, s.first_name, s.last_name, s.grade_level
        FROM parents p
        JOIN parent_students ps ON ps.parent_id = p.parent_id
@@ -45,7 +46,7 @@ include __DIR__ . '/../../includes/header.php';
 </style>
 <div class="pl" style="padding:24px">
     <h4><i class="fas fa-people-roof me-2"></i>Parents</h4>
-    <p class="text-muted" style="font-size:15px">Parent Portal accounts (mobile number + PIN) and the children they can see. Set up from the student record (Send SMS / Print Slip).</p>
+    <p class="text-muted" style="font-size:15px">Parent Portal accounts (mobile number or email + PIN; the email also gets the Forgot PIN code) and the children they can see. Set up from the student record (Send SMS / Print Slip).</p>
     <div class="stats">
         <div class="stat"><b><?php echo (int) $totals['parents']; ?></b>Parent accounts</div>
         <div class="stat"><b><?php echo (int) $totals['kids']; ?></b>Students with a linked parent</div>
@@ -54,12 +55,13 @@ include __DIR__ . '/../../includes/header.php';
     <form class="d-flex gap-2 mb-3"><input class="form-control" name="q" value="<?php echo htmlspecialchars($q); ?>" placeholder="Search parent, mobile, student or LRN"><button class="btn btn-dark">Search</button></form>
     <div class="card-x"><div style="overflow-x:auto">
         <table>
-            <tr><th>Parent</th><th>Mobile</th><th>Child</th><th>Linked via</th><th>Last sign-in</th><th></th></tr>
-            <?php if (!$rows): ?><tr><td colspan="6" class="text-center text-muted py-4">No parent accounts yet.</td></tr><?php endif; ?>
+            <tr><th>Parent</th><th>Mobile</th><th>Email</th><th>Child</th><th>Linked via</th><th>Last sign-in</th><th></th></tr>
+            <?php if (!$rows): ?><tr><td colspan="7" class="text-center text-muted py-4">No parent accounts yet.</td></tr><?php endif; ?>
             <?php foreach ($rows as $r): ?>
                 <tr>
                     <td><?php echo htmlspecialchars($r['full_name'] ?: '—'); ?><small><?php echo htmlspecialchars($r['relationship'] ?: ''); ?></small></td>
                     <td><?php echo htmlspecialchars(smsMask($r['mobile'])); ?></td>
+                    <td><?php echo !empty($r['email']) ? '<span class="badge bg-success">Yes</span><small>' . htmlspecialchars(ppMaskEmail($r['email'])) . '</small>' : '<span class="badge bg-secondary">None</span>'; ?></td>
                     <td><?php echo htmlspecialchars($r['last_name'] . ', ' . $r['first_name']); ?><small><?php echo htmlspecialchars($r['grade_level']); ?></small></td>
                     <td><?php echo htmlspecialchars(ucfirst($r['linked_via'] ?: '—')); ?></td>
                     <td><?php echo $r['last_login'] ? date('M j, Y g:i A', strtotime($r['last_login'])) : 'Never'; ?></td>
