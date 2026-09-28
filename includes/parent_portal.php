@@ -321,6 +321,102 @@ function ppRequireParent()
     return [$parent, $kids, $sel];
 }
 
+// ---------------------------------------------------------------- forgot PIN (6-digit code by SMS)
+// The parent types their number, gets a 6-digit code by text (no link: the
+// networks block texts with links), types it, then chooses a new PIN.
+// Requests for numbers without an account are recorded too (no code, no
+// text), so the screen and the limits are the same either way.
+const PP_OTP_MINUTES = 10;    // a code works this long
+const PP_OTP_TRIES = 5;       // wrong tries before the code stops working
+const PP_OTP_GAP = 60;        // seconds between two codes for one number
+const PP_OTP_PER_HOUR = 3;    // codes per number per hour
+
+function ppOtpEnsureSchema()
+{
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    if (schemaIsReady('parent_pin_otp_v1')) return;
+    try {
+        executeQuery(
+            "CREATE TABLE IF NOT EXISTS parent_pin_otps (
+                otp_id INT AUTO_INCREMENT PRIMARY KEY,
+                mobile VARCHAR(11) NOT NULL,
+                parent_id INT NULL COMMENT 'NULL when the number has no account (nothing was texted)',
+                code_hash VARCHAR(255) NULL COMMENT '6-digit code (hash only)',
+                attempts INT NOT NULL DEFAULT 0,
+                expires_at DATETIME NOT NULL,
+                used_at DATETIME NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                KEY idx_otp_mobile (mobile, created_at),
+                CONSTRAINT fk_otp_parent FOREIGN KEY (parent_id) REFERENCES parents (parent_id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
+        );
+        schemaMarkReady('parent_pin_otp_v1');
+    } catch (\Throwable $e) {
+        error_log('ppOtpEnsureSchema: ' . $e->getMessage());
+    }
+}
+
+/** Seconds before this number may get another code (0 = now). */
+function ppOtpWait($mobile)
+{
+    ppOtpEnsureSchema();
+    $r = getRecord("SELECT TIMESTAMPDIFF(SECOND, MAX(created_at), NOW()) AS ago, SUM(created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)) AS hr FROM parent_pin_otps WHERE mobile = ?", [$mobile]);
+    if (!$r || $r['ago'] === null) return 0;
+    if ((int) $r['hr'] >= PP_OTP_PER_HOUR) {
+        $first = getRecord("SELECT TIMESTAMPDIFF(SECOND, NOW(), DATE_ADD(MIN(created_at), INTERVAL 1 HOUR)) AS s FROM (SELECT created_at FROM parent_pin_otps WHERE mobile = ? AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR) ORDER BY created_at DESC LIMIT " . (int) PP_OTP_PER_HOUR . ") t", [$mobile]);
+        return max(1, (int) ($first['s'] ?? 60));
+    }
+    return max(0, PP_OTP_GAP - (int) $r['ago']);
+}
+
+/**
+ * Send a new code to this number (only when it has an active account).
+ * @return array{ok:bool, wait:int}
+ */
+function ppOtpRequest($mobile)
+{
+    ppOtpEnsureSchema();
+    $wait = ppOtpWait($mobile);
+    if ($wait > 0) return ['ok' => false, 'wait' => $wait];
+    executeQuery("UPDATE parent_pin_otps SET used_at = NOW() WHERE mobile = ? AND used_at IS NULL", [$mobile]);   // one code at a time
+    $p = getRecord("SELECT parent_id, lang FROM parents WHERE mobile = ? AND is_active = 1", [$mobile]);
+    $code = $p ? sprintf('%06d', random_int(0, 999999)) : null;
+    executeQuery("INSERT INTO parent_pin_otps (mobile, parent_id, code_hash, expires_at) VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL " . (int) PP_OTP_MINUTES . " MINUTE))",
+                 [$mobile, $p ? (int) $p['parent_id'] : null, $code ? password_hash($code, PASSWORD_DEFAULT) : null]);
+    if ($p) {
+        // Plain letters only and no link: one SMS part, and the networks deliver it.
+        $text = ppLang() === 'en'
+            ? 'EGradePro: Your code for a new Parent Portal PIN is ' . $code . '. Valid for ' . PP_OTP_MINUTES . ' minutes. Do not give it to anyone, even school staff.'
+            : 'EGradePro: Ang code mo para sa bagong PIN ng Parent Portal ay ' . $code . '. Valid ng ' . PP_OTP_MINUTES . ' minuto. Huwag itong ibigay kaninuman, kahit sa school staff.';
+        smsSend($mobile, $text, ['kind' => 'otp']);
+        logActivity(null, 'parents', 'Parent PIN code sent', 'Forgot PIN code texted to ' . smsMask($mobile));
+    } else {
+        logActivity(null, 'student', 'Failed login', 'Parent Forgot PIN for a number without an account (' . smsMask($mobile) . ')');
+    }
+    return ['ok' => true, 'wait' => PP_OTP_GAP];
+}
+
+/**
+ * Check a typed code. On success returns the parent_id (the code is used up).
+ * @return array{ok:bool, parent_id?:int, left?:int, dead?:bool}
+ */
+function ppOtpVerify($mobile, $code)
+{
+    ppOtpEnsureSchema();
+    $row = getRecord("SELECT * FROM parent_pin_otps WHERE mobile = ? AND used_at IS NULL AND expires_at > NOW() ORDER BY otp_id DESC LIMIT 1", [$mobile]);
+    if (!$row) return ['ok' => false, 'dead' => true];
+    if ($row['code_hash'] && preg_match('/^\d{6}$/', (string) $code) && password_verify((string) $code, $row['code_hash'])) {
+        executeQuery("UPDATE parent_pin_otps SET used_at = NOW() WHERE otp_id = ?", [(int) $row['otp_id']]);
+        return ['ok' => true, 'parent_id' => (int) $row['parent_id']];
+    }
+    $tries = (int) $row['attempts'] + 1;
+    executeQuery("UPDATE parent_pin_otps SET attempts = ?, used_at = IF(? >= ?, NOW(), NULL) WHERE otp_id = ?", [$tries, $tries, PP_OTP_TRIES, (int) $row['otp_id']]);
+    logActivity(null, 'student', 'Failed login', 'Parent Forgot PIN: wrong code for ' . smsMask($mobile));
+    return ['ok' => false, 'left' => max(0, PP_OTP_TRIES - $tries), 'dead' => $tries >= PP_OTP_TRIES];
+}
+
 // ---------------------------------------------------------------- data (same sources as the Student Portal)
 /** Encoded grades of a child this school year: [term => [rows]], plus the average. */
 function ppGrades($studentId)

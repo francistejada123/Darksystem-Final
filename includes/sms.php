@@ -102,7 +102,7 @@ function smsReady()
 /** Is this kind of text switched on in Settings > SMS? (welcome and absent are on by default) */
 function smsKindOn($kind)
 {
-    if (in_array($kind, ['test', 'manual'], true)) return true;
+    if (in_array($kind, ['test', 'manual', 'otp'], true)) return true;   // otp: Forgot PIN codes
     $r = getRecord("SELECT setting_value FROM system_settings WHERE setting_key = ?", ['sms_on_' . $kind]);
     return $r ? $r['setting_value'] === '1' : in_array($kind, ['welcome', 'absent'], true);
 }
@@ -186,7 +186,7 @@ function smsSend($to, $message, array $opts = [])
     try {
         executeQuery(
             "INSERT INTO sms_messages (to_number, message, kind, student_id, dedupe_key, provider, status, error, parts, created_by) VALUES (?,?,?,?,?,?,?,?,?,?)",
-            [$num, preg_replace(['/c=[A-Za-z0-9]{8}/', '/Code: [A-Z0-9]{8}/'], ['c=••••••••', 'Code: ••••••••'], $message),   // setup codes are never stored
+            [$num, preg_replace(array_merge(['/c=[A-Za-z0-9]{8}/', '/Code: [A-Z0-9]{8}/'], $kind === 'otp' ? ['/\b\d{6}\b/'] : []), ['c=••••••••', 'Code: ••••••••', '••••••'], $message),   // setup / PIN codes are never stored
              $kind, $opts['student_id'] ?? null, $status === 'Sent' ? $dedupe : null, $p['provider'] ?: null, $status,
              $error ? mb_substr($error, 0, 255) : null, smsParts($message), $opts['created_by'] ?? null]
         );
