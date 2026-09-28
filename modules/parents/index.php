@@ -39,9 +39,9 @@ include __DIR__ . '/../../includes/header.php';
     .pl .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
     .pl .stat b { font-size: 26px; display: block; }
     .pl table { width: 100%; border-collapse: collapse; }
-    .pl th { background: var(--surface-hover); padding: 12px 16px; font-size: 12.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); text-align: left; }
+    .pl th { background: var(--surface-hover); padding: 12px 16px; font-size: 14px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); text-align: left; }
     .pl td { padding: 13px 16px; border-top: 1px solid var(--border-soft); font-size: 15px; }
-    .pl td small { display: block; color: var(--text-muted); font-size: 13px; }
+    .pl td small { display: block; color: var(--text-muted); font-size: 14.5px; }
 </style>
 <div class="pl" style="padding:24px">
     <h4><i class="fas fa-people-roof me-2"></i>Parents</h4>

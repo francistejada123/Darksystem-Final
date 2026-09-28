@@ -42,12 +42,12 @@ include '../../includes/header.php';
 
 <style>
     .del-page h4 { font-size: 24px; }
-    .del-page p.small { font-size: 14.5px !important; }
+    .del-page p.small { font-size: 15.5px !important; }
     .del-page table td { font-size: 15px; vertical-align: middle; }
-    .del-page table th { font-size: 12.5px; }
+    .del-page table th { font-size: 14px; }
     .del-row-name { font-weight: 600; color: var(--ink, #0F1A3C); }
-    .del-row-ref { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--text-muted, #6b7280); }
-    .del-action-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 13.5px; font-weight: 600; padding: 7px 14px; border-radius: 8px; margin-bottom: 4px; text-decoration: none; width: 100%; }
+    .del-row-ref { font-family: 'IBM Plex Mono', monospace; font-size: 14.5px; color: var(--text-muted, #6b7280); }
+    .del-action-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 15px; font-weight: 600; padding: 7px 14px; border-radius: 8px; margin-bottom: 4px; text-decoration: none; width: 100%; }
     .del-action-restore { background: #EAF7F1; color: #1E8E5A; border: 1px solid #BEE3CE; }
     .del-action-restore:hover { background: #1E8E5A; color: #fff; }
     .del-action-forever { background: #FDEEEE; color: #B3261E; border: 1px solid #F5C6C6; }

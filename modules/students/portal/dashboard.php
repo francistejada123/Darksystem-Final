@@ -198,14 +198,14 @@ $sp_att = spdAttendance($student_id, $enrollment['section_id'] ?? null);
         }
         .sidebar .logo img { height: 36px; width: 36px; border-radius: 8px; object-fit: contain; }
         .sidebar .logo span { color: #fff; font-size: 15px; font-weight: 700; letter-spacing: 0.02em; line-height: 1.3; }
-        .sidebar .logo small { display: block; font-size: 9px; font-weight: 500; letter-spacing: 0.1em; color: rgba(255,255,255,0.4); }
+        .sidebar .logo small { display: block; font-size: 11px; font-weight: 500; letter-spacing: 0.1em; color: rgba(255,255,255,0.4); }
 
         .sidebar .nav { padding: 14px 0; flex: 1; }
         .sidebar .nav-link {
             display: flex; align-items: center; gap: 10px;
             padding: 12px 20px;
             color: rgba(255,255,255,0.55);
-            font-size: 14px; font-weight: 500;
+            font-size: 15px; font-weight: 500;
             text-decoration: none;
             transition: all 0.15s ease;
             border-left: 3px solid transparent;
@@ -217,7 +217,7 @@ $sp_att = spdAttendance($student_id, $enrollment['section_id'] ?? null);
         .sidebar .nav-link.text-danger:hover { color: #C94A4A; background: rgba(201,74,74,0.08); }
         .sidebar .nav-divider { height: 1px; background: rgba(255,255,255,0.08); margin: 8px 20px; }
         .sidebar-footer { padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.08); }
-        .sidebar-footer small { color: rgba(255,255,255,0.3); font-size: 11px; }
+        .sidebar-footer small { color: rgba(255,255,255,0.3); font-size: 12.5px; }
 
         .main-content { padding: 24px 32px; min-height: 100vh; }
 
@@ -232,17 +232,17 @@ $sp_att = spdAttendance($student_id, $enrollment['section_id'] ?? null);
         }
         .topbar-avatar-placeholder { width: 44px; height: 44px; border-radius: 50%; background: #f1f5f9; display: flex; align-items: center; justify-content: center; color: var(--portal-gray); font-size: 20px; }
         .topbar h4 { margin: 0; font-size: 20px; font-weight: 700; color: var(--portal-primary); }
-        .topbar small { color: var(--portal-gray); font-size: 12px; }
+        .topbar small { color: var(--portal-gray); font-size: 13.5px; }
         .topbar-right { display: flex; align-items: center; gap: 10px; }
         .btn-portal-logout {
-            padding: 7px 16px; border-radius: 6px; font-size: 12px; font-weight: 500;
+            padding: 7px 16px; border-radius: 6px; font-size: 13.5px; font-weight: 500;
             border: 1px solid var(--portal-border); background: var(--portal-card); color: var(--portal-gray);
             text-decoration: none; transition: all 0.15s;
         }
         .btn-portal-logout:hover { background: #f1f5f9; color: var(--portal-primary); }
         .status-badge {
             display: inline-flex; align-items: center; gap: 5px;
-            padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+            padding: 5px 12px; border-radius: 20px; font-size: 13.5px; font-weight: 600;
         }
         .status-badge.approved { background: rgba(35,136,99,0.08); color: var(--portal-green); }
         .status-badge.pending { background: rgba(183,121,31,0.1); color: var(--portal-yellow); }
@@ -251,7 +251,7 @@ $sp_att = spdAttendance($student_id, $enrollment['section_id'] ?? null);
             background: var(--portal-card); border: 1px solid var(--portal-border);
             border-radius: 8px; padding: 20px;
         }
-        .stat-card h6 { margin: 0 0 6px; font-size: 12px; font-weight: 500; color: var(--portal-gray); text-transform: uppercase; letter-spacing: 0.04em; }
+        .stat-card h6 { margin: 0 0 6px; font-size: 13.5px; font-weight: 500; color: var(--portal-gray); text-transform: uppercase; letter-spacing: 0.04em; }
         .stat-card .stat-value { font-size: 28px; font-weight: 700; color: var(--portal-primary); line-height: 1; }
         .stat-card .stat-value.green { color: var(--portal-green); }
         .stat-card .stat-value.red { color: var(--portal-red); }
@@ -262,35 +262,35 @@ $sp_att = spdAttendance($student_id, $enrollment['section_id'] ?? null);
         }
         .card-portal-header {
             padding: 16px 20px; border-bottom: 1px solid var(--portal-border);
-            font-size: 14px; font-weight: 600; color: var(--portal-primary);
+            font-size: 15px; font-weight: 600; color: var(--portal-primary);
             display: flex; align-items: center; gap: 8px;
         }
         .card-portal-header i { color: var(--portal-primary); }
         .card-portal-body { padding: 20px; }
 
-        .risk-badge { padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+        .risk-badge { padding: 4px 10px; border-radius: 4px; font-size: 13.5px; font-weight: 600; }
         .risk-low { background: rgba(35,136,99,0.08); color: var(--portal-green); }
         .risk-medium { background: rgba(183,121,31,0.1); color: var(--portal-yellow); }
         .risk-high { background: rgba(201,74,74,0.08); color: var(--portal-red); }
 
         .grade-table { width: 100%; border-collapse: collapse; }
         .grade-table th {
-            text-align: left; padding: 10px 16px; font-size: 11px; font-weight: 600;
+            text-align: left; padding: 10px 16px; font-size: 12.5px; font-weight: 600;
             text-transform: uppercase; letter-spacing: 0.05em;
             color: var(--portal-gray); border-bottom: 1px solid var(--portal-border);
             background: #f9fafb;
         }
-        .grade-table td { padding: 12px 16px; font-size: 13px; color: #374151; border-bottom: 1px solid #f3f4f6; }
+        .grade-table td { padding: 12px 16px; font-size: 14.5px; color: #374151; border-bottom: 1px solid #f3f4f6; }
         .grade-table tr:last-child td { border-bottom: none; }
         .grade-table tr:hover td { background: #f9fafb; }
-        .remark-pass { background: rgba(35,136,99,0.08); color: var(--portal-green); padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; }
-        .remark-fail { background: rgba(201,74,74,0.08); color: var(--portal-red); padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+        .remark-pass { background: rgba(35,136,99,0.08); color: var(--portal-green); padding: 3px 10px; border-radius: 4px; font-size: 13.5px; font-weight: 600; }
+        .remark-fail { background: rgba(201,74,74,0.08); color: var(--portal-red); padding: 3px 10px; border-radius: 4px; font-size: 13.5px; font-weight: 600; }
 
         .rec-item { display: flex; gap: 12px; padding: 14px 0; border-bottom: 1px solid #f3f4f6; }
         .rec-item:last-child { border-bottom: none; }
-        .rec-icon { width: 32px; height: 32px; border-radius: 50%; background: rgba(20,33,61,0.06); color: var(--portal-primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; }
-        .rec-text { font-size: 13px; color: #374151; line-height: 1.6; white-space: pre-line; }
-        .rec-date { font-size: 11px; color: var(--portal-gray); margin-top: 4px; }
+        .rec-icon { width: 32px; height: 32px; border-radius: 50%; background: rgba(20,33,61,0.06); color: var(--portal-primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 14.5px; }
+        .rec-text { font-size: 14.5px; color: #374151; line-height: 1.6; white-space: pre-line; }
+        .rec-date { font-size: 12.5px; color: var(--portal-gray); margin-top: 4px; }
 
         .empty-state { text-align: center; padding: 48px 20px; color: var(--portal-gray); }
         .empty-state i { font-size: 40px; margin-bottom: 12px; opacity: 0.3; }
@@ -302,14 +302,14 @@ $sp_att = spdAttendance($student_id, $enrollment['section_id'] ?? null);
         .class-card { display: block; text-decoration: none; background: var(--portal-card); border: 1px solid var(--portal-border); border-radius: 10px; overflow: hidden; transition: box-shadow 0.15s, transform 0.15s; }
         .class-card:hover { box-shadow: 0 6px 18px rgba(0,0,0,0.08); transform: translateY(-2px); }
         .class-card-head { background-color: #123B6D; background-image: linear-gradient(110deg, rgba(8,31,61,0.92), rgba(18,59,109,0.72)), url('../../../static/images/school%20bldg%20bg.png'); background-size: cover; background-position: center 42%; padding: 16px 16px 32px; position: relative; color: #fff; }
-        .class-card-badge { position: absolute; top: 10px; right: 14px; background: rgba(255,255,255,0.92); color: #123B6D; font-size: 10.5px; font-weight: 800; padding: 3px 9px; border-radius: 99px; }
+        .class-card-badge { position: absolute; top: 10px; right: 14px; background: rgba(255,255,255,0.92); color: #123B6D; font-size: 12px; font-weight: 800; padding: 3px 9px; border-radius: 99px; }
         .class-card-title { font-size: 16px; font-weight: 800; line-height: 1.3; margin-bottom: 4px; padding-right: 46px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.55); }
-        .class-card-teacher { font-size: 12px; opacity: 1; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.55); }
+        .class-card-teacher { font-size: 13.5px; opacity: 1; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.55); }
         .class-card-avatar { position: absolute; bottom: -22px; right: 16px; width: 52px; height: 52px; border-radius: 50%; background: #fff; color: var(--card-color); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px; border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.15); }
         .class-card-body { padding: 30px 16px 14px; min-height: 20px; }
-        .class-card-update { font-size: 12.5px; color: var(--portal-primary); font-weight: 600; }
+        .class-card-update { font-size: 14px; color: var(--portal-primary); font-weight: 600; }
         .class-card-update.muted { color: var(--portal-gray); font-weight: 500; }
-        .class-card-footer { padding: 10px 16px; border-top: 1px solid var(--portal-border); font-size: 12px; font-weight: 600; color: var(--portal-gray); display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+        .class-card-footer { padding: 10px 16px; border-top: 1px solid var(--portal-border); font-size: 13.5px; font-weight: 600; color: var(--portal-gray); display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
         .class-card:hover .class-card-footer { color: var(--portal-primary); }
 
         @media (max-width: 768px) {
@@ -515,9 +515,9 @@ $sp_att = spdAttendance($student_id, $enrollment['section_id'] ?? null);
                         <span class="risk-badge risk-<?php echo strtolower($risk['risk_level']); ?>" title="<?php echo htmlspecialchars(getRiskLevelDescription($risk['risk_level'], $risk['pass_mark'])); ?>">
                             <?php echo htmlspecialchars($risk['risk_level']); ?> Risk
                         </span>
-                        <span style="font-size:13px;color:#374151;">Average: <strong><?php echo number_format($risk['average'], 2); ?>%</strong></span>
+                        <span style="font-size:14.5px;color:#374151;">Average: <strong><?php echo number_format($risk['average'], 2); ?>%</strong></span>
                     </div>
-                    <p style="font-size:13px;color:#667085;margin:0;"><?php echo htmlspecialchars($risk['reason']); ?></p>
+                    <p style="font-size:14.5px;color:#667085;margin:0;"><?php echo htmlspecialchars($risk['reason']); ?></p>
                     <?php if (!empty($risk['failed_subjects'])): ?>
                     <div class="mt-2">
                         <?php foreach ($risk['failed_subjects'] as $fs): ?>
@@ -530,8 +530,8 @@ $sp_att = spdAttendance($student_id, $enrollment['section_id'] ?? null);
             <?php elseif ($risk['status'] === 'insufficient_data'): ?>
             <div class="card-portal">
                 <div class="card-portal-body">
-                    <span style="font-size:12px;font-weight:600;color:var(--portal-gray);background:#f1f5f9;padding:3px 10px;border-radius:4px;">Insufficient Data</span>
-                    <p style="font-size:13px;color:#667085;margin:8px 0 0;"><?php echo htmlspecialchars($risk['reason']); ?></p>
+                    <span style="font-size:13.5px;font-weight:600;color:var(--portal-gray);background:#f1f5f9;padding:3px 10px;border-radius:4px;">Insufficient Data</span>
+                    <p style="font-size:14.5px;color:#667085;margin:8px 0 0;"><?php echo htmlspecialchars($risk['reason']); ?></p>
                 </div>
             </div>
             <?php endif; ?>
@@ -541,7 +541,7 @@ $sp_att = spdAttendance($student_id, $enrollment['section_id'] ?? null);
             <div class="card-portal">
                 <div class="card-portal-header">
                     <i class="fas fa-lightbulb"></i> Recommendations
-                    <span style="margin-left:auto;font-size:11px;background:rgba(20,33,61,0.06);padding:2px 8px;border-radius:4px;color:var(--portal-gray);"><?php echo count($chat_recommendations); ?></span>
+                    <span style="margin-left:auto;font-size:12.5px;background:rgba(20,33,61,0.06);padding:2px 8px;border-radius:4px;color:var(--portal-gray);"><?php echo count($chat_recommendations); ?></span>
                 </div>
                 <div class="card-portal-body">
                     <?php foreach ($chat_recommendations as $rec): ?>

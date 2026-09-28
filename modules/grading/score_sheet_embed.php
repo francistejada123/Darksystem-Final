@@ -31,7 +31,7 @@ $ss_has_exam = $weights['exam_mode'] !== 'none';
 ?>
 <style>
     .grading-page .ss-cats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
-    .grading-page .ss-cat { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--border); border-left-width: 4px; border-radius: 8px; background: var(--surface); padding: 7px 12px; font-size: 13.5px; color: var(--ink); cursor: pointer; }
+    .grading-page .ss-cat { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--border); border-left-width: 4px; border-radius: 8px; background: var(--surface); padding: 7px 12px; font-size: 15px; color: var(--ink); cursor: pointer; }
     .grading-page .ss-cat:hover { background: var(--surface-hover); }
     .grading-page .ss-cat b { font-weight: 700; }
     .grading-page .ss-cat span { color: var(--text-muted); }
@@ -41,8 +41,8 @@ $ss_has_exam = $weights['exam_mode'] !== 'none';
     .grading-page .ss-cat-qa { border-left-color: #C77D00; }
     .grading-page .ss-titlebar { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin: 4px 0 12px; }
     .grading-page .ss-titlebar h3 { font-size: 22px; font-weight: 800; color: var(--ink); margin: 0; }
-    .grading-page .ss-sub { font-size: 14.5px; color: var(--text-muted); }
-    .grading-page .ss-tips-btn { margin-left: auto; border: 0; background: none; color: #1d6fd6; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; }
+    .grading-page .ss-sub { font-size: 15.5px; color: var(--text-muted); }
+    .grading-page .ss-tips-btn { margin-left: auto; border: 0; background: none; color: #1d6fd6; font-size: 15px; display: inline-flex; align-items: center; gap: 8px; }
     .grading-page .ss-tips-btn span { text-decoration: underline; }
     .grading-page .ss-tips-btn[aria-expanded="true"] .fa-chevron-right { transform: rotate(90deg); }
     .grading-page .ss-table thead th.ss-grp-ww, .grading-page .ss-table thead th.ss-tint-ww { background: #EEF8F2; }
@@ -53,26 +53,26 @@ $ss_has_exam = $weights['exam_mode'] !== 'none';
     html[data-theme="dark"] .grading-page .ss-table thead th.ss-grp-pt, html[data-theme="dark"] .grading-page .ss-table thead th.ss-tint-pt { background: rgba(31,111,235,.14); }
     html[data-theme="dark"] .grading-page .ss-table thead th.ss-grp-qa, html[data-theme="dark"] .grading-page .ss-table thead th.ss-tint-qa { background: rgba(199,125,0,.14); }
     html[data-theme="dark"] .grading-page .ss-tips-btn { color: #8ab4f8; }
-    .grading-page .ss-tips { display: flex; gap: 10px; align-items: flex-start; background: #EDF4FB; border: 1px solid #d7e6f8; border-radius: 10px; padding: 9px 14px; font-size: 13px; color: #475569; margin-bottom: 12px; }
+    .grading-page .ss-tips { display: flex; gap: 10px; align-items: flex-start; background: #EDF4FB; border: 1px solid #d7e6f8; border-radius: 10px; padding: 9px 14px; font-size: 14.5px; color: #475569; margin-bottom: 12px; }
     .grading-page .ss-tips i { color: #2f7fe0; margin-top: 3px; }
     .grading-page .ss-wrap { overflow: auto; max-height: 70vh; border: 1px solid var(--border); border-radius: 12px; }
-    .grading-page .ss-table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; font-size: 13.5px; margin: 0; }
+    .grading-page .ss-table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; font-size: 15px; margin: 0; }
     .grading-page .ss-table th, .grading-page .ss-table td { border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); padding: 6px 8px; background: var(--surface); text-align: center; white-space: nowrap; vertical-align: middle; }
-    .grading-page .ss-table thead th { position: sticky; z-index: 3; background: var(--surface-hover, #f6f8fb); color: var(--ink); font-weight: 700; font-size: 12.5px; }
+    .grading-page .ss-table thead th { position: sticky; z-index: 3; background: var(--surface-hover, #f6f8fb); color: var(--ink); font-weight: 700; font-size: 14px; }
     .grading-page .ss-table thead tr:first-child th { top: 0; height: 36px; }
     .grading-page .ss-table thead tr:nth-child(2) th { top: 36px; }
     .grading-page .ss-table .ss-num { width: 38px; color: var(--text-muted); }
     .grading-page .ss-table .ss-name { position: sticky; left: 0; z-index: 2; text-align: left; min-width: 210px; font-weight: 600; color: var(--ink); white-space: normal; }
     .grading-page .ss-table thead .ss-name { z-index: 4; }
-    .grading-page .ss-table .ss-lrn { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; color: var(--text-muted); }
+    .grading-page .ss-table .ss-lrn { font-family: ui-monospace, Consolas, monospace; font-size: 14px; color: var(--text-muted); }
     .grading-page .ss-grp-ww { box-shadow: inset 0 3px 0 #1F9D6E; }
     .grading-page .ss-grp-pt { box-shadow: inset 0 3px 0 #1F6FEB; }
     .grading-page .ss-grp-qa { box-shadow: inset 0 3px 0 #C77D00; }
     .grading-page .ss-grp-res { box-shadow: inset 0 3px 0 #14213D; }
     .grading-page .ss-item { min-width: 92px; max-width: 150px; white-space: normal !important; line-height: 1.25; }
-    .grading-page .ss-item small { display: block; font-weight: 500; color: var(--text-muted); font-size: 11.5px; margin-top: 2px; }
-    .grading-page .ss-item .ss-hps { display: inline-block; margin-top: 3px; font-size: 11.5px; font-weight: 700; color: var(--ink); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 1px 6px; }
-    .grading-page .ss-cell { width: 76px; height: 34px; border: 1px solid transparent; border-radius: 6px; text-align: center; font-size: 14px; background: transparent; color: var(--ink); }
+    .grading-page .ss-item small { display: block; font-weight: 500; color: var(--text-muted); font-size: 13px; margin-top: 2px; }
+    .grading-page .ss-item .ss-hps { display: inline-block; margin-top: 3px; font-size: 13px; font-weight: 700; color: var(--ink); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 1px 6px; }
+    .grading-page .ss-cell { width: 76px; height: 34px; border: 1px solid transparent; border-radius: 6px; text-align: center; font-size: 15px; background: transparent; color: var(--ink); }
     .grading-page .ss-cell::placeholder { color: #b4bfcc; }
     .grading-page .ss-cell:focus { outline: none; border-color: #2f7fe0; background: var(--surface); box-shadow: 0 0 0 3px rgba(47,127,224,.15); }
     .grading-page .ss-cell.dirty { background: #FFF8E6; }
@@ -81,7 +81,7 @@ $ss_has_exam = $weights['exam_mode'] !== 'none';
     .grading-page .ss-res { min-width: 86px; }
     .grading-page .ss-table td.ss-res-first, .grading-page .ss-table th.ss-res-first { border-left: 2px solid var(--border); }
     .grading-page .ss-table .remarks, .grading-page .ss-table .initial-grade, .grading-page .ss-table .final-grade { white-space: nowrap; }
-    .grading-page .ss-status { font-size: 13.5px; color: var(--text-muted); }
+    .grading-page .ss-status { font-size: 15px; color: var(--text-muted); }
     .grading-page .ss-status b.bad { color: #b42318; }
     .grading-page .ss-save { background: #0f7b5f !important; color: #fff !important; border: 0 !important; }
     .grading-page .ss-save:hover { background: #0c6a52 !important; }

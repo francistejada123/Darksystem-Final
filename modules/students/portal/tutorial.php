@@ -130,17 +130,17 @@ if (!empty($student['profile_image']) && file_exists('../../../static/uploads/pr
         .sidebar .logo { padding: 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; gap: 10px; }
         .sidebar .logo img { height: 36px; width: 36px; border-radius: 8px; object-fit: contain; }
         .sidebar .logo span { color: #fff; font-size: 15px; font-weight: 700; letter-spacing: 0.02em; line-height: 1.3; }
-        .sidebar .logo small { display: block; font-size: 9px; font-weight: 500; letter-spacing: 0.1em; color: rgba(255,255,255,0.4); }
+        .sidebar .logo small { display: block; font-size: 11px; font-weight: 500; letter-spacing: 0.1em; color: rgba(255,255,255,0.4); }
         .sidebar .nav { padding: 12px 0; flex: 1; }
-        .sidebar .nav-link { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: rgba(255,255,255,0.55); font-size: 13px; font-weight: 500; text-decoration: none; transition: all 0.15s ease; border-left: 3px solid transparent; }
-        .sidebar .nav-link i { width: 18px; text-align: center; font-size: 14px; }
+        .sidebar .nav-link { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: rgba(255,255,255,0.55); font-size: 14.5px; font-weight: 500; text-decoration: none; transition: all 0.15s ease; border-left: 3px solid transparent; }
+        .sidebar .nav-link i { width: 18px; text-align: center; font-size: 15px; }
         .sidebar .nav-link:hover { color: #fff; background: rgba(255,255,255,0.06); }
         .sidebar .nav-link.active { color: #fff; background: rgba(255,255,255,0.08); border-left-color: #fff; }
         .sidebar .nav-link.text-danger { color: rgba(201,74,74,0.7); }
         .sidebar .nav-link.text-danger:hover { color: #C94A4A; background: rgba(201,74,74,0.08); }
         .sidebar .nav-divider { height: 1px; background: rgba(255,255,255,0.08); margin: 8px 20px; }
         .sidebar-footer { padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.08); }
-        .sidebar-footer small { color: rgba(255,255,255,0.3); font-size: 11px; }
+        .sidebar-footer small { color: rgba(255,255,255,0.3); font-size: 12.5px; }
 
         .main-content { padding: 24px 32px; min-height: 100vh; }
         .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
@@ -149,19 +149,19 @@ if (!empty($student['profile_image']) && file_exists('../../../static/uploads/pr
         .topbar-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid var(--portal-border); }
         .topbar-avatar-placeholder { width: 44px; height: 44px; border-radius: 50%; background: #f1f5f9; display: flex; align-items: center; justify-content: center; color: var(--portal-gray); font-size: 20px; }
         .topbar h4 { margin: 0; font-size: 20px; font-weight: 700; color: var(--portal-primary); }
-        .topbar small { color: var(--portal-gray); font-size: 12px; }
-        .btn-portal-logout { padding: 7px 16px; border-radius: 6px; font-size: 12px; font-weight: 500; border: 1px solid var(--portal-border); background: var(--portal-card); color: var(--portal-gray); text-decoration: none; transition: all 0.15s; }
+        .topbar small { color: var(--portal-gray); font-size: 13.5px; }
+        .btn-portal-logout { padding: 7px 16px; border-radius: 6px; font-size: 13.5px; font-weight: 500; border: 1px solid var(--portal-border); background: var(--portal-card); color: var(--portal-gray); text-decoration: none; transition: all 0.15s; }
         .btn-portal-logout:hover { background: #f1f5f9; color: var(--portal-primary); }
 
         .card-portal { background: var(--portal-card); border: 1px solid var(--portal-border); border-radius: 8px; margin-bottom: 20px; }
-        .card-portal-header { padding: 16px 20px; border-bottom: 1px solid var(--portal-border); font-size: 14px; font-weight: 600; color: var(--portal-primary); display: flex; align-items: center; gap: 8px; }
+        .card-portal-header { padding: 16px 20px; border-bottom: 1px solid var(--portal-border); font-size: 15px; font-weight: 600; color: var(--portal-primary); display: flex; align-items: center; gap: 8px; }
         .card-portal-body { padding: 20px; }
 
-        .info-banner { display: flex; align-items: flex-start; gap: 10px; padding: 14px 16px; background: rgba(20,33,61,0.03); border: 1px solid var(--portal-border); border-radius: 8px; font-size: 13px; color: #4b5563; line-height: 1.5; margin-bottom: 20px; }
+        .info-banner { display: flex; align-items: flex-start; gap: 10px; padding: 14px 16px; background: rgba(20,33,61,0.03); border: 1px solid var(--portal-border); border-radius: 8px; font-size: 14.5px; color: #4b5563; line-height: 1.5; margin-bottom: 20px; }
         .info-banner i { color: var(--portal-primary); margin-top: 2px; }
 
         .progress-section { margin-bottom: 20px; }
-        .progress-label { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; font-weight: 500; color: #374151; }
+        .progress-label { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14.5px; font-weight: 500; color: #374151; }
         .progress-bar-portal { height: 8px; background: #f1f5f9; border-radius: 4px; overflow: hidden; }
         .progress-bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s; background: var(--portal-green); }
 
@@ -169,29 +169,29 @@ if (!empty($student['profile_image']) && file_exists('../../../static/uploads/pr
         .tutorial-card:hover { border-color: #d1d5db; }
         .tutorial-card-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
         .tutorial-card-subject { font-size: 15px; font-weight: 600; color: var(--portal-primary); }
-        .tutorial-card-grade { font-size: 13px; color: var(--portal-red); font-weight: 600; }
-        .tutorial-card-target { font-size: 13px; color: var(--portal-gray); }
-        .tutorial-card-teacher { font-size: 12px; color: var(--portal-gray); }
-        .tutorial-card-desc { font-size: 13px; color: #6b7280; margin-bottom: 12px; line-height: 1.5; }
+        .tutorial-card-grade { font-size: 14.5px; color: var(--portal-red); font-weight: 600; }
+        .tutorial-card-target { font-size: 14.5px; color: var(--portal-gray); }
+        .tutorial-card-teacher { font-size: 13.5px; color: var(--portal-gray); }
+        .tutorial-card-desc { font-size: 14.5px; color: #6b7280; margin-bottom: 12px; line-height: 1.5; }
 
-        .status-badge-tutorial { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+        .status-badge-tutorial { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 4px; font-size: 13.5px; font-weight: 600; }
         .status-watching { background: rgba(20,33,61,0.06); color: var(--portal-primary); }
         .status-completed { background: rgba(35,136,99,0.08); color: var(--portal-green); }
         .status-pending { background: rgba(102,112,133,0.08); color: var(--portal-gray); }
 
-        .video-progress-text { font-size: 12px; color: var(--portal-gray); }
+        .video-progress-text { font-size: 13.5px; color: var(--portal-gray); }
         .video-progress-bar { height: 6px; background: #f1f5f9; border-radius: 3px; overflow: hidden; max-width: 480px; margin-top: 4px; margin-bottom: 6px; }
         .video-progress-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
         .video-progress-fill.info { background: #3b82f6; }
         .video-progress-fill.success { background: var(--portal-green); }
-        .last-watched { font-size: 11px; color: var(--portal-gray); }
+        .last-watched { font-size: 12.5px; color: var(--portal-gray); }
 
-        .btn-portal-primary { padding: 8px 18px; border-radius: 6px; font-size: 13px; font-weight: 500; border: none; background: var(--portal-primary); color: #fff; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s; }
+        .btn-portal-primary { padding: 8px 18px; border-radius: 6px; font-size: 14.5px; font-weight: 500; border: none; background: var(--portal-primary); color: #fff; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s; }
         .btn-portal-primary:hover { background: #1a2f54; color: #fff; }
 
         .empty-state { text-align: center; padding: 48px 20px; color: var(--portal-gray); }
         .empty-state i { font-size: 40px; margin-bottom: 12px; opacity: 0.3; color: var(--portal-green); }
-        .empty-state p { font-size: 14px; }
+        .empty-state p { font-size: 15px; }
 
         @media (max-width: 768px) {
             .sidebar { position: fixed !important; top: 0; left: -280px; width: 260px; height: 100vh; z-index: 1050; transition: left 0.25s ease; overflow-y: auto; box-shadow: 4px 0 24px rgba(0,0,0,0.15); }
@@ -352,7 +352,7 @@ if (!empty($student['profile_image']) && file_exists('../../../static/uploads/pr
                                         <a href="<?php echo htmlspecialchars($item['resource_url']); ?>" target="_blank" rel="noopener" class="btn-portal-primary" style="display:inline-flex;">
                                             <i class="fas fa-play"></i> Watch Tutorial Video
                                         </a>
-                                        <div style="font-size:12px;color:var(--portal-gray);margin-top:6px;">
+                                        <div style="font-size:13.5px;color:var(--portal-gray);margin-top:6px;">
                                             Automatic progress tracking isn't available for this link. Ask your teacher to add a specific video link.
                                         </div>
                                     <?php endif; ?>
@@ -363,10 +363,10 @@ if (!empty($student['profile_image']) && file_exists('../../../static/uploads/pr
                                     <div class="material-view-card" style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:rgba(20,33,61,0.03);border:1px solid var(--portal-border);border-radius:8px;margin-bottom:8px;">
                                         <span style="font-size:24px;line-height:1;margin-top:2px;"><i class="fas <?php echo htmlspecialchars($mat_meta['icon']); ?>"></i></span>
                                         <div style="flex:1;min-width:0;">
-                                            <div style="font-weight:700;font-size:14px;color:var(--portal-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="<?php echo htmlspecialchars($mat_title); ?>"><?php echo htmlspecialchars($mat_title); ?></div>
-                                            <span class="material-type-badge <?php echo htmlspecialchars($mat_meta['badge_class']); ?>" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;padding:2px 8px;border-radius:20px;display:inline-block;margin:4px 0;"><?php echo htmlspecialchars($mat_meta['label']); ?></span>
+                                            <div style="font-weight:700;font-size:15px;color:var(--portal-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="<?php echo htmlspecialchars($mat_title); ?>"><?php echo htmlspecialchars($mat_title); ?></div>
+                                            <span class="material-type-badge <?php echo htmlspecialchars($mat_meta['badge_class']); ?>" style="font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;padding:2px 8px;border-radius:20px;display:inline-block;margin:4px 0;"><?php echo htmlspecialchars($mat_meta['label']); ?></span>
                                             <?php if (!empty($item['resource_description'])): ?>
-                                                <div style="font-size:12.5px;color:#4b5563;margin:4px 0;line-height:1.5;"><?php echo nl2br(htmlspecialchars($item['resource_description'])); ?></div>
+                                                <div style="font-size:14px;color:#4b5563;margin:4px 0;line-height:1.5;"><?php echo nl2br(htmlspecialchars($item['resource_description'])); ?></div>
                                             <?php endif; ?>
                                             <div style="margin-top:6px;">
                                                 <a href="../../tutorial/view_material.php?id=<?php echo (int)$item['item_id']; ?>" target="_blank" rel="noopener" class="btn-portal-primary" style="display:inline-flex;">
@@ -381,7 +381,7 @@ if (!empty($student['profile_image']) && file_exists('../../../static/uploads/pr
                                         </span>
                                     </div>
                                 <?php else: ?>
-                                    <div style="font-size:13px;color:var(--portal-yellow);font-weight:600;">No material assigned</div>
+                                    <div style="font-size:14.5px;color:var(--portal-yellow);font-weight:600;">No material assigned</div>
                                 <?php endif; ?>
                             </div>
                         <?php endforeach; ?>

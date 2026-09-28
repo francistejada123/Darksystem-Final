@@ -164,13 +164,13 @@ include '../../includes/header.php';
                             <td><span class="ref-code"><?php echo htmlspecialchars($a['reference_no']); ?></span></td>
                             <td>
                                 <div style="font-weight: 600;"><?php echo htmlspecialchars($a['last_name'] . ', ' . $a['first_name']); ?></div>
-                                <div style="font-size: 13px; color: var(--text-muted); margin-top: 2px;">LRN: <?php echo attQrLrnLink($a['lrn'] ?: ($a['student_lrn'] ?: 'N/A')); ?></div>
+                                <div style="font-size: 14.5px; color: var(--text-muted); margin-top: 2px;">LRN: <?php echo attQrLrnLink($a['lrn'] ?: ($a['student_lrn'] ?: 'N/A')); ?></div>
                             </td>
                             <td><?php echo htmlspecialchars($a['grade_level']); ?><?php echo $a['strand'] ? ' <span class="strand-badge">' . htmlspecialchars($a['strand']) . '</span>' : ''; ?></td>
-                            <td style="font-size: 14px; color: var(--text-muted);"><?php echo htmlspecialchars($a['application_type']); ?></td>
+                            <td style="font-size: 15px; color: var(--text-muted);"><?php echo htmlspecialchars($a['application_type']); ?></td>
                             <td><span class="doc-count"><?php echo intval($a['doc_count']); ?></span></td>
                             <td style="font-weight: 600;"><?php echo (float) $a['average_grade'] > 0 ? number_format((float) $a['average_grade'], 2) : '&mdash;'; ?></td>
-                            <td style="font-size: 14px; color: var(--text-muted); white-space: nowrap;"><?php echo formatDate($a['created_at'], 'M d, Y'); ?></td>
+                            <td style="font-size: 15px; color: var(--text-muted); white-space: nowrap;"><?php echo formatDate($a['created_at'], 'M d, Y'); ?></td>
                             <td><span class="status-badge status-<?php echo $badge; ?>"><?php echo htmlspecialchars($a['status']); ?></span></td>
                             <td style="text-align: right; white-space: nowrap;">
                                 <a href="view_application.php?id=<?php echo $a['application_id']; ?>" class="btn-view" aria-label="Review application <?php echo htmlspecialchars($a['reference_no']); ?>">
@@ -226,24 +226,24 @@ include '../../includes/header.php';
     }
     .del-btn-cancel {
         background: #eef2f8; color: #71829d; border: 0;
-        border-radius: 11px; padding: 11px 22px; font-weight: 700; font-size: 13.5px;
+        border-radius: 11px; padding: 11px 22px; font-weight: 700; font-size: 15px;
     }
     .del-btn-cancel:hover { background: #e5ebf4; color: #526783; }
     .del-btn-soft {
         background: #263650; border-color: #263650; color: #fff;
-        border-radius: 11px; padding: 11px 22px; font-weight: 700; font-size: 13.5px;
+        border-radius: 11px; padding: 11px 22px; font-weight: 700; font-size: 15px;
     }
     .del-btn-soft:hover { background: #1b2840; color: #fff; }
     .del-btn-danger {
         background: #B3261E; border-color: #B3261E; color: #fff;
-        border-radius: 11px; padding: 11px 22px; font-weight: 700; font-size: 13.5px;
+        border-radius: 11px; padding: 11px 22px; font-weight: 700; font-size: 15px;
     }
     .del-btn-danger:hover { background: #93201A; color: #fff; }
     .del-warning-box {
         background: #FDEEEE; border: 1px solid #F5C6C6; border-radius: 10px; padding: 12px 14px; margin-top: 14px;
     }
     .del-warning-box ul { list-style: none; padding-left: 0; margin: 8px 0 0 0; }
-    .del-warning-box li { font-size: 13px; color: var(--ink, #0F1A3C); padding: 2px 0; }
+    .del-warning-box li { font-size: 14.5px; color: var(--ink, #0F1A3C); padding: 2px 0; }
     .delete-choice-list { display:grid; gap:12px; margin-top:24px; }
     .delete-choice {
         width:100%; display:flex; align-items:center; gap:14px; text-align:left;
@@ -257,7 +257,7 @@ include '../../includes/header.php';
     .delete-choice.danger .delete-choice-icon { background:#fff0f0; color:#e3343f; }
     .delete-choice-copy { flex:1; min-width:0; }
     .delete-choice-title { display:block; font-size:15px; font-weight:700; margin-bottom:3px; }
-    .delete-choice-description { display:block; color:#71829d; font-size:12.5px; line-height:1.45; max-width:390px; }
+    .delete-choice-description { display:block; color:#71829d; font-size:14px; line-height:1.45; max-width:390px; }
     .delete-choice-arrow { color:#8495ae; font-size:17px; }
     .delete-choice-radio { width:20px; height:20px; flex:0 0 20px; accent-color:#1976ff; }
     @media (max-width:600px) {

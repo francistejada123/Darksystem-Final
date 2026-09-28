@@ -40,7 +40,7 @@ function reportNotFoundPage($message) {
 // (row counts, pass rates, etc.) — a lighter-weight alternative to a
 // <tfoot> that stays readable no matter how the table paginates.
 function pdfSummaryLine($text) {
-    return '<div style="background:#F3F6F9; border:1px solid #DCE3EC; border-radius:6px; padding:8px 14px; font-size:11px; font-weight:bold; color:#14213D; margin-top:6px;">' . $text . '</div>';
+    return '<div style="background:#F3F6F9; border:1px solid #DCE3EC; border-radius:6px; padding:8px 14px; font-size:12.5px; font-weight:bold; color:#14213D; margin-top:6px;">' . $text . '</div>';
 }
 
 function currentSchoolYearLabel() {

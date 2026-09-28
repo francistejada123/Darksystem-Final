@@ -91,7 +91,7 @@ include __DIR__ . '/../../includes/header.php';
         font-weight: 600;
         padding: 5px 12px;
         border-radius: 6px;
-        font-size: 12px;
+        font-size: 13.5px;
     }
     .teacher-box {
         background: var(--surface-hover);
@@ -116,7 +116,7 @@ include __DIR__ . '/../../includes/header.php';
         flex-shrink: 0;
     }
     .teacher-box .teacher-label {
-        font-size: 11px;
+        font-size: 12.5px;
         text-transform: uppercase;
         letter-spacing: .5px;
         color: var(--text-muted);
@@ -183,10 +183,10 @@ include __DIR__ . '/../../includes/header.php';
     <div class="col-md-4">
         <div class="card border-0 shadow-sm" style="margin-bottom:12px;">
             <div class="card-header" style="background: var(--surface);border-bottom: 1px solid var(--border);padding:14px 18px;">
-                <h6 class="mb-0" style="font-weight:600;color: var(--ink);font-size:14px;">Student Information</h6>
+                <h6 class="mb-0" style="font-weight:600;color: var(--ink);font-size:15px;">Student Information</h6>
             </div>
             <div class="card-body" style="padding:14px 18px;">
-                <table class="table table-sm table-borderless text-start mb-0" style="font-size:13px;">
+                <table class="table table-sm table-borderless text-start mb-0" style="font-size:14.5px;">
                     <tr><td style="font-weight:600;color: var(--text-muted);">LRN:</td><td><?php echo htmlspecialchars($student['lrn']); ?></td></tr>
                     <tr><td style="font-weight:600;color: var(--text-muted);">Grade Level:</td><td><?php echo htmlspecialchars($student['grade_level']); ?></td></tr>
                     <tr><td style="font-weight:600;color: var(--text-muted);">Section:</td><td><?php echo htmlspecialchars($student['section_name'] ?? 'N/A'); ?></td></tr>
@@ -211,14 +211,14 @@ include __DIR__ . '/../../includes/header.php';
                 <div class="row">
                     <div class="col-6">
                         <div style="border: 1px solid var(--border);border-radius:8px;padding:16px;text-align:center;">
-                            <h6 style="color: var(--text-muted);font-size:13px;margin-bottom:4px;">Average Grade</h6>
+                            <h6 style="color: var(--text-muted);font-size:14.5px;margin-bottom:4px;">Average Grade</h6>
                             <h3 style="color: var(--ink);font-weight:700;"><?php echo number_format($risk['average'], 2); ?>%</h3>
                             <small style="color: var(--text-muted);">Average of <?php echo (int)$risk['subject_count']; ?> subject(s)</small>
                         </div>
                     </div>
                     <div class="col-6">
                         <div style="border: 1px solid var(--border);border-radius:8px;padding:16px;text-align:center;">
-                            <h6 style="color: var(--text-muted);font-size:13px;margin-bottom:4px;">Risk Level</h6>
+                            <h6 style="color: var(--text-muted);font-size:14.5px;margin-bottom:4px;">Risk Level</h6>
                             <h3>
                                 <span style="font-size:18px;font-weight:600;padding:4px 12px;border-radius:6px;cursor:help;background:<?php echo $risk['risk_level'] == 'Low' ? '#EAF7F1' : ($risk['risk_level'] == 'Medium' ? '#FFF7E6' : '#FDEEEE'); ?>;color:<?php echo $risk['risk_level'] == 'Low' ? '#238863' : ($risk['risk_level'] == 'Medium' ? '#B7791F' : '#C94A4A'); ?>;"
                                     data-bs-toggle="tooltip"
@@ -230,13 +230,13 @@ include __DIR__ . '/../../includes/header.php';
                         </div>
                     </div>
                 </div>
-                <div style="background:#EDF4FB;border: 1px solid var(--border);border-radius:8px;padding:12px;margin-top:14px;font-size:13px;color: var(--text-muted);">
+                <div style="background:#EDF4FB;border: 1px solid var(--border);border-radius:8px;padding:12px;margin-top:14px;font-size:14.5px;color: var(--text-muted);">
                     <strong style="color: var(--ink);">Reason:</strong> <?php echo htmlspecialchars($risk['reason']); ?>
                 </div>
                 <?php if (!empty($risk['failed_subjects'])): ?>
                 <div class="mt-2">
                     <?php foreach ($risk['failed_subjects'] as $fs): ?>
-                        <span style="background:#FDEEEE;color:#C94A4A;padding:3px 8px;border-radius:4px;font-size:12px;font-weight:500;margin-right:6px;margin-bottom:4px;display:inline-block;"><?php echo htmlspecialchars($fs['subject_name']); ?>: <?php echo number_format($fs['grade'], 2); ?></span>
+                        <span style="background:#FDEEEE;color:#C94A4A;padding:3px 8px;border-radius:4px;font-size:13.5px;font-weight:500;margin-right:6px;margin-bottom:4px;display:inline-block;"><?php echo htmlspecialchars($fs['subject_name']); ?>: <?php echo number_format($fs['grade'], 2); ?></span>
                     <?php endforeach; ?>
                 </div>
                 <?php endif; ?>
@@ -245,8 +245,8 @@ include __DIR__ . '/../../includes/header.php';
         <?php elseif ($risk['status'] === 'insufficient_data'): ?>
         <div class="card border-0 shadow-sm" style="margin-bottom:12px;">
             <div class="card-body" style="padding:14px 18px;">
-                <span style="background: var(--surface-hover);color: var(--text-muted);padding:3px 8px;border-radius:4px;font-size:12px;font-weight:500;">Insufficient Data</span>
-                <p class="mb-0 mt-2" style="font-size:13px;color: var(--text-muted);"><?php echo htmlspecialchars($risk['reason']); ?></p>
+                <span style="background: var(--surface-hover);color: var(--text-muted);padding:3px 8px;border-radius:4px;font-size:13.5px;font-weight:500;">Insufficient Data</span>
+                <p class="mb-0 mt-2" style="font-size:14.5px;color: var(--text-muted);"><?php echo htmlspecialchars($risk['reason']); ?></p>
             </div>
         </div>
         <?php endif; ?>
@@ -259,16 +259,16 @@ include __DIR__ . '/../../includes/header.php';
             <div class="card-body p-0">
                 <?php if ($grades && count($grades) > 0): ?>
                     <div class="table-responsive">
-                        <table class="table table-sm table-hover mb-0" style="font-size:13px;">
+                        <table class="table table-sm table-hover mb-0" style="font-size:14.5px;">
                             <thead style="background: var(--surface-hover);">
                                 <tr>
-                                    <th style="font-size:12px;text-transform:uppercase;letter-spacing:0.4px;color: var(--text-muted);border-bottom: 1px solid var(--border);">Subject</th>
-                                    <th style="font-size:12px;text-transform:uppercase;letter-spacing:0.4px;color: var(--text-muted);border-bottom: 1px solid var(--border);">Term</th>
-                                    <th style="font-size:12px;text-transform:uppercase;letter-spacing:0.4px;color: var(--text-muted);border-bottom: 1px solid var(--border);">WW</th>
-                                    <th style="font-size:12px;text-transform:uppercase;letter-spacing:0.4px;color: var(--text-muted);border-bottom: 1px solid var(--border);">PT</th>
-                                    <th style="font-size:12px;text-transform:uppercase;letter-spacing:0.4px;color: var(--text-muted);border-bottom: 1px solid var(--border);">QA</th>
-                                    <th style="font-size:12px;text-transform:uppercase;letter-spacing:0.4px;color: var(--text-muted);border-bottom: 1px solid var(--border);">Final</th>
-                                    <th style="font-size:12px;text-transform:uppercase;letter-spacing:0.4px;color: var(--text-muted);border-bottom: 1px solid var(--border);">Remarks</th>
+                                    <th style="font-size:13.5px;text-transform:uppercase;letter-spacing:0.4px;color: var(--text-muted);border-bottom: 1px solid var(--border);">Subject</th>
+                                    <th style="font-size:13.5px;text-transform:uppercase;letter-spacing:0.4px;color: var(--text-muted);border-bottom: 1px solid var(--border);">Term</th>
+                                    <th style="font-size:13.5px;text-transform:uppercase;letter-spacing:0.4px;color: var(--text-muted);border-bottom: 1px solid var(--border);">WW</th>
+                                    <th style="font-size:13.5px;text-transform:uppercase;letter-spacing:0.4px;color: var(--text-muted);border-bottom: 1px solid var(--border);">PT</th>
+                                    <th style="font-size:13.5px;text-transform:uppercase;letter-spacing:0.4px;color: var(--text-muted);border-bottom: 1px solid var(--border);">QA</th>
+                                    <th style="font-size:13.5px;text-transform:uppercase;letter-spacing:0.4px;color: var(--text-muted);border-bottom: 1px solid var(--border);">Final</th>
+                                    <th style="font-size:13.5px;text-transform:uppercase;letter-spacing:0.4px;color: var(--text-muted);border-bottom: 1px solid var(--border);">Remarks</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -281,7 +281,7 @@ include __DIR__ . '/../../includes/header.php';
                                         <td style="border-bottom: 1px solid var(--border-soft);"><?php echo number_format($g['examinations'], 2); ?></td>
                                         <td style="border-bottom: 1px solid var(--border-soft);font-weight:600;"><?php echo number_format($g['final_grade'], 2); ?></td>
                                         <td style="border-bottom: 1px solid var(--border-soft);">
-                                            <span style="padding:3px 8px;border-radius:4px;font-size:12px;font-weight:500;background:<?php echo $g['final_grade'] >= 75 ? '#EAF7F1' : '#FDEEEE'; ?>;color:<?php echo $g['final_grade'] >= 75 ? '#238863' : '#C94A4A'; ?>;">
+                                            <span style="padding:3px 8px;border-radius:4px;font-size:13.5px;font-weight:500;background:<?php echo $g['final_grade'] >= 75 ? '#EAF7F1' : '#FDEEEE'; ?>;color:<?php echo $g['final_grade'] >= 75 ? '#238863' : '#C94A4A'; ?>;">
                                                 <?php echo htmlspecialchars($g['remarks']); ?>
                                             </span>
                                         </td>

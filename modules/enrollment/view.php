@@ -102,51 +102,51 @@ $cls = $status_class[$st] ?? 'pending';
 .enroll-view .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
 .enroll-view .page-header h4 { font-size: 20px; font-weight: 700; color: var(--ink); margin: 0; }
 .enroll-view .page-header-actions { display: flex; gap: 8px; align-items: center; }
-.enroll-view .btn-back { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; color: var(--text-muted); background: var(--surface); border: 1px solid var(--border); text-decoration: none; transition: all 0.15s; }
+.enroll-view .btn-back { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 6px; font-size: 14.5px; font-weight: 500; color: var(--text-muted); background: var(--surface); border: 1px solid var(--border); text-decoration: none; transition: all 0.15s; }
 .enroll-view .btn-back:hover { background: var(--surface-hover); color: var(--ink); }
-.enroll-view .btn-approve { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; color: #fff; background: #238863; border: none; text-decoration: none; transition: all 0.15s; }
+.enroll-view .btn-approve { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 6px; font-size: 14.5px; font-weight: 500; color: #fff; background: #238863; border: none; text-decoration: none; transition: all 0.15s; }
 .enroll-view .btn-approve:hover { filter: brightness(0.9); }
-.enroll-view .btn-reject { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; color: #C94A4A; background: var(--surface); border: 1px solid var(--border); text-decoration: none; transition: all 0.15s; }
+.enroll-view .btn-reject { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 6px; font-size: 14.5px; font-weight: 500; color: #C94A4A; background: var(--surface); border: 1px solid var(--border); text-decoration: none; transition: all 0.15s; }
 .enroll-view .btn-reject:hover { background: #fdecea; border-color: #C94A4A; }
 .enroll-view .info-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 .enroll-view .info-card-header { padding: 16px 20px; border-bottom: 1px solid var(--border-soft); display: flex; align-items: center; gap: 8px; }
 .enroll-view .info-card-header h5 { font-size: 15px; font-weight: 600; color: var(--ink); margin: 0; }
-.enroll-view .info-card-header i { color: var(--ink); font-size: 14px; }
+.enroll-view .info-card-header i { color: var(--ink); font-size: 15px; }
 .enroll-view .info-card-body { padding: 16px 20px; }
 .enroll-view .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .enroll-view .detail-item { display: flex; flex-direction: column; gap: 2px; }
-.enroll-view .detail-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
-.enroll-view .detail-value { font-size: 14px; color: var(--ink); }
-.enroll-view .status-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.enroll-view .detail-label { font-size: 12.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+.enroll-view .detail-value { font-size: 15px; color: var(--ink); }
+.enroll-view .status-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12.5px; font-weight: 600; }
 .enroll-view .status-pending { background: #FFF7E6; color: #B7791F; }
 .enroll-view .status-approved { background: #EAF7F1; color: #238863; }
 .enroll-view .status-rejected { background: #FDEEEE; color: #C94A4A; }
 .enroll-view .status-incomplete { background: #FFF4E5; color: #B45309; }
-.enroll-view .btn-incomplete { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; color: #B45309; background: var(--surface); border: 1px solid #F5C77E; text-decoration: none; transition: all 0.15s; }
+.enroll-view .btn-incomplete { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 6px; font-size: 14.5px; font-weight: 600; color: #B45309; background: var(--surface); border: 1px solid #F5C77E; text-decoration: none; transition: all 0.15s; }
 .enroll-view .btn-incomplete:hover { background: #FFF4E5; border-color: #B45309; color: #92400E; }
 .enroll-view .status-transferred { background: #cff4fc; color: #055160; }
 .enroll-view .assign-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; border-left: 3px solid #14213D; }
 .enroll-view .assign-card .info-card-header { border-bottom: 1px solid var(--border-soft); }
 .enroll-view .assign-form { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
 .enroll-view .assign-form .form-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 200px; }
-.enroll-view .assign-form label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
-.enroll-view .assign-form select { border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; font-size: 13px; color: var(--ink); background: var(--surface); }
+.enroll-view .assign-form label { font-size: 13.5px; font-weight: 600; color: var(--text-muted); }
+.enroll-view .assign-form select { border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; font-size: 14.5px; color: var(--ink); background: var(--surface); }
 .enroll-view .assign-form select:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 2px rgba(20,33,61,0.08); }
-.enroll-view .btn-save { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; color: #fff; background: #14213D; border: none; cursor: pointer; text-decoration: none; transition: all 0.15s; }
+.enroll-view .btn-save { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 6px; font-size: 14.5px; font-weight: 500; color: #fff; background: #14213D; border: none; cursor: pointer; text-decoration: none; transition: all 0.15s; }
 .enroll-view .btn-save:hover { filter: brightness(0.9); }
 .enroll-view .doc-list { padding: 4px 20px 8px; }
 .enroll-view .doc-item { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border-soft); }
 .enroll-view .doc-item:last-child { border-bottom: none; }
-.enroll-view .doc-item .doc-name { font-size: 13px; font-weight: 500; color: var(--ink); }
-.enroll-view .doc-item .doc-required { font-size: 11px; color: #C94A4A; }
-.enroll-view .doc-item .doc-optional { font-size: 11px; color: var(--text-muted); }
-.enroll-view .btn-doc { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 5px; font-size: 12px; font-weight: 500; color: var(--ink); background: var(--surface-hover); border: 1px solid var(--border); text-decoration: none; transition: all 0.15s; white-space: nowrap; }
+.enroll-view .doc-item .doc-name { font-size: 14.5px; font-weight: 500; color: var(--ink); }
+.enroll-view .doc-item .doc-required { font-size: 12.5px; color: #C94A4A; }
+.enroll-view .doc-item .doc-optional { font-size: 12.5px; color: var(--text-muted); }
+.enroll-view .btn-doc { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 5px; font-size: 13.5px; font-weight: 500; color: var(--ink); background: var(--surface-hover); border: 1px solid var(--border); text-decoration: none; transition: all 0.15s; white-space: nowrap; }
 .enroll-view .btn-doc:hover { background: #14213D; color: #fff; border-color: var(--ink); }
-.enroll-view .doc-not-submitted { font-size: 11px; color: var(--text-muted); background: var(--surface-hover); padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border); white-space: nowrap; }
-.enroll-view .doc-meta { font-size: 12px; color: var(--text-muted); padding: 12px 20px 0; }
+.enroll-view .doc-not-submitted { font-size: 12.5px; color: var(--text-muted); background: var(--surface-hover); padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border); white-space: nowrap; }
+.enroll-view .doc-meta { font-size: 13.5px; color: var(--text-muted); padding: 12px 20px 0; }
 .enroll-view .doc-meta a { color: var(--ink); font-weight: 600; text-decoration: underline; }
-.enroll-view .doc-empty { padding: 16px 20px; font-size: 13px; color: var(--text-muted); }
-.enroll-view .section-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin-bottom: 12px; }
+.enroll-view .doc-empty { padding: 16px 20px; font-size: 14.5px; color: var(--text-muted); }
+.enroll-view .section-label { font-size: 12.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin-bottom: 12px; }
 @media (max-width: 768px) {
     .enroll-view .detail-grid { grid-template-columns: 1fr; }
     .enroll-view .page-header { flex-direction: column; gap: 12px; align-items: flex-start; }

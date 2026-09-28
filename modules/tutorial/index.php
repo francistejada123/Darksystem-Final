@@ -151,7 +151,7 @@ include '../../includes/header.php';
     border-radius: 8px;
     background: var(--surface);
     color: var(--ink);
-    font-size: 13px;
+    font-size: 14.5px;
     font-weight: 600;
     text-decoration: none;
     white-space: nowrap;
@@ -235,13 +235,13 @@ include '../../includes/header.php';
                     <table class="table table-hover mb-0 align-middle" style="font-size:16px;">
                         <thead style="background: var(--surface-hover);">
                             <tr>
-                                <th style="font-size:13px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">LRN</th>
-                                <th style="font-size:13px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Student Name</th>
-                                <th style="font-size:13px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Grade Level</th>
-                                <th style="font-size:13px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Risk Level</th>
-                                <th style="font-size:13px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Average</th>
+                                <th style="font-size:14.5px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">LRN</th>
+                                <th style="font-size:14.5px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Student Name</th>
+                                <th style="font-size:14.5px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Grade Level</th>
+                                <th style="font-size:14.5px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Risk Level</th>
+                                <th style="font-size:14.5px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Average</th>
                                 <?php if ($is_teacher): ?>
-                                <th style="font-size:13px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Action</th>
+                                <th style="font-size:14.5px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Action</th>
                                 <?php endif; ?>
                             </tr>
                         </thead>
@@ -257,7 +257,7 @@ include '../../includes/header.php';
                                         $rl_bg = $rl === 'High' ? '#FDEEEE' : '#FFF7E6';
                                         $rl_color = $rl === 'High' ? '#C94A4A' : '#B7791F';
                                         ?>
-                                        <span style="background:<?php echo $rl_bg; ?>;color:<?php echo $rl_color; ?>;padding:6px 16px;border-radius:20px;font-size:14px;font-weight:700;cursor:help;"
+                                        <span style="background:<?php echo $rl_bg; ?>;color:<?php echo $rl_color; ?>;padding:6px 16px;border-radius:20px;font-size:15px;font-weight:700;cursor:help;"
                                             data-bs-toggle="tooltip"
                                             data-bs-placement="top"
                                             title="<?php echo htmlspecialchars(getRiskLevelDescription($s['risk_level'])); ?>">
@@ -305,11 +305,11 @@ include '../../includes/header.php';
                     <table class="table table-hover mb-0 align-middle" style="font-size:16px;">
                         <thead style="background: var(--surface-hover);">
                             <tr>
-                                <th style="font-size:13px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Student</th>
-                                <th style="font-size:13px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Grade Level</th>
-                                <th style="font-size:13px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Progress</th>
-                                <th style="font-size:13px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Status</th>
-                                <th style="font-size:13px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Action</th>
+                                <th style="font-size:14.5px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Student</th>
+                                <th style="font-size:14.5px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Grade Level</th>
+                                <th style="font-size:14.5px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Progress</th>
+                                <th style="font-size:14.5px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Status</th>
+                                <th style="font-size:14.5px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -330,7 +330,7 @@ include '../../includes/header.php';
                                         $sb = ['Draft' => '#f3f4f6,#667085', 'Active' => '#EDF4FB,#14213D', 'Completed' => '#EAF7F1,#238863', 'Cancelled' => '#f3f4f6,#667085'][$p['status']] ?? '#f3f4f6,#667085';
                                         list($sbg, $scl) = explode(',', $sb);
                                         ?>
-                                        <span style="background:<?php echo $sbg; ?>;color:<?php echo $scl; ?>;padding:6px 16px;border-radius:20px;font-size:14px;font-weight:700;"><?php echo $p['status']; ?></span>
+                                        <span style="background:<?php echo $sbg; ?>;color:<?php echo $scl; ?>;padding:6px 16px;border-radius:20px;font-size:15px;font-weight:700;"><?php echo $p['status']; ?></span>
                                     </td>
                                     <td style="border-bottom: 1px solid var(--border-soft);padding:14px 16px;">
                                         <a href="view.php?id=<?php echo (int)$p['plan_id']; ?>" class="btn-view-link">

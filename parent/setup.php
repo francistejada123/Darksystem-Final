@@ -73,7 +73,7 @@ ppTop();
     .su .form-control, .su .form-select { height: 52px; font-size: 17px; }
     .su .pin { letter-spacing: 8px; font-size: 22px; text-align: center; font-weight: 700; }
     .su .step { display: flex; gap: 10px; align-items: center; font-weight: 800; font-size: 15px; color: var(--pp-blue); margin: 18px 0 8px; }
-    .su .step span { width: 26px; height: 26px; border-radius: 50%; background: var(--pp-blue); color: #fff; display: grid; place-items: center; font-size: 13px; }
+    .su .step span { width: 26px; height: 26px; border-radius: 50%; background: var(--pp-blue); color: #fff; display: grid; place-items: center; font-size: 14.5px; }
     .btn-go { height: 54px; font-size: 17px; font-weight: 800; }
 </style>
 <div class="pp-card su">

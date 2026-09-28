@@ -269,10 +269,10 @@ include '../../includes/header.php';
         border: 2px dashed var(--border); border-radius: var(--radius); padding: 40px 20px;
         text-align: center; background: var(--surface);
     }
-    .preview-table td, .preview-table th { font-size: 12.5px; vertical-align: middle; }
+    .preview-table td, .preview-table th { font-size: 14px; vertical-align: middle; }
     .row-invalid { background: #FFF5F5; }
     .row-valid { background: #F3FBF6; }
-    .err-list { font-size: 11px; color: #C0392B; margin: 0; padding-left: 16px; }
+    .err-list { font-size: 12.5px; color: #C0392B; margin: 0; padding-left: 16px; }
 </style>
 
 <div class="container-fluid py-4 import-page">

@@ -61,10 +61,10 @@ $csrf = generateCSRFToken();
         .reg-card-head h5 { margin: 0; font-size: 17px; font-weight: 700; }
         .reg-card-body { padding: 22px; }
         .reg-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-        .reg-grid label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 5px; color: #344054; }
+        .reg-grid label { display: block; font-size: 15px; font-weight: 600; margin-bottom: 5px; color: #344054; }
         .reg-grid .form-control, .reg-grid .form-select { height: 44px; font-size: 15px; }
         .req { color: #C94A4A; }
-        .hint { font-size: 12.5px; color: #667085; margin-top: 4px; }
+        .hint { font-size: 14px; color: #667085; margin-top: 4px; }
         .reg-intro h1 { font-size: 26px; font-weight: 700; margin: 0 0 6px; }
         .reg-intro p { color: #52607A; font-size: 15px; margin: 0 0 20px; }
         .btn-reg { background: #14213D; color: #fff; border: 0; height: 48px; padding: 0 28px; border-radius: 8px; font-weight: 600; font-size: 16px; }
@@ -73,7 +73,7 @@ $csrf = generateCSRFToken();
         .state-card .icon { width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto 16px; font-size: 30px; }
         .state-card h2 { font-size: 23px; font-weight: 700; margin-bottom: 10px; }
         .state-card p { color: #52607A; font-size: 15.5px; }
-        .status-flow { display: inline-flex; align-items: center; gap: 10px; margin: 8px 0 18px; font-size: 14px; font-weight: 600; }
+        .status-flow { display: inline-flex; align-items: center; gap: 10px; margin: 8px 0 18px; font-size: 15px; font-weight: 600; }
         .status-flow span { padding: 5px 12px; border-radius: 999px; }
         .pw-meter { height: 6px; border-radius: 3px; background: #E5E7EB; margin-top: 6px; overflow: hidden; }
         .pw-meter div { height: 100%; width: 0; transition: width .2s, background .2s; }
@@ -81,7 +81,7 @@ $csrf = generateCSRFToken();
     </style>
 </head>
 <body>
-<div class="reg-top"><div class="container"><div class="brand"><img src="static/images/logo.png" alt="" onerror="this.style.display='none'"> EGradePro <span style="font-weight:400;opacity:.7;font-size:14px;">Teacher Registration</span></div></div></div>
+<div class="reg-top"><div class="container"><div class="brand"><img src="static/images/logo.png" alt="" onerror="this.style.display='none'"> EGradePro <span style="font-weight:400;opacity:.7;font-size:15px;">Teacher Registration</span></div></div></div>
 
 <?php if ($done): ?>
     <div class="state-card">
@@ -99,7 +99,7 @@ $csrf = generateCSRFToken();
             <p>Your account is ready, but the access email could not be sent right now. You can sign in here with your email and the password you created:</p>
             <a class="btn btn-reg" href="<?php echo htmlspecialchars($done['portal_url']); ?>"><i class="fas fa-right-to-bracket me-2"></i>Go to Teacher Portal</a>
         <?php endif; ?>
-        <p class="mt-3" style="font-size:13.5px;">The Teacher Portal is used on a desktop or laptop computer.</p>
+        <p class="mt-3" style="font-size:15px;">The Teacher Portal is used on a desktop or laptop computer.</p>
     </div>
 
 <?php elseif (!$invite): ?>
@@ -118,7 +118,7 @@ $csrf = generateCSRFToken();
     </div>
 
     <?php if ($errors): ?>
-        <div class="alert alert-danger" style="font-size:14.5px;"><strong>Please fix the following:</strong>
+        <div class="alert alert-danger" style="font-size:15.5px;"><strong>Please fix the following:</strong>
             <ul class="mb-0 mt-1"><?php foreach ($errors as $er): ?><li><?php echo htmlspecialchars($er); ?></li><?php endforeach; ?></ul>
         </div>
     <?php endif; ?>
@@ -169,7 +169,7 @@ $csrf = generateCSRFToken();
         </div>
 
         <div class="d-flex justify-content-end align-items-center gap-3">
-            <span style="font-size:13.5px;color:#667085;"><i class="fas fa-shield-halved me-1"></i>The administrator can see your Basic and Professional Information, never your password.</span>
+            <span style="font-size:15px;color:#667085;"><i class="fas fa-shield-halved me-1"></i>The administrator can see your Basic and Professional Information, never your password.</span>
             <button type="submit" class="btn btn-reg"><i class="fas fa-user-check me-2"></i>Create My Teacher Account</button>
         </div>
     </form>

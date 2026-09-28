@@ -63,10 +63,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <p style='text-align: center; margin: 30px 0;'>
                             <a href='" . $reset_link . "' style='background: #1565c0; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;'>Reset My Password</a>
                         </p>
-                        <p style='font-size: 13px; color: #777;'>Or copy this link into your browser:<br><code>" . $reset_link . "</code></p>
-                        <p style='font-size: 13px; color: #777;'>If you did not request this, you can safely ignore this email — your password will not change.</p>
+                        <p style='font-size: 14.5px; color: #777;'>Or copy this link into your browser:<br><code>" . $reset_link . "</code></p>
+                        <p style='font-size: 14.5px; color: #777;'>If you did not request this, you can safely ignore this email — your password will not change.</p>
                     </div>
-                    <div style='text-align: center; font-size: 12px; color: #999; margin-top: 20px;'>
+                    <div style='text-align: center; font-size: 13.5px; color: #999; margin-top: 20px;'>
                         <p>This is an automated message. Please do not reply to this email.</p>
                     </div>
                 </div>
@@ -152,7 +152,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         .login-header p {
             color: #ffffff;
-            font-size: 14px;
+            font-size: 15px;
             margin-top: 5px;
             text-shadow: 0 2px 8px rgba(0,0,0,0.7);
         }
@@ -168,7 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 12px 15px;
             border: 2px solid rgba(255, 255, 255, 0.5);
             background: rgba(255, 255, 255, 0.7);
-            font-size: 14px;
+            font-size: 15px;
             color: #1a1a2e;
         }
         .form-control::placeholder {
@@ -238,7 +238,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             color: #ffffff;
             text-decoration: none !important;
             font-weight: 600;
-            font-size: 14px;
+            font-size: 15px;
             text-shadow: 0 2px 6px rgba(0,0,0,0.6);
             transition: all 0.2s;
         }
@@ -260,7 +260,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .footer-text {
             color: #ffffff;
-            font-size: 11px;
+            font-size: 12.5px;
             text-align: center;
             text-shadow: 0 2px 8px rgba(0,0,0,0.7);
             margin-top: 15px;

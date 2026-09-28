@@ -82,10 +82,10 @@
        "table header" or "dashboard number" always reads the same size
        system-wide even where a page still writes its own local rule. */
     --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    --text-xs:  12px;  /* small supporting text, badges, table headers (compact) */
-    --text-sm:  13px;  /* table headers, form labels, secondary buttons */
-    --text-md:  14px;  /* body text, inputs, buttons, table body, nav links */
-    --text-lg:  16px;  /* body (upper end), subsection headings (floor) */
+    --text-xs:  13.5px;  /* small supporting text, badges, table headers (compact) */
+    --text-sm:  14.5px;  /* table headers, form labels, secondary buttons */
+    --text-md:  15.5px;  /* body text, inputs, buttons, table body, nav links */
+    --text-lg:  17px;  /* body (upper end), subsection headings (floor) */
     --text-xl:  19px;  /* subsection headings (ceiling) */
     --text-2xl: 24px;  /* section headings, dashboard stat numbers */
     --text-3xl: 30px;  /* page / system titles */
@@ -224,7 +224,7 @@ a { color: var(--info); }
 }
 
 .sidebar .logo small {
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 500;
     color: rgba(255,255,255,0.5);
     display: block;
@@ -260,7 +260,7 @@ a { color: var(--info); }
     border: none;
     border-radius: var(--radius-sm);
     color: rgba(255,255,255,0.8);
-    font-size: 14px;
+    font-size: 15px;
     cursor: pointer;
     z-index: 2;
 }
@@ -274,7 +274,7 @@ a { color: var(--info); }
 .sidebar nav.nav { flex: 1 1 auto; }
 
 .sidebar .nav-section-label {
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -306,7 +306,7 @@ a { color: var(--info); }
     width: 18px;
     flex-shrink: 0;
     text-align: center;
-    font-size: 13px;
+    font-size: 14.5px;
     opacity: 0.85;
     transition: opacity 0.15s ease, transform 0.15s ease;
 }
@@ -578,7 +578,7 @@ a { color: var(--info); }
 }
 .app-topbar-title small {
     display: block;
-    font-size: 12px;
+    font-size: 13.5px;
     color: var(--text-muted);
     font-weight: 500;
     white-space: nowrap;
@@ -624,7 +624,7 @@ a { color: var(--info); }
 }
 
 .app-topbar-datetime {
-    font-size: 12.5px;
+    font-size: 14px;
     color: var(--text-muted);
     white-space: nowrap;
 }
@@ -655,7 +655,7 @@ a { color: var(--info); }
     right: -4px;
     background: var(--danger);
     color: #fff;
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 700;
     min-width: 16px;
     height: 16px;
@@ -695,7 +695,7 @@ a { color: var(--info); }
     border: 1px solid var(--border);
 }
 .app-topbar-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.app-topbar-avatar i { color: var(--text-muted); font-size: 14px; }
+.app-topbar-avatar i { color: var(--text-muted); font-size: 15px; }
 
 .app-topbar-profile-text {
     display: flex;
@@ -704,12 +704,12 @@ a { color: var(--info); }
     line-height: 1.25;
 }
 .app-topbar-profile-text strong {
-    font-size: 13px; font-weight: 600; color: var(--ink);
-    max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: 14.5px; font-weight: 600; color: var(--ink);
+    max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.app-topbar-profile-text small { font-size: 11px; color: var(--text-muted); }
+.app-topbar-profile-text small { font-size: 12.5px; color: var(--text-muted); }
 
-.app-topbar-chevron { font-size: 10px; color: var(--text-muted); transition: transform 0.15s ease; }
+.app-topbar-chevron { font-size: 12px; color: var(--text-muted); transition: transform 0.15s ease; }
 .app-topbar-profile.open .app-topbar-chevron { transform: rotate(180deg); }
 
 .app-topbar-dropdown {
@@ -734,7 +734,7 @@ a { color: var(--info); }
     gap: 8px;
     padding: 9px 10px;
     border-radius: var(--radius-sm);
-    font-size: 13px;
+    font-size: 14.5px;
     color: var(--text);
     text-decoration: none;
     transition: background-color 0.15s ease;
@@ -1088,7 +1088,7 @@ a { color: var(--info); }
     border-bottom: 1px solid var(--border);
     color: var(--text-muted);
     font-weight: var(--weight-semibold);
-    font-size: 11.5px;
+    font-size: 13px;
     text-transform: uppercase;
     letter-spacing: 0.03em;
     background: var(--bg);
@@ -1153,7 +1153,7 @@ a { color: var(--info); }
     border: 1px solid #E4E7EC;
     border-radius: 6px;
     padding: 3px 8px;
-    font-size: 11.5px;
+    font-size: 13px;
     font-weight: 500;
     line-height: 1.3;
 }
@@ -1170,8 +1170,8 @@ a { color: var(--info); }
 /* Section chips that also toggle a "show subjects" panel */
 .section-toggle-btn { cursor: pointer; }
 .section-toggle-btn.chip-open { background: var(--ink); color: #fff; border-color: var(--ink); }
-.section-panel { font-size: 13px; line-height: 1.6; padding: 8px 0 8px 10px; border-left: 3px solid var(--border); margin-bottom: 6px; }
-.section-panel-title { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; }
+.section-panel { font-size: 14.5px; line-height: 1.6; padding: 8px 0 8px 10px; border-left: 3px solid var(--border); margin-bottom: 6px; }
+.section-panel-title { font-size: 12.5px; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; }
 
 /* ============================================================
    GRADE LEVEL COLORS (Grade 7–12)
@@ -1221,7 +1221,7 @@ a { color: var(--info); }
 .grade-card .grade-icon, .app-grade-card .grade-icon { margin-bottom: 6px; color: var(--accent, var(--text-muted)); }
 .grade-card .grade-num, .app-grade-card .grade-num { font-size: 34px; font-weight: 700; line-height: 1; color: var(--ink); }
 .grade-card .grade-label, .app-grade-card .grade-label { font-size: 17px; font-weight: 600; color: var(--ink); }
-.grade-card .section-count, .app-grade-card .section-count { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+.grade-card .section-count, .app-grade-card .section-count { font-size: 14.5px; color: var(--text-muted); margin-top: 2px; }
 
 /* Grade / strand cards: school-photo background fades in on hover or keyboard
    focus and fades back to the normal card afterwards (Student, Teacher, Subject
@@ -1276,7 +1276,7 @@ html[data-theme="dark"] .grade-card:hover .section-count, html[data-theme="dark"
     margin-top: 6px;
     padding: 3px 12px;
     border-radius: 999px;
-    font-size: 11.5px;
+    font-size: 13px;
     font-weight: 600;
     background: var(--accent, var(--ink));
     color: #fff;
@@ -1328,7 +1328,7 @@ html[data-theme="dark"] .grade-card:hover .section-count, html[data-theme="dark"
     color: var(--ink);
 }
 .section-card .sec-meta, .section-card .section-strand, .app-section-card .sec-meta {
-    font-size: 12.5px;
+    font-size: 14px;
     color: var(--text-muted);
     margin-top: 2px;
 }
@@ -1359,7 +1359,7 @@ html[data-theme="dark"] .grade-card:hover .section-count, html[data-theme="dark"
 }
 .strand-card .strand-icon { font-size: 26px; color: var(--primary); margin-bottom: 6px; }
 .strand-card .strand-label { font-size: 15px; font-weight: 600; color: var(--ink); }
-.strand-card .strand-sub { font-size: 12.5px; color: var(--text-muted); }
+.strand-card .strand-sub { font-size: 14px; color: var(--text-muted); }
 
 /* ============================================================
    FILTER PANELS — search/grade/status/type filter rows shared by
@@ -1373,7 +1373,7 @@ html[data-theme="dark"] .grade-card:hover .section-count, html[data-theme="dark"
     padding: var(--space-4);
 }
 .app-filter-panel .app-filter-label {
-    font-size: 11.5px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--text-muted);
     text-transform: uppercase;
@@ -1394,9 +1394,9 @@ html[data-theme="dark"] .grade-card:hover .section-count, html[data-theme="dark"
 .enroll-page, .app-inbox { background: var(--bg); }
 .enroll-page .page-header, .app-inbox .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
 .enroll-page .page-header h4, .app-inbox .page-header h4 { font-size: 24px; font-weight: 700; color: var(--ink); margin: 0; }
-.enroll-page .page-header p, .app-inbox .page-header p { font-size: 14px; color: var(--text-muted); margin: 4px 0 0 0; }
+.enroll-page .page-header p, .app-inbox .page-header p { font-size: 15px; color: var(--text-muted); margin: 4px 0 0 0; }
 
-.enroll-page .btn-secondary-link, .app-inbox .btn-secondary-link { display: inline-flex; align-items: center; gap: 8px; padding: 9px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--ink); background: var(--surface); border: 1px solid var(--border); text-decoration: none; transition: all 0.15s; }
+.enroll-page .btn-secondary-link, .app-inbox .btn-secondary-link { display: inline-flex; align-items: center; gap: 8px; padding: 9px 20px; border-radius: 8px; font-size: 14.5px; font-weight: 600; color: var(--ink); background: var(--surface); border: 1px solid var(--border); text-decoration: none; transition: all 0.15s; }
 .enroll-page .btn-secondary-link:hover, .app-inbox .btn-secondary-link:hover { background: var(--bg); }
 
 .enroll-page .stat-cards, .app-inbox .stat-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3); margin-bottom: 24px; }
@@ -1404,25 +1404,25 @@ html[data-theme="dark"] .grade-card:hover .section-count, html[data-theme="dark"
 .enroll-page .stat-card:hover, .app-inbox .stat-card:hover { border-color: var(--primary); box-shadow: 0 4px 12px rgba(16,24,40,.07); }
 .enroll-page .stat-card .stat-icon, .app-inbox .stat-card .stat-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
 .enroll-page .stat-card .stat-value, .app-inbox .stat-card .stat-value { font-size: 26px; font-weight: 700; color: var(--ink); line-height: 1; }
-.enroll-page .stat-card .stat-label, .app-inbox .stat-card .stat-label { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+.enroll-page .stat-card .stat-label, .app-inbox .stat-card .stat-label { font-size: 14.5px; color: var(--text-muted); margin-top: 4px; }
 
 .enroll-page .filter-card, .app-inbox .filter-card { background: var(--surface-muted); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 24px; }
 .enroll-page .filter-card form, .app-inbox .filter-card form { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .enroll-page .filter-card input, .app-inbox .filter-card input,
-.enroll-page .filter-card select, .app-inbox .filter-card select { border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; font-size: 13px; color: var(--ink); background: var(--surface-elevated, var(--surface)); height: 40px; }
+.enroll-page .filter-card select, .app-inbox .filter-card select { border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; font-size: 14.5px; color: var(--ink); background: var(--surface-elevated, var(--surface)); height: 40px; }
 .enroll-page .filter-card input:focus, .app-inbox .filter-card input:focus,
 .enroll-page .filter-card select:focus, .app-inbox .filter-card select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(91,95,239,0.12); }
 
 .enroll-page .table-card, .app-inbox .table-card { background: var(--surface-elevated, var(--surface)); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 1px 2px rgba(16,24,40,.04); overflow: hidden; }
 .enroll-page .data-table, .app-inbox .data-table { width: 100%; border-collapse: collapse; }
-.enroll-page .data-table thead th, .app-inbox .data-table thead th { background: var(--bg); border-bottom: 1px solid var(--border); padding: 12px 16px; font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); text-align: left; }
-.enroll-page .data-table tbody td, .app-inbox .data-table tbody td { padding: 14px 16px; font-size: 13.5px; color: var(--ink); border-bottom: 1px solid var(--border-soft); vertical-align: middle; }
+.enroll-page .data-table thead th, .app-inbox .data-table thead th { background: var(--bg); border-bottom: 1px solid var(--border); padding: 12px 16px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); text-align: left; }
+.enroll-page .data-table tbody td, .app-inbox .data-table tbody td { padding: 14px 16px; font-size: 15px; color: var(--ink); border-bottom: 1px solid var(--border-soft); vertical-align: middle; }
 .enroll-page .data-table tbody tr:hover, .app-inbox .data-table tbody tr:hover { background: var(--surface-hover); }
 .enroll-page .data-table tbody tr:last-child td, .app-inbox .data-table tbody tr:last-child td { border-bottom: none; }
 
-.enroll-page .ref-code, .app-inbox .ref-code { font-family: monospace; font-size: 12.5px; background: var(--bg); padding: 4px 10px; border-radius: 5px; color: var(--ink); }
+.enroll-page .ref-code, .app-inbox .ref-code { font-family: monospace; font-size: 14px; background: var(--bg); padding: 4px 10px; border-radius: 5px; color: var(--ink); }
 
-.enroll-page .status-badge, .app-inbox .status-badge { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.enroll-page .status-badge, .app-inbox .status-badge { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 13.5px; font-weight: 600; }
 .enroll-page .status-pending, .app-inbox .status-pending { background: #FFF7E6; color: #B7791F; }
 .enroll-page .status-review, .app-inbox .status-review { background: #cff4fc; color: #055160; }
 .enroll-page .status-approved, .app-inbox .status-approved { background: #EAF7F1; color: #238863; }
@@ -1430,12 +1430,12 @@ html[data-theme="dark"] .grade-card:hover .section-count, html[data-theme="dark"
 .enroll-page .status-correction, .app-inbox .status-correction { background: #FFF4E5; color: #B45309; }
 .enroll-page .status-incomplete, .app-inbox .status-incomplete { background: #FFF4E5; color: #B45309; }
 .enroll-page .status-transferred, .app-inbox .status-transferred { background: #cff4fc; color: #055160; }
-.enroll-page .strand-badge, .app-inbox .strand-badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; background: var(--bg); color: var(--text-secondary, var(--text-muted)); }
-.enroll-page .doc-count, .app-inbox .doc-count { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 7px; background: var(--bg); font-size: 13px; font-weight: 600; color: var(--ink); }
+.enroll-page .strand-badge, .app-inbox .strand-badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 13.5px; font-weight: 500; background: var(--bg); color: var(--text-secondary, var(--text-muted)); }
+.enroll-page .doc-count, .app-inbox .doc-count { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 7px; background: var(--bg); font-size: 14.5px; font-weight: 600; color: var(--ink); }
 
-.enroll-page .btn-view, .app-inbox .btn-view { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--ink); background: var(--surface); border: 1px solid var(--border); text-decoration: none; transition: all 0.15s; }
+.enroll-page .btn-view, .app-inbox .btn-view { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 8px; font-size: 14.5px; font-weight: 600; color: var(--ink); background: var(--surface); border: 1px solid var(--border); text-decoration: none; transition: all 0.15s; }
 .enroll-page .btn-view:hover, .app-inbox .btn-view:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
-.enroll-page .btn-action, .app-inbox .btn-action { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 36px; height: 36px; padding: 0 12px; border-radius: 8px; font-size: 14px; font-weight: 500; border: 1px solid var(--border); background: var(--surface); text-decoration: none; transition: all 0.15s; }
+.enroll-page .btn-action, .app-inbox .btn-action { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 36px; height: 36px; padding: 0 12px; border-radius: 8px; font-size: 15px; font-weight: 500; border: 1px solid var(--border); background: var(--surface); text-decoration: none; transition: all 0.15s; }
 /* Visible keyboard focus — approve and reject are icon-only, so without
    this a keyboard user cannot tell which one is selected. */
 .enroll-page .btn-view:focus-visible, .app-inbox .btn-view:focus-visible,
@@ -1449,13 +1449,13 @@ html[data-theme="dark"] .grade-card:hover .section-count, html[data-theme="dark"
 
 .enroll-page .pagination-wrap, .app-inbox .pagination-wrap { padding: 16px 20px; display: flex; justify-content: center; }
 .enroll-page .pagination, .app-inbox .pagination { display: flex; gap: 4px; list-style: none; margin: 0; padding: 0; }
-.enroll-page .pagination .page-link, .app-inbox .pagination .page-link { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; height: 36px; padding: 0 10px; border-radius: 8px; font-size: 13px; color: var(--ink); background: var(--surface); border: 1px solid var(--border); text-decoration: none; transition: all 0.15s; }
+.enroll-page .pagination .page-link, .app-inbox .pagination .page-link { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; height: 36px; padding: 0 10px; border-radius: 8px; font-size: 14.5px; color: var(--ink); background: var(--surface); border: 1px solid var(--border); text-decoration: none; transition: all 0.15s; }
 .enroll-page .pagination .page-link:hover, .app-inbox .pagination .page-link:hover { background: var(--bg); }
 .enroll-page .pagination .active .page-link, .app-inbox .pagination .active .page-link { background: var(--primary); color: #fff; border-color: var(--primary); }
 
 .enroll-page .empty-state, .app-inbox .empty-state { text-align: center; padding: 48px 20px; color: var(--text-muted); }
 .enroll-page .empty-state i, .app-inbox .empty-state i { font-size: 32px; margin-bottom: 12px; opacity: 0.4; }
-.enroll-page .empty-state p, .app-inbox .empty-state p { font-size: 14px; margin: 0; }
+.enroll-page .empty-state p, .app-inbox .empty-state p { font-size: 15px; margin: 0; }
 
 .enroll-page .actions-cell, .app-inbox .actions-cell { display: flex; gap: 6px; align-items: center; justify-content: center; white-space: nowrap; }
 
@@ -1505,7 +1505,7 @@ html[data-theme="dark"] .grade-card:hover .section-count, html[data-theme="dark"
 }
 
 .attendance-time-block {
-    font-size: 12.5px;
+    font-size: 14px;
     line-height: 1.6;
     color: var(--text);
 }
@@ -1539,7 +1539,7 @@ html[data-theme="dark"] .grade-card:hover .section-count, html[data-theme="dark"
     margin-bottom: 8px;
 }
 
-.attendance-card-name { font-weight: 600; font-size: 14px; color: var(--ink); }
+.attendance-card-name { font-weight: 600; font-size: 15px; color: var(--ink); }
 .attendance-card-badges { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
 
 .attendance-card-section {
@@ -1549,7 +1549,7 @@ html[data-theme="dark"] .grade-card:hover .section-count, html[data-theme="dark"
 }
 
 .attendance-card-section-label {
-    font-size: 10.5px;
+    font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -1560,7 +1560,7 @@ html[data-theme="dark"] .grade-card:hover .section-count, html[data-theme="dark"
 .attendance-card-row {
     display: flex;
     justify-content: space-between;
-    font-size: 12.5px;
+    font-size: 14px;
     padding: 2px 0;
 }
 
@@ -1590,14 +1590,14 @@ html[data-theme="dark"] .grade-card:hover .section-count, html[data-theme="dark"
 }
 
 .empty-state .empty-state-title {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--text);
     margin-bottom: 4px;
 }
 
 .empty-state .empty-state-text {
-    font-size: 12.5px;
+    font-size: 14px;
     color: var(--text-muted);
     max-width: 320px;
     margin: 0 auto;
@@ -1615,11 +1615,11 @@ html[data-theme="dark"] .grade-card:hover .section-count, html[data-theme="dark"
 #appConfirmModal .modal-title { display: block; color: #193568; font-weight: 800; font-size: 28px; line-height: 1.15; text-align: center; margin-bottom: 10px; }
 #appConfirmModal .app-confirm-icon { width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 2px auto 12px; font-size: 24px; background: #E9F3FF; color: #2463D4; box-shadow: inset 0 0 0 5px #F5F9FF; }
 #appConfirmModal.confirm-danger .app-confirm-icon { background: var(--danger-tint); color: var(--danger); }
-#appConfirmModal .app-confirm-message { font-weight: 500; font-size: 14px; line-height: 1.45; color: #536B96; text-align: center; max-width: 430px; margin: 0 auto; }
+#appConfirmModal .app-confirm-message { font-weight: 500; font-size: 15px; line-height: 1.45; color: #536B96; text-align: center; max-width: 430px; margin: 0 auto; }
 #appConfirmModal .modal-footer { border: none; padding: 18px 24px 22px; gap: 12px; justify-content: center; }
-#appConfirmModal .btn-app-cancel { background: #fff; color: #536B96; border: 2px solid #C9D9F2; border-radius: 8px; padding: 9px 28px; font-weight: 700; font-size: 14px; }
+#appConfirmModal .btn-app-cancel { background: #fff; color: #536B96; border: 2px solid #C9D9F2; border-radius: 8px; padding: 9px 28px; font-weight: 700; font-size: 15px; }
 #appConfirmModal .btn-app-cancel:hover { background: #E5E7EB; }
-#appConfirmModal .btn-app-ok { background: #2463D4; color: #fff; border: none; border-radius: 8px; padding: 10px 30px; font-weight: 700; font-size: 14px; }
+#appConfirmModal .btn-app-ok { background: #2463D4; color: #fff; border: none; border-radius: 8px; padding: 10px 30px; font-weight: 700; font-size: 15px; }
 #appConfirmModal.confirm-danger .btn-app-ok { background: var(--danger); }
 #appConfirmModal .btn-close { opacity: .65; margin: 0; }
 @media (max-width: 576px) {
@@ -1631,12 +1631,12 @@ html[data-theme="dark"] .grade-card:hover .section-count, html[data-theme="dark"
 }
 
 #appToastContainer { position: fixed; top: 16px; right: 16px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; max-width: 340px; pointer-events: none; }
-.app-toast { pointer-events: auto; background: #fff; border-radius: 8px; box-shadow: var(--shadow-md); padding: 12px 14px; display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: var(--ink); border-left: 3px solid var(--success); animation: appToastIn 0.2s ease; }
+.app-toast { pointer-events: auto; background: #fff; border-radius: 8px; box-shadow: var(--shadow-md); padding: 12px 14px; display: flex; align-items: flex-start; gap: 8px; font-size: 14.5px; color: var(--ink); border-left: 3px solid var(--success); animation: appToastIn 0.2s ease; }
 .app-toast.toast-error { border-left-color: var(--danger); }
-.app-toast .app-toast-icon { font-size: 14px; margin-top: 1px; }
+.app-toast .app-toast-icon { font-size: 15px; margin-top: 1px; }
 .app-toast.toast-success .app-toast-icon { color: var(--success); }
 .app-toast.toast-error .app-toast-icon { color: var(--danger); }
-.app-toast .app-toast-close { margin-left: auto; cursor: pointer; opacity: 0.4; font-size: 11px; background: none; border: none; }
+.app-toast .app-toast-close { margin-left: auto; cursor: pointer; opacity: 0.4; font-size: 12.5px; background: none; border: none; }
 .app-toast .app-toast-close:hover { opacity: 0.8; }
 .app-toast.app-toast-out { animation: appToastOut 0.15s ease forwards; }
 @keyframes appToastIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
@@ -1648,7 +1648,7 @@ html[data-theme="dark"] .grade-card:hover .section-count, html[data-theme="dark"
 .flash-alert {
     border-radius: var(--radius-sm);
     font-weight: 500;
-    font-size: 13px;
+    font-size: 14.5px;
     padding: 10px 16px;
     margin-bottom: 16px;
 }
@@ -1687,7 +1687,7 @@ html[data-theme="dark"] .grade-card:hover .section-count, html[data-theme="dark"
 @media (max-width: 768px) {
     .main-content { padding: 14px 16px; margin-left: 0; width: 100%; max-width: 100%; }
     .card-body { padding: 14px; }
-    .table-responsive .table { min-width: 560px; font-size: 12.5px; }
+    .table-responsive .table { min-width: 560px; font-size: 14px; }
     .table td, .table th { padding: 8px 10px; }
 }
 
@@ -1831,7 +1831,7 @@ html[data-theme="dark"] .grade-card:hover .section-count, html[data-theme="dark"
     border-radius: 999px;
     background: var(--danger, #C94A4A);
     color: #fff;
-    font-size: 10.5px;
+    font-size: 12px;
     font-weight: 700;
     line-height: 1;
     border: 2px solid var(--surface, #fff);
@@ -1878,16 +1878,16 @@ html[data-theme="dark"] .grade-card:hover .section-count, html[data-theme="dark"
     background: rgba(0,0,0,0.5); padding: 6px; text-align: center; cursor: pointer;
 }
 .profile-avatar .profile-upload-overlay:hover { background: rgba(0,0,0,0.65); }
-.profile-avatar .profile-upload-overlay i { color: #fff; font-size: 14px; }
+.profile-avatar .profile-upload-overlay i { color: #fff; font-size: 15px; }
 .profile-avatar .profile-upload-overlay input { position: absolute; opacity: 0; width: 100%; height: 100%; top: 0; left: 0; cursor: pointer; }
 
 .profile-name { font-size: 18px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
-.profile-meta { font-size: 13px; color: var(--text-muted); margin-bottom: 12px; }
-.profile-role-badge { display: inline-block; padding: 3px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; background: rgba(20,33,61,0.06); color: var(--ink); }
-.profile-status-pill { display: inline-block; padding: 3px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-top: 6px; margin-left: 6px; }
+.profile-meta { font-size: 14.5px; color: var(--text-muted); margin-bottom: 12px; }
+.profile-role-badge { display: inline-block; padding: 3px 12px; border-radius: 4px; font-size: 13.5px; font-weight: 600; background: rgba(20,33,61,0.06); color: var(--ink); }
+.profile-status-pill { display: inline-block; padding: 3px 12px; border-radius: 4px; font-size: 13.5px; font-weight: 600; margin-top: 6px; margin-left: 6px; }
 .profile-status-pill.active { background: rgba(35,136,99,0.08); color: var(--success); }
 .profile-status-pill.inactive { background: rgba(201,74,74,0.08); color: var(--danger); }
-.profile-hint { font-size: 11px; color: var(--text-muted); margin-top: 16px; }
+.profile-hint { font-size: 12.5px; color: var(--text-muted); margin-top: 16px; }
 
 .profile-card-header {
     padding: 14px 20px; border-bottom: 1px solid var(--border);
@@ -1897,8 +1897,8 @@ html[data-theme="dark"] .grade-card:hover .section-count, html[data-theme="dark"
 
 .profile-info-row { display: flex; padding: 10px 0; border-bottom: 1px solid var(--border-soft); flex-wrap: wrap; }
 .profile-info-row:last-child { border-bottom: none; }
-.profile-info-label { width: 190px; font-size: 13px; font-weight: 500; color: var(--text-muted); flex-shrink: 0; }
-.profile-info-value { font-size: 14px; color: var(--text); font-weight: 500; flex: 1; min-width: 200px; }
+.profile-info-label { width: 190px; font-size: 14.5px; font-weight: 500; color: var(--text-muted); flex-shrink: 0; }
+.profile-info-value { font-size: 15px; color: var(--text); font-weight: 500; flex: 1; min-width: 200px; }
 
 .profile-section-label {
     font-size: 16px; font-weight: 600; color: var(--ink);
@@ -1907,20 +1907,20 @@ html[data-theme="dark"] .grade-card:hover .section-count, html[data-theme="dark"
 }
 .profile-section-label:first-of-type { margin-top: 0; }
 
-.profile-btn-edit { padding: 7px 16px; border-radius: 6px; font-size: 12px; font-weight: 500; border: none; background: var(--ink); color: #fff; cursor: pointer; transition: background 0.15s; }
+.profile-btn-edit { padding: 7px 16px; border-radius: 6px; font-size: 13.5px; font-weight: 500; border: none; background: var(--ink); color: #fff; cursor: pointer; transition: background 0.15s; }
 .profile-btn-edit:hover { background: var(--ink-soft); color: #fff; }
-.profile-btn-cancel { padding: 7px 16px; border-radius: 6px; font-size: 12px; font-weight: 500; border: 1px solid var(--border); background: #fff; color: var(--text-muted); cursor: pointer; transition: background 0.15s; }
+.profile-btn-cancel { padding: 7px 16px; border-radius: 6px; font-size: 13.5px; font-weight: 500; border: 1px solid var(--border); background: #fff; color: var(--text-muted); cursor: pointer; transition: background 0.15s; }
 .profile-btn-cancel:hover { background: #f1f5f9; }
-.profile-back-btn { padding: 7px 16px; border-radius: 6px; font-size: 12px; font-weight: 500; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; transition: background 0.15s; }
+.profile-back-btn { padding: 7px 16px; border-radius: 6px; font-size: 13.5px; font-weight: 500; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; transition: background 0.15s; }
 .profile-back-btn:hover { background: #f1f5f9; color: var(--ink); }
 
-.profile-edit-notice { padding: 12px 16px; background: rgba(183,121,31,0.06); border-left: 3px solid var(--warning); border-radius: 0 6px 6px 0; font-size: 13px; color: #92700c; margin-bottom: 20px; }
+.profile-edit-notice { padding: 12px 16px; background: rgba(183,121,31,0.06); border-left: 3px solid var(--warning); border-radius: 0 6px 6px 0; font-size: 14.5px; color: #92700c; margin-bottom: 20px; }
 
-.profile-form-label { font-size: 12px; font-weight: 500; color: var(--text-muted); margin-bottom: 4px; display: block; }
-.profile-form-input { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; color: var(--text); background: #fff; transition: border-color 0.15s; }
+.profile-form-label { font-size: 13.5px; font-weight: 500; color: var(--text-muted); margin-bottom: 4px; display: block; }
+.profile-form-input { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 14.5px; color: var(--text); background: #fff; transition: border-color 0.15s; }
 .profile-form-input:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 2px rgba(20,33,61,0.06); }
 
-.profile-alert { padding: 12px 16px; border-radius: 6px; font-size: 13px; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 8px; }
+.profile-alert { padding: 12px 16px; border-radius: 6px; font-size: 14.5px; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 8px; }
 .profile-alert.success { background: rgba(35,136,99,0.06); color: var(--success); border: 1px solid rgba(35,136,99,0.15); }
 .profile-alert.danger { background: rgba(201,74,74,0.06); color: var(--danger); border: 1px solid rgba(201,74,74,0.15); }
 
@@ -1930,13 +1930,13 @@ html[data-theme="dark"] .grade-card:hover .section-count, html[data-theme="dark"
 .profile-row-cards { display: flex; align-items: flex-start; gap: 20px; }
 .profile-row-cards > .card { flex: 1; min-width: 0; }
 .profile-summary-divider { height: 1px; background: var(--border); margin: 16px 0; }
-.profile-summary-id-label { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px; }
+.profile-summary-id-label { font-size: 12.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px; }
 .profile-summary-id-value { font-size: 16px; font-weight: 700; color: var(--ink); margin-bottom: 14px; }
-.profile-info-icon { width: 18px; display: inline-flex; justify-content: center; color: var(--text-muted); font-size: 12px; margin-right: 8px; }
-.profile-btn-edit-outline { padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1px solid var(--info); background: #fff; color: var(--info); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.profile-info-icon { width: 18px; display: inline-flex; justify-content: center; color: var(--text-muted); font-size: 13.5px; margin-right: 8px; }
+.profile-btn-edit-outline { padding: 6px 16px; border-radius: 20px; font-size: 13.5px; font-weight: 600; border: 1px solid var(--info); background: #fff; color: var(--info); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
 .profile-btn-edit-outline:hover { background: rgba(53,110,168,0.08); }
 .profile-account-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; }
-.profile-empty-note { font-size: 13px; color: var(--text-muted); font-style: italic; padding: 10px 0; }
+.profile-empty-note { font-size: 14.5px; color: var(--text-muted); font-style: italic; padding: 10px 0; }
 
 @media (max-width: 575.98px) {
     .profile-avatar { width: 90px; height: 90px; }
@@ -2021,7 +2021,7 @@ html[data-theme="dark"] .grade-card:hover .section-count, html[data-theme="dark"
     color: #fff;
 }
 .dash-customize-btn:active { transform: scale(0.97); }
-.dash-customize-btn i { font-size: 12px; }
+.dash-customize-btn i { font-size: 13.5px; }
 
 /* ---- Widget-modal footer buttons (Reset Default / Save Layout — Cancel
    uses the shared .btn-app-cancel style already defined for #dwWidgetModal

@@ -507,7 +507,7 @@ include '../../includes/header.php';
                         <span class="badge bg-info"><?php echo htmlspecialchars($section_info['strand'] === 'ASSH' ? 'ASSH Cluster' : $section_info['strand']); ?></span>
                     <?php endif; ?>
                     <span class="badge bg-secondary ms-2"><?php echo count($section_students); ?> students</span>
-                    <div class="mt-1" style="font-size: 13px; font-weight: 400; color: #888;">
+                    <div class="mt-1" style="font-size: 14.5px; font-weight: 400; color: #888;">
                         <i class="fas fa-chalkboard-teacher me-1"></i> Adviser:
                         <?php echo htmlspecialchars($section_info['adviser_name'] ?? 'Not yet assigned'); ?>
                     </div>

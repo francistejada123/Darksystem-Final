@@ -125,28 +125,28 @@ include '../../includes/header.php';
 .tform-page .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
 .tform-page .page-header h4 { font-size: 20px; font-weight: 700; color: var(--ink); margin: 0; }
 .tform-page .page-header-actions { display: flex; gap: 8px; }
-.tform-page .btn-secondary { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; color: var(--text-muted); background: var(--surface); border: 1px solid var(--border); text-decoration: none; transition: all 0.15s; }
+.tform-page .btn-secondary { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 6px; font-size: 14.5px; font-weight: 500; color: var(--text-muted); background: var(--surface); border: 1px solid var(--border); text-decoration: none; transition: all 0.15s; }
 .tform-page .btn-secondary:hover { background: var(--surface-hover); color: var(--ink); }
-.tform-page .error-alert { background: #fdecea; border: 1px solid #f5c6cb; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; color: #C94A4A; font-size: 13px; }
+.tform-page .error-alert { background: #fdecea; border: 1px solid #f5c6cb; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; color: #C94A4A; font-size: 14.5px; }
 .tform-page .error-alert ul { margin: 4px 0 0 0; padding-left: 18px; }
 .tform-page .form-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 20px; }
 .tform-page .form-card-header { padding: 14px 20px; border-bottom: 1px solid var(--border-soft); display: flex; align-items: center; gap: 8px; }
-.tform-page .form-card-header h5 { font-size: 14px; font-weight: 600; color: var(--ink); margin: 0; }
-.tform-page .form-card-header i { font-size: 13px; color: var(--ink); }
+.tform-page .form-card-header h5 { font-size: 15px; font-weight: 600; color: var(--ink); margin: 0; }
+.tform-page .form-card-header i { font-size: 14.5px; color: var(--ink); }
 .tform-page .form-card-body { padding: 20px; }
 .tform-page .form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
 .tform-page .form-group { display: flex; flex-direction: column; gap: 4px; }
-.tform-page .form-group label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.tform-page .form-group label { font-size: 13.5px; font-weight: 600; color: var(--text-muted); }
 .tform-page .form-group label .req { color: #C94A4A; }
 .tform-page .form-group label .muted { color: #9ca3af; font-weight: 400; }
 .tform-page .form-group input,
-.tform-page .form-group select { border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; font-size: 13px; color: var(--ink); background: var(--surface); height: 38px; }
+.tform-page .form-group select { border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; font-size: 14.5px; color: var(--ink); background: var(--surface); height: 38px; }
 .tform-page .form-group input:focus,
 .tform-page .form-group select:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 2px rgba(20,33,61,0.08); }
 .tform-page .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; }
-.tform-page .btn-cancel { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; color: var(--text-muted); background: var(--surface); border: 1px solid var(--border); text-decoration: none; transition: all 0.15s; }
+.tform-page .btn-cancel { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 6px; font-size: 14.5px; font-weight: 500; color: var(--text-muted); background: var(--surface); border: 1px solid var(--border); text-decoration: none; transition: all 0.15s; }
 .tform-page .btn-cancel:hover { background: var(--surface-hover); }
-.tform-page .btn-submit { display: inline-flex; align-items: center; gap: 6px; padding: 8px 20px; border-radius: 6px; font-size: 13px; font-weight: 500; color: #fff; background: #14213D; border: none; cursor: pointer; transition: all 0.15s; }
+.tform-page .btn-submit { display: inline-flex; align-items: center; gap: 6px; padding: 8px 20px; border-radius: 6px; font-size: 14.5px; font-weight: 500; color: #fff; background: #14213D; border: none; cursor: pointer; transition: all 0.15s; }
 .tform-page .btn-submit:hover { filter: brightness(0.9); }
 @media (max-width: 768px) { .tform-page .form-grid { grid-template-columns: 1fr; } }
 </style>
@@ -184,7 +184,7 @@ if (!empty($errors) && $_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     <?php endif; ?>
 
-    <p class="tv-note" style="font-size:13px;color:var(--text-muted);margin:-8px 0 16px;">Fields marked <span style="color:#C94A4A;font-weight:700;">*</span> are required.</p>
+    <p class="tv-note" style="font-size:14.5px;color:var(--text-muted);margin:-8px 0 16px;">Fields marked <span style="color:#C94A4A;font-weight:700;">*</span> are required.</p>
     <form method="POST" action="">
         <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
 
@@ -304,7 +304,7 @@ if (!empty($errors) && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                     <div class="form-group">
                         <label>Password</label>
-                        <div style="font-size:13px;color:var(--text-muted);line-height:1.45;padding-top:6px;"><i class="fas fa-lock me-1"></i>Only the teacher sets their password. If they forget it, they use <strong>Forgot Password</strong> on the Teacher Login.</div>
+                        <div style="font-size:14.5px;color:var(--text-muted);line-height:1.45;padding-top:6px;"><i class="fas fa-lock me-1"></i>Only the teacher sets their password. If they forget it, they use <strong>Forgot Password</strong> on the Teacher Login.</div>
                     </div>
                     <div class="form-group">
                         <label>Status</label>

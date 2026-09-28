@@ -166,13 +166,13 @@ if ($is_embedded) {
             body.student-edit-embedded form h5 { display:flex; align-items:center; gap:6px; margin:0 0 10px !important; padding-top:4px; font-size:15px; }
             body.student-edit-embedded form h5:not(:first-child) { margin-top:16px !important; }
             body.student-edit-embedded form .row { --bs-gutter-x:12px; --bs-gutter-y:9px; margin-bottom:12px !important; }
-            body.student-edit-embedded .form-label { margin-bottom:4px; color:#405875; font-size:11px; font-weight:700; }
+            body.student-edit-embedded .form-label { margin-bottom:4px; color:#405875; font-size:12.5px; font-weight:700; }
             body.student-edit-embedded .form-control,
-            body.student-edit-embedded .form-select { min-height:36px; padding:7px 10px; border-color:#d6dfeb; border-radius:8px; font-size:12px; }
+            body.student-edit-embedded .form-select { min-height:36px; padding:7px 10px; border-color:#d6dfeb; border-radius:8px; font-size:13.5px; }
             body.student-edit-embedded textarea.form-control { min-height:58px; }
             body.student-edit-embedded .edit-form-actions { position:fixed; left:0; right:0; bottom:0; z-index:10; width:auto; margin:0; padding:12px 18px 14px; border-top:1px solid #e1e8f2; background:rgba(255,255,255,.98); box-shadow:0 -5px 14px rgba(35,75,125,.08); }
-            body.student-edit-embedded .edit-form-actions .btn { padding:8px 15px; border-radius:8px; font-size:12px; }
-            body.student-edit-embedded .alert { margin-bottom:12px; padding:10px 12px; font-size:12px; }
+            body.student-edit-embedded .edit-form-actions .btn { padding:8px 15px; border-radius:8px; font-size:13.5px; }
+            body.student-edit-embedded .alert { margin-bottom:12px; padding:10px 12px; font-size:13.5px; }
             @media (max-width:700px) {
                 body.student-edit-embedded .edit-student-shell { padding:12px; }
                 body.student-edit-embedded .card-body { padding:14px 12px; }
@@ -224,8 +224,8 @@ if ($is_embedded) {
             .form-control.is-readonly:focus { box-shadow: none; border-color: #e2e8f0; }
             .form-select.is-readonly:disabled { opacity: 1; }
             html[data-theme="dark"] .form-control.is-readonly, html[data-theme="dark"] .form-select.is-readonly { background: #16223A; color: #DCE3EF; border-color: #263352; }
-            .view-only-tag { font-size: 11px; font-weight: 700; color: #64748b; background: #eef2f7; border-radius: 99px; padding: 2px 8px; margin-left: 6px; }
-            .view-only-note { font-size: 12px; color: #64748b; margin: -4px 0 12px; }
+            .view-only-tag { font-size: 12.5px; font-weight: 700; color: #64748b; background: #eef2f7; border-radius: 99px; padding: 2px 8px; margin-left: 6px; }
+            .view-only-note { font-size: 13.5px; color: #64748b; margin: -4px 0 12px; }
         </style>
         <form method="POST" action="">
             <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
@@ -369,8 +369,8 @@ if ($is_embedded) {
         <div id="corrections" class="mt-4 pt-3" style="border-top:1px solid #E2E8F0;">
             <h5 class="mb-2 text-primary"><i class="fas fa-pen-to-square me-2"></i>Request a correction</h5>
             <p class="view-only-note">For a wrong name, birth date, gender, contact or guardian detail. The Registrar reviews the request; the record changes only when it is approved.</p>
-            <?php if ($is_embedded && $sr_flash_ok): ?><div class="alert alert-success py-2" style="font-size:13px;"><?php echo htmlspecialchars($sr_flash_ok); ?></div><?php endif; ?>
-            <?php if ($is_embedded && $sr_flash_err): ?><div class="alert alert-danger py-2" style="font-size:13px;"><?php echo htmlspecialchars($sr_flash_err); ?></div><?php endif; ?>
+            <?php if ($is_embedded && $sr_flash_ok): ?><div class="alert alert-success py-2" style="font-size:14.5px;"><?php echo htmlspecialchars($sr_flash_ok); ?></div><?php endif; ?>
+            <?php if ($is_embedded && $sr_flash_err): ?><div class="alert alert-danger py-2" style="font-size:14.5px;"><?php echo htmlspecialchars($sr_flash_err); ?></div><?php endif; ?>
             <form method="POST" action="" class="row g-2 align-items-end">
                 <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
                 <input type="hidden" name="action" value="request_correction">
@@ -397,7 +397,7 @@ if ($is_embedded) {
             </form>
             <?php if (!empty($sr_requests)): ?>
                 <div class="table-responsive mt-3">
-                    <table class="table table-sm" style="font-size:12.5px;">
+                    <table class="table table-sm" style="font-size:14px;">
                         <thead><tr><th>Information</th><th>From</th><th>To</th><th>Reason</th><th>By</th><th>Status</th></tr></thead>
                         <tbody>
                         <?php foreach ($sr_requests as $rq): ?>

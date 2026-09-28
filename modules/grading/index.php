@@ -1121,7 +1121,7 @@ function gradingTermTransitionPanel($state, $term, $readonly, $grade, $section_i
 
     if ($readonly) {
         $when = $state['completed_at'][$term] ?? null;
-        echo '<div class="alert d-flex justify-content-between align-items-center flex-wrap gap-2" style="border-radius:8px;font-size:13px;background:#EEF2F7;color:#26364F;border:1px solid #D3DBE7;">';
+        echo '<div class="alert d-flex justify-content-between align-items-center flex-wrap gap-2" style="border-radius:8px;font-size:14.5px;background:#EEF2F7;color:#26364F;border:1px solid #D3DBE7;">';
         echo '<div><i class="fas fa-lock me-1"></i><strong>' . htmlspecialchars($term) . ' is Completed</strong>'
            . ($when ? ' since ' . htmlspecialchars(date('M j, Y', strtotime($when))) : '')
            . ' for this section. Its grades are kept as locked, read-only records &mdash; they cannot be edited or re-finalized.';
@@ -1142,7 +1142,7 @@ function gradingTermTransitionPanel($state, $term, $readonly, $grade, $section_i
     $fin = (int)$p['finalized_count'];
     $ok_subjects = 0;
     foreach ($p['subjects'] as $sj) { if ($sj['problem'] === '') $ok_subjects++; }
-    echo '<div class="alert mb-3" style="border-radius:8px;font-size:13px;background:#FFF8E6;color:#6B4E00;border:1px solid #F3DFA2;">';
+    echo '<div class="alert mb-3" style="border-radius:8px;font-size:14.5px;background:#FFF8E6;color:#6B4E00;border:1px solid #F3DFA2;">';
     echo '<div class="d-flex justify-content-between align-items-start flex-wrap gap-2">';
     echo '<div><i class="fas fa-route me-1"></i><strong>' . htmlspecialchars($term) . ' &rarr; ' . ($next ? htmlspecialchars($next) : 'end of year') . '.</strong> ';
     echo $next
@@ -1236,7 +1236,7 @@ include '../../includes/header.php';
         border: 1px solid var(--border);
         border-radius: 6px;
         padding: 6px 8px;
-        font-size: 13px;
+        font-size: 14.5px;
         text-align: center;
         transition: border-color 0.2s;
     }
@@ -1261,7 +1261,7 @@ include '../../includes/header.php';
         padding: 4px 12px;
         border-radius: 6px;
         font-weight: 500;
-        font-size: 13px;
+        font-size: 14.5px;
     }
     .grading-page .breadcrumb-nav .step-breadcrumb.active {
         background: var(--ink);
@@ -1290,7 +1290,7 @@ include '../../includes/header.php';
     .grading-page .grade-table thead th {
         background: var(--bg);
         font-weight: 600;
-        font-size: 11.5px;
+        font-size: 13px;
         text-transform: uppercase;
         letter-spacing: 0.03em;
         padding: 10px 8px;
@@ -1354,7 +1354,7 @@ include '../../includes/header.php';
     .grading-page .badge-status {
         padding: 4px 10px;
         border-radius: 999px;
-        font-size: 12px;
+        font-size: 13.5px;
         font-weight: 600;
     }
     .grading-page .badge-status.enrolled {
@@ -1375,7 +1375,7 @@ include '../../includes/header.php';
         color: var(--ink);
     }
     .grading-page .student-lrn {
-        font-size: 12px;
+        font-size: 13.5px;
         color: var(--text-muted);
     }
 
@@ -1416,7 +1416,7 @@ include '../../includes/header.php';
     }
     .grading-page .grade-table-encode thead th {
         padding: 10px 10px;
-        font-size: 12px;
+        font-size: 13.5px;
         white-space: nowrap;
     }
     .grading-page .grade-table-encode td {
@@ -1449,7 +1449,7 @@ include '../../includes/header.php';
         color: var(--text-muted);
         border-radius: 6px;
         padding: 4px 9px;
-        font-size: 12px;
+        font-size: 13.5px;
         font-weight: 600;
         line-height: 1.2;
         cursor: pointer;
@@ -1470,11 +1470,11 @@ include '../../includes/header.php';
         background: var(--surface-hover);
         border: 1px solid var(--border);
         border-radius: 8px;
-        font-size: 13px;
+        font-size: 14.5px;
     }
     .grading-page .gc-info label {
         display: block;
-        font-size: 11px;
+        font-size: 12.5px;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.04em;
@@ -1504,17 +1504,17 @@ include '../../includes/header.php';
         gap: 8px;
         padding: 9px 12px;
         font-weight: 700;
-        font-size: 14px;
+        font-size: 15px;
         color: var(--ink);
         background: var(--surface-hover);
         border-bottom: 1px solid var(--border);
     }
-    .grading-page .gc-weight { font-size: 12px; font-weight: 600; color: var(--gc-accent); }
+    .grading-page .gc-weight { font-size: 13.5px; font-weight: 600; color: var(--gc-accent); }
     .grading-page .gc-scroll { overflow-x: auto; }
     .grading-page .gc-table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 13px;
+        font-size: 14.5px;
         font-variant-numeric: tabular-nums;
     }
     .grading-page .gc-table th,
@@ -1529,7 +1529,7 @@ include '../../includes/header.php';
     .grading-page .gc-table td:last-child { border-right: 0; }
     .grading-page .gc-table thead th {
         background: var(--bg);
-        font-size: 11.5px;
+        font-size: 13px;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.03em;
@@ -1541,7 +1541,7 @@ include '../../includes/header.php';
     .grading-page .gc-table tr.gc-band td {
         text-align: left;
         font-weight: 600;
-        font-size: 12px;
+        font-size: 13.5px;
         background: var(--surface-hover);
         color: var(--ink);
     }
@@ -1563,7 +1563,7 @@ include '../../includes/header.php';
         margin-left: 6px;
         padding: 1px 7px;
         border-radius: 999px;
-        font-size: 10.5px;
+        font-size: 12px;
         font-weight: 600;
         color: var(--text-muted);
         border: 1px solid var(--border);
@@ -1571,7 +1571,7 @@ include '../../includes/header.php';
     .grading-page .gc-formula,
     .grading-page .gc-note {
         padding: 9px 12px;
-        font-size: 12.5px;
+        font-size: 14px;
         color: var(--text-muted);
         line-height: 1.5;
     }
@@ -1579,7 +1579,7 @@ include '../../includes/header.php';
     .grading-page .gc-formula b,
     .grading-page .gc-note b { color: var(--ink); }
     .grading-page .gc-warn { color: #B7791F; }
-    .grading-page .gc-empty { padding: 14px 12px; font-size: 13px; color: var(--text-muted); }
+    .grading-page .gc-empty { padding: 14px 12px; font-size: 14.5px; color: var(--text-muted); }
     .grading-page .gc-pad { padding: 4px 0 6px; }
     .grading-page .gc-summary { margin: 0; }
     .grading-page .gc-result {
@@ -1597,7 +1597,7 @@ include '../../includes/header.php';
     }
     .grading-page .gc-res-cell > span:first-child {
         display: block;
-        font-size: 11px;
+        font-size: 12.5px;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.04em;
@@ -1607,7 +1607,7 @@ include '../../includes/header.php';
     .grading-page .gc-res-cell b { font-size: 26px; font-weight: 800; color: var(--ink); line-height: 1.1; }
     .grading-page .gc-res-cell b.gc-good { color: #238863; }
     .grading-page .gc-res-cell b.gc-bad { color: #C94A4A; }
-    .grading-page .gc-res-cell small { display: block; margin-top: 4px; color: var(--text-muted); font-size: 12px; }
+    .grading-page .gc-res-cell small { display: block; margin-top: 4px; color: var(--text-muted); font-size: 13.5px; }
     .grading-page .gc-comp-title {
         margin: 18px 0 -4px;
         font-size: 15px;
@@ -1617,7 +1617,7 @@ include '../../includes/header.php';
     .grading-page .gc-legend {
         margin-top: 14px;
         padding: 10px 12px;
-        font-size: 12px;
+        font-size: 13.5px;
         line-height: 1.55;
         color: var(--text-muted);
         background: var(--surface-hover);
@@ -1651,14 +1651,14 @@ include '../../includes/header.php';
     }
     .grading-page .grade-cat-card .grade-cat-card-title {
         font-weight: 700;
-        font-size: 14px;
+        font-size: 15px;
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 8px;
     }
     .grading-page .grade-cat-card .grade-cat-card-sub {
-        font-size: 12px;
+        font-size: 13.5px;
         color: var(--text-muted);
         margin-top: 4px;
     }
@@ -1666,7 +1666,7 @@ include '../../includes/header.php';
     .grading-page .grade-cat-card.grade-cat-pt { border-left: 4px solid #1F6FEB; }
     .grading-page .grade-cat-card.grade-cat-qa { border-left: 4px solid #C77D00; }
     .grading-page .grade-cat-card .grade-cat-card-title i.fa-chevron-right {
-        font-size: 12px;
+        font-size: 13.5px;
         color: var(--text-muted);
     }
 
@@ -1679,7 +1679,7 @@ include '../../includes/header.php';
     }
     .grading-page .grade-item-modal th {
         padding: 8px 6px;
-        font-size: 11.5px;
+        font-size: 13px;
         line-height: 1.35;
         white-space: normal;
         overflow-wrap: break-word;
@@ -1690,7 +1690,7 @@ include '../../includes/header.php';
     }
     .grading-page .grade-item-modal td {
         padding: 6px 4px;
-        font-size: 13px;
+        font-size: 14.5px;
     }
     .grading-page .grade-item-modal td.student-name-cell {
         text-align: left;
@@ -1701,7 +1701,7 @@ include '../../includes/header.php';
         min-width: 0;
         max-width: 66px;
         padding: 6px 2px;
-        font-size: 13px;
+        font-size: 14.5px;
         text-align: center;
         -moz-appearance: textfield;
         appearance: textfield;
@@ -1734,7 +1734,7 @@ include '../../includes/header.php';
         text-align: left;
     }
     .grading-page .grade-item-modal-note {
-        font-size: 12.5px;
+        font-size: 14px;
         color: var(--text-muted);
         background: var(--surface-hover);
         border: 1px solid var(--border);
@@ -1745,9 +1745,9 @@ include '../../includes/header.php';
 
     /* Highest possible is fixed from Manage Assessment Items. */
     .grading-page .hps-locked { display: inline-flex; align-items: center; gap: 5px; font-weight: 700; color: var(--ink); }
-    .grading-page .hps-locked::before { content: "\f023"; font-family: "Font Awesome 6 Free", "Font Awesome 5 Free"; font-weight: 900; font-size: 10px; color: var(--text-muted); }
+    .grading-page .hps-locked::before { content: "\f023"; font-family: "Font Awesome 6 Free", "Font Awesome 5 Free"; font-weight: 900; font-size: 12px; color: var(--text-muted); }
     .grading-page .grade-input.score-over { border-color: #d92d20 !important; background: #fdecec !important; color: #b42318 !important; }
-    .grading-page .score-over-msg { display: block; font-size: 11px; color: #b42318; font-weight: 600; margin-top: 2px; white-space: nowrap; }
+    .grading-page .score-over-msg { display: block; font-size: 12.5px; color: #b42318; font-weight: 600; margin-top: 2px; white-space: nowrap; }
 
     /* ===== Encode Grades (step 5) layout ===== */
 
@@ -1757,34 +1757,34 @@ include '../../includes/header.php';
     .grading-page .gm-head-title { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; min-width: 0; }
     .grading-page .gm-head-ic { width: 52px; height: 52px; border-radius: 12px; background: rgba(255,255,255,.12); display: flex; align-items: center; justify-content: center; font-size: 22px; color: #8ab4f8; flex-shrink: 0; }
     .grading-page .gm-head h2 { color: #fff; font-size: 28px; font-weight: 800; margin: 0; letter-spacing: -.01em; }
-    .grading-page .gm-chip { background: rgba(255,255,255,.14); color: #fff; border-radius: 8px; padding: 5px 12px; font-size: 14px; font-weight: 600; }
+    .grading-page .gm-chip { background: rgba(255,255,255,.14); color: #fff; border-radius: 8px; padding: 5px 12px; font-size: 15px; font-weight: 600; }
     .grading-page .gm-sep { width: 1px; height: 22px; background: rgba(255,255,255,.3); }
     .grading-page .gm-count { color: rgba(255,255,255,.9); font-size: 15px; }
     .grading-page .gm-head-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-    .grading-page .gm-head-btn { display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 16px; border-radius: 8px; border: 0; background: rgba(255,255,255,.14); color: #fff; font-size: 14px; font-weight: 600; text-decoration: none; }
+    .grading-page .gm-head-btn { display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 16px; border-radius: 8px; border: 0; background: rgba(255,255,255,.14); color: #fff; font-size: 15px; font-weight: 600; text-decoration: none; }
     .grading-page .gm-head-btn:hover { background: rgba(255,255,255,.22); color: #fff; }
     .grading-page .gm-terms { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
-    .grading-page .gm-term { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 8px; font-size: 13.5px; font-weight: 500; text-decoration: none; background: rgba(255,255,255,.1); color: rgba(255,255,255,.8); }
+    .grading-page .gm-term { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 8px; font-size: 15px; font-weight: 500; text-decoration: none; background: rgba(255,255,255,.1); color: rgba(255,255,255,.8); }
     .grading-page .gm-term.on { background: #fff; color: #14213D; font-weight: 700; }
     .grading-page a.gm-term:hover { background: rgba(255,255,255,.2); color: #fff; }
 
-    .grading-page .gm-card .card-body > .alert { border-radius: 10px !important; font-size: 14px !important; padding: 12px 16px; }
+    .grading-page .gm-card .card-body > .alert { border-radius: 10px !important; font-size: 15px !important; padding: 12px 16px; }
     .grading-page .gm-card .alert-warning { background: #FFF8E6; border-color: #F3DFA2; color: #6B4E00; }
     .grading-page .gm-card .alert-warning > div > .fa-hourglass-half { color: #B54708; }
-    .grading-page .gm-card .alert .badge { font-size: 12.5px; padding: 6px 10px; border-radius: 6px; }
-    .grading-page .gm-card details > summary { list-style: none; font-size: 14.5px; }
+    .grading-page .gm-card .alert .badge { font-size: 14px; padding: 6px 10px; border-radius: 6px; }
+    .grading-page .gm-card details > summary { list-style: none; font-size: 15.5px; }
     .grading-page .gm-card details > summary::-webkit-details-marker { display: none; }
     .grading-page .gm-card details > summary::before { content: "\25B8"; display: inline-block; margin-right: 8px; transition: transform .15s; }
     .grading-page .gm-card details[open] > summary::before { transform: rotate(90deg); }
     .grading-page .gm-card details ul { list-style: none; padding-left: 0 !important; display: grid; gap: 8px; }
     .grading-page .gm-card details li { display: flex; gap: 10px; align-items: flex-start; }
-    .grading-page .gm-card details li::before { content: "\f15c"; font-family: "Font Awesome 6 Free", "Font Awesome 5 Free"; font-weight: 400; flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; background: #FCEBC4; color: #B54708; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; }
+    .grading-page .gm-card details li::before { content: "\f15c"; font-family: "Font Awesome 6 Free", "Font Awesome 5 Free"; font-weight: 400; flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; background: #FCEBC4; color: #B54708; display: inline-flex; align-items: center; justify-content: center; font-size: 14.5px; }
 
-    .grading-page .gm-card #subjectSelect { height: 44px; border-radius: 8px !important; font-size: 14px !important; }
-    .grading-page .gm-card .form-label { font-size: 14px !important; color: var(--ink) !important; font-weight: 600; }
-    .grading-page .gm-rule { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--surface-hover); border: 1px solid var(--border); border-radius: 10px; padding: 11px 16px; margin-bottom: 14px; font-size: 13.5px; color: #475467; }
+    .grading-page .gm-card #subjectSelect { height: 44px; border-radius: 8px !important; font-size: 15px !important; }
+    .grading-page .gm-card .form-label { font-size: 15px !important; color: var(--ink) !important; font-weight: 600; }
+    .grading-page .gm-rule { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--surface-hover); border: 1px solid var(--border); border-radius: 10px; padding: 11px 16px; margin-bottom: 14px; font-size: 15px; color: #475467; }
     .grading-page .gm-rule > i { color: #2f7fe0; }
-    .grading-page .gm-note { display: flex; gap: 12px; align-items: flex-start; background: #EDF4FB; border: 1px solid #d7e6f8; border-radius: 10px; padding: 12px 16px; margin: 0 0 16px; font-size: 13.5px; color: #475569; }
+    .grading-page .gm-note { display: flex; gap: 12px; align-items: flex-start; background: #EDF4FB; border: 1px solid #d7e6f8; border-radius: 10px; padding: 12px 16px; margin: 0 0 16px; font-size: 15px; color: #475569; }
     .grading-page .gm-note > i { color: #2f7fe0; margin-top: 3px; }
 
     .grading-page .gm-card .grade-cat-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
@@ -1795,20 +1795,20 @@ include '../../includes/header.php';
     .grading-page .grade-cat-qa .gm-cat-ic { background: #FDF3E1; color: #C77D00; }
     .grading-page .gm-cat-body { flex: 1; min-width: 0; }
     .grading-page .gm-card .grade-cat-card .grade-cat-card-title { font-size: 15px; color: var(--ink); }
-    .grading-page .gm-cat-count { font-weight: 700; font-size: 14px; color: var(--ink); margin-top: 2px; }
-    .grading-page .gm-card .grade-cat-card > .fa-chevron-right { color: var(--text-muted); font-size: 13px; }
+    .grading-page .gm-cat-count { font-weight: 700; font-size: 15px; color: var(--ink); margin-top: 2px; }
+    .grading-page .gm-card .grade-cat-card > .fa-chevron-right { color: var(--text-muted); font-size: 14.5px; }
 
     .grading-page .gm-card .grade-table-scroll { border: 1px solid var(--border); border-radius: 12px; }
     .grading-page .gm-card .grade-table-encode { margin-bottom: 0; }
-    .grading-page .gm-card .grade-table-encode tbody td { font-size: 14px; }
+    .grading-page .gm-card .grade-table-encode tbody td { font-size: 15px; }
     .grading-page .gm-foot { display: flex; justify-content: flex-end; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
-    .grading-page .gm-foot-note { margin-right: auto; font-size: 13.5px; color: var(--text-muted); }
+    .grading-page .gm-foot-note { margin-right: auto; font-size: 15px; color: var(--text-muted); }
     .grading-page .gm-foot-note i { color: #2f7fe0; margin-right: 6px; }
     .grading-page .gm-foot .btn { height: 44px; padding: 0 22px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; }
 
     /* --- term strip --- */
     .grading-page .gm-terms { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin: 0; background: var(--surface); border-bottom: 1px solid var(--border); }
-    .grading-page .gm-term { display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-radius: 0; background: transparent; color: var(--ink); font-size: 14.5px; font-weight: 400; text-decoration: none; border-right: 1px solid var(--border); border-bottom: 3px solid transparent; min-width: 0; }
+    .grading-page .gm-term { display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-radius: 0; background: transparent; color: var(--ink); font-size: 15.5px; font-weight: 400; text-decoration: none; border-right: 1px solid var(--border); border-bottom: 3px solid transparent; min-width: 0; }
     .grading-page .gm-term:last-child { border-right: 0; }
     .grading-page .gm-term b { font-weight: 700; }
     .grading-page .gm-term-txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1816,44 +1816,44 @@ include '../../includes/header.php';
     .grading-page .gm-term-completed .gm-term-ic { color: #1f9d6b; }
     .grading-page .gm-term.on { background: #F2F7FE; color: var(--ink); font-weight: 400; border-bottom-color: #2f7fe0; }
     .grading-page .gm-term.on .gm-term-ic { color: #2f7fe0; }
-    .grading-page .gm-term-tag { flex-shrink: 0; font-size: 12.5px; font-weight: 600; border-radius: 6px; padding: 3px 9px; background: #EEF1F5; color: #475467; }
+    .grading-page .gm-term-tag { flex-shrink: 0; font-size: 14px; font-weight: 600; border-radius: 6px; padding: 3px 9px; background: #EEF1F5; color: #475467; }
     .grading-page .gm-term-completed .gm-term-tag { background: #E3F5EC; color: #16704b; }
     .grading-page .gm-term.on .gm-term-tag { background: #DCEAFB; color: #1d5fbf; }
-    .grading-page .gm-term-go { margin-left: auto; color: var(--text-muted); font-size: 12px; }
+    .grading-page .gm-term-go { margin-left: auto; color: var(--text-muted); font-size: 13.5px; }
     .grading-page a.gm-term:hover { background: var(--surface-hover); color: var(--ink); }
 
     /* --- notice + collapsible "What is still needed" --- */
     .grading-page .gm-notice-tail { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
-    .grading-page .gm-notice-badge { background: #C2410C; color: #fff; font-weight: 700; font-size: 12.5px; border-radius: 6px; padding: 5px 10px; }
-    .grading-page .gm-needed-btn { border: 0; border-left: 1px solid rgba(107,78,0,.3); background: none; padding: 2px 0 2px 14px; color: #6B4E00; font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; }
+    .grading-page .gm-notice-badge { background: #C2410C; color: #fff; font-weight: 700; font-size: 14px; border-radius: 6px; padding: 5px 10px; }
+    .grading-page .gm-needed-btn { border: 0; border-left: 1px solid rgba(107,78,0,.3); background: none; padding: 2px 0 2px 14px; color: #6B4E00; font-weight: 700; font-size: 15px; display: inline-flex; align-items: center; gap: 8px; }
     .grading-page .gm-needed-btn[aria-expanded="true"] i { transform: rotate(180deg); }
     .grading-page #gmNeeded .alert { margin-top: -6px; }
 
     /* --- subject + weights card --- */
     .grading-page .gm-subject-card { display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); padding: 16px 20px; margin-bottom: 14px; }
     .grading-page .gm-subject-pick { width: 320px; max-width: 100%; }
-    .grading-page .gm-subject-pick .form-label { font-size: 14px !important; font-weight: 600; color: var(--ink) !important; margin-bottom: 6px; }
-    .grading-page .gm-subject-pick .form-select { height: 44px; border-radius: 8px; font-size: 14px; }
+    .grading-page .gm-subject-pick .form-label { font-size: 15px !important; font-weight: 600; color: var(--ink) !important; margin-bottom: 6px; }
+    .grading-page .gm-subject-pick .form-select { height: 44px; border-radius: 8px; font-size: 15px; }
     .grading-page .gm-weights { flex: 1; min-width: 280px; padding-left: 20px; border-left: 1px solid var(--border); }
-    .grading-page .gm-weights-label { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+    .grading-page .gm-weights-label { font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
     .grading-page .gm-weight-chips { display: flex; gap: 8px; flex-wrap: wrap; }
-    .grading-page .gm-wchip { display: inline-flex; align-items: center; gap: 8px; height: 44px; border: 1px solid var(--border); border-left-width: 4px; border-radius: 8px; background: var(--surface); padding: 0 12px; font-size: 13.5px; color: var(--ink); white-space: nowrap; }
+    .grading-page .gm-wchip { display: inline-flex; align-items: center; gap: 8px; height: 44px; border: 1px solid var(--border); border-left-width: 4px; border-radius: 8px; background: var(--surface); padding: 0 12px; font-size: 15px; color: var(--ink); white-space: nowrap; }
     @media (min-width: 992px) { .grading-page .gm-notice { flex-wrap: nowrap !important; } .grading-page .gm-notice > div:first-child { flex: 1; min-width: 0; } }
     .grading-page .gm-wchip:hover { background: var(--surface-hover); }
-    .grading-page .gm-wchip span { color: var(--text-muted); font-size: 13px; }
-    .grading-page .gm-wchip em { font-style: normal; font-weight: 700; color: #1d6fd6; font-size: 13px; }
+    .grading-page .gm-wchip span { color: var(--text-muted); font-size: 14.5px; }
+    .grading-page .gm-wchip em { font-style: normal; font-weight: 700; color: #1d6fd6; font-size: 14.5px; }
     .grading-page .gm-wchip-ww { border-left-color: #1F9D6E; }
     .grading-page .gm-wchip-pt { border-left-color: #1F6FEB; }
     .grading-page .gm-wchip-qa { border-left-color: #C77D00; }
-    .grading-page .gm-rule-btn { border: 0; background: none; color: #1d6fd6; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 0 0 22px; border-left: 1px solid var(--border); }
+    .grading-page .gm-rule-btn { border: 0; background: none; color: #1d6fd6; font-size: 15px; display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 0 0 22px; border-left: 1px solid var(--border); }
     .grading-page .gm-rule-btn span { text-decoration: underline; }
     .grading-page .gm-rule-btn[aria-expanded="true"] .fa-chevron-down { transform: rotate(180deg); }
 
     /* --- footer --- */
     .grading-page .gm-foot-note { display: flex; gap: 12px; align-items: flex-start; }
     .grading-page .gm-foot-note .gm-foot-ic { color: #1f9d6b; font-size: 20px; margin: 1px 0 0; }
-    .grading-page .gm-foot-main { font-size: 14px; color: var(--ink); }
-    .grading-page .gm-foot-sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+    .grading-page .gm-foot-main { font-size: 15px; color: var(--ink); }
+    .grading-page .gm-foot-sub { font-size: 14.5px; color: var(--text-muted); margin-top: 2px; }
     .grading-page .gm-foot .btn { gap: 8px; }
     .grading-page .gm-foot .btn-save { min-width: 170px; justify-content: center; }
     .grading-page .gm-foot .ss-save { min-width: 150px; justify-content: center; }
@@ -2040,7 +2040,7 @@ include '../../includes/header.php';
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h5 class="mb-0" style="color: var(--ink);font-weight:600;">
             Sections in <?php echo $selected_grade; ?>
-            <span class="badge" style="background: var(--surface-hover);color: var(--text-muted);font-weight:500;font-size:12px;margin-left:8px;"><?php echo count($grade_sections); ?></span>
+            <span class="badge" style="background: var(--surface-hover);color: var(--text-muted);font-weight:500;font-size:13.5px;margin-left:8px;"><?php echo count($grade_sections); ?></span>
         </h5>
     </div>
     
@@ -2054,13 +2054,13 @@ include '../../includes/header.php';
                         <div class="section-name">
                             <?php echo htmlspecialchars($section['section_name']); ?>
                         </div>
-                        <div style="font-size:13px;color: var(--text-muted);margin-top:4px;">
+                        <div style="font-size:14.5px;color: var(--text-muted);margin-top:4px;">
                             <?php echo $section['subject_count'] ?? 0; ?> subjects · 
                             <?php echo $section['student_count'] ?? 0; ?> students
                         </div>
                         <?php $__sb = $section_term_badges[(int)$section['section_id']] ?? null; if ($__sb): ?>
                             <div style="margin-top:6px;">
-                                <span class="badge" style="background:<?php echo $__sb['all_completed'] ? '#0F7B4E' : '#14213D'; ?>;font-weight:500;font-size:11px;"
+                                <span class="badge" style="background:<?php echo $__sb['all_completed'] ? '#0F7B4E' : '#14213D'; ?>;font-weight:500;font-size:12.5px;"
                                       title="The class moves to the next term once every subject is finalized and complete.">
                                     <?php echo $__sb['all_completed'] ? 'All terms completed' : htmlspecialchars($__sb['current']) . ' · in progress'; ?>
                                 </span>
@@ -2069,7 +2069,7 @@ include '../../includes/header.php';
                                 <a href="?step=3&grade=<?php echo urlencode($selected_grade); ?>&section_id=<?php echo $section['section_id']; ?>" 
                                     onclick="event.stopPropagation();"
                            class="btn btn-sm mt-3"
-                           style="background:#14213D;color:#fff;border:none;padding:5px 16px;font-size:13px;">
+                           style="background:#14213D;color:#fff;border:none;padding:5px 16px;font-size:14.5px;">
                             View Subjects
                         </a>
                     </div>
@@ -2086,8 +2086,8 @@ include '../../includes/header.php';
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h5 class="mb-0" style="color: var(--ink);font-weight:600;">
             My Subjects in <?php echo htmlspecialchars($section_info['section_name']); ?>
-            <span class="badge" style="background: var(--surface-hover);color: var(--text-muted);font-weight:500;font-size:12px;margin-left:8px;"><?php echo count($section_subjects); ?></span>
-            <span class="badge" style="background:#14213D;color:#fff;font-weight:500;font-size:12px;margin-left:4px;"><?php echo htmlspecialchars($term); ?><?php echo $term_readonly ? ' · Completed' : ''; ?></span>
+            <span class="badge" style="background: var(--surface-hover);color: var(--text-muted);font-weight:500;font-size:13.5px;margin-left:8px;"><?php echo count($section_subjects); ?></span>
+            <span class="badge" style="background:#14213D;color:#fff;font-weight:500;font-size:13.5px;margin-left:4px;"><?php echo htmlspecialchars($term); ?><?php echo $term_readonly ? ' · Completed' : ''; ?></span>
         </h5>
     </div>
     <?php gradingTermTransitionPanel($section_term_state, $term, $term_readonly, $selected_grade, $selected_section); ?>
@@ -2142,12 +2142,12 @@ include '../../includes/header.php';
                             <h6 class="mb-1" style="color: var(--ink);font-weight:600;"><?php echo htmlspecialchars($subject['subject_name']); ?></h6>
                             <small style="color: var(--text-muted);"><?php echo htmlspecialchars($subject['subject_code']); ?></small>
                             <div class="mt-2">
-                                <span style="background: var(--surface-hover);color: var(--text-muted);padding:3px 8px;border-radius:4px;font-size:11px;font-weight:500;"><?php echo htmlspecialchars($subject['subject_type'] ?? 'General'); ?></span>
+                                <span style="background: var(--surface-hover);color: var(--text-muted);padding:3px 8px;border-radius:4px;font-size:12.5px;font-weight:500;"><?php echo htmlspecialchars($subject['subject_type'] ?? 'General'); ?></span>
                             </div>
                             <div class="d-flex gap-2 justify-content-center mt-3">
                                 <a href="?step=4&grade=<?php echo urlencode($selected_grade); ?>&section_id=<?php echo $selected_section; ?>&subject_code=<?php echo urlencode($subject['subject_code']); ?>&term=<?php echo urlencode($term); ?>"
                                    class="btn btn-sm"
-                                   style="background:#14213D;color:#fff;border:none;padding:5px 16px;font-size:13px;">
+                                   style="background:#14213D;color:#fff;border:none;padding:5px 16px;font-size:14.5px;">
                                     View Students
                                 </a>
                             </div>
@@ -2166,7 +2166,7 @@ include '../../includes/header.php';
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h5 class="mb-0" style="color: var(--ink);font-weight:600;">
             Students in <?php echo htmlspecialchars($section_info['section_name'] ?? ''); ?>
-            <span class="badge" style="background: var(--surface-hover);color: var(--text-muted);font-weight:500;font-size:12px;margin-left:8px;"><?php echo count($section_students); ?></span>
+            <span class="badge" style="background: var(--surface-hover);color: var(--text-muted);font-weight:500;font-size:13.5px;margin-left:8px;"><?php echo count($section_students); ?></span>
         </h5>
         <div class="d-flex gap-2">
             <a href="?step=5&section_id=<?php echo $selected_section; ?>&subject_code=<?php echo urlencode($selected_subject); ?>&term=<?php echo urlencode($term); ?>&grade=<?php echo urlencode($selected_grade); ?>&mode=all" 
@@ -2190,11 +2190,11 @@ include '../../includes/header.php';
                     <table class="table table-hover mb-0">
                         <thead style="background: var(--surface-hover);">
                             <tr>
-                                <th style="font-size:12px;text-transform:uppercase;letter-spacing:0.4px;color: var(--text-muted);border-bottom: 1px solid var(--border);">#</th>
-                                <th style="font-size:12px;text-transform:uppercase;letter-spacing:0.4px;color: var(--text-muted);border-bottom: 1px solid var(--border);">LRN</th>
-                                <th style="font-size:12px;text-transform:uppercase;letter-spacing:0.4px;color: var(--text-muted);border-bottom: 1px solid var(--border);">Student Name</th>
-                                <th style="font-size:12px;text-transform:uppercase;letter-spacing:0.4px;color: var(--text-muted);border-bottom: 1px solid var(--border);">Status</th>
-                                <th style="font-size:12px;text-transform:uppercase;letter-spacing:0.4px;color: var(--text-muted);border-bottom: 1px solid var(--border);text-align:right;">Term</th>
+                                <th style="font-size:13.5px;text-transform:uppercase;letter-spacing:0.4px;color: var(--text-muted);border-bottom: 1px solid var(--border);">#</th>
+                                <th style="font-size:13.5px;text-transform:uppercase;letter-spacing:0.4px;color: var(--text-muted);border-bottom: 1px solid var(--border);">LRN</th>
+                                <th style="font-size:13.5px;text-transform:uppercase;letter-spacing:0.4px;color: var(--text-muted);border-bottom: 1px solid var(--border);">Student Name</th>
+                                <th style="font-size:13.5px;text-transform:uppercase;letter-spacing:0.4px;color: var(--text-muted);border-bottom: 1px solid var(--border);">Status</th>
+                                <th style="font-size:13.5px;text-transform:uppercase;letter-spacing:0.4px;color: var(--text-muted);border-bottom: 1px solid var(--border);text-align:right;">Term</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -2232,7 +2232,7 @@ include '../../includes/header.php';
 <?php endif; ?>
 
 <?php if ($subject_error !== ''): ?>
-    <div class="alert alert-danger" style="border-radius:8px;font-size:13px;">
+    <div class="alert alert-danger" style="border-radius:8px;font-size:14.5px;">
         <i class="fas fa-ban me-1"></i><?php echo htmlspecialchars($subject_error); ?>
     </div>
 <?php endif; ?>
@@ -2326,21 +2326,21 @@ include '../../includes/header.php';
                     </div>
                     <div class="modal-body">
                         <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                            <label for="termAttTerm" class="mb-0 fw-semibold" style="font-size:13px;">Term</label>
+                            <label for="termAttTerm" class="mb-0 fw-semibold" style="font-size:14.5px;">Term</label>
                             <select id="termAttTerm" class="form-select form-select-sm" style="width:auto;">
                                 <?php foreach (gh_threeTerms() as $t_opt): ?>
                                     <option value="<?php echo htmlspecialchars($t_opt); ?>" <?php echo $t_opt === $term ? 'selected' : ''; ?>><?php echo htmlspecialchars($t_opt); ?></option>
                                 <?php endforeach; ?>
                             </select>
-                            <span id="termAttPeriod" class="text-muted" style="font-size:13px;"></span>
+                            <span id="termAttPeriod" class="text-muted" style="font-size:14.5px;"></span>
                             <a id="termAttExcel" href="#" class="btn btn-success btn-sm ms-auto">
                                 <i class="fas fa-file-excel me-1"></i>Download Excel
                             </a>
                         </div>
-                        <div id="termAttNote" class="alert alert-warning py-2 mb-2" style="font-size:12.5px;display:none;"></div>
-                        <div id="termAttTotals" class="d-flex flex-wrap gap-2 mb-2" style="font-size:12.5px;"></div>
+                        <div id="termAttNote" class="alert alert-warning py-2 mb-2" style="font-size:14px;display:none;"></div>
+                        <div id="termAttTotals" class="d-flex flex-wrap gap-2 mb-2" style="font-size:14px;"></div>
                         <div id="termAttBody" class="text-muted py-4 text-center">Loading...</div>
-                        <div class="text-muted mt-2" style="font-size:11.5px;">
+                        <div class="text-muted mt-2" style="font-size:13px;">
                             <strong>P</strong> Present &middot; <strong>L</strong> Late &middot; <strong>A</strong> Absent &middot; <strong>E</strong> Excused &middot; <strong>&ndash;</strong> no record.
                             Attendance % counts a Late as half a day (Present 1, Late 0.5, Absent 0); Excused days are not counted.
                             Hover a letter to see the time in.
@@ -2351,12 +2351,12 @@ include '../../includes/header.php';
         </div>
         <style>
             #termAttBody .ta-wrap { overflow:auto; max-height:56vh; border:1px solid #dfe5ee; border-radius:8px; }
-            #termAttBody table { border-collapse:separate; border-spacing:0; font-size:12.5px; width:max-content; min-width:100%; }
+            #termAttBody table { border-collapse:separate; border-spacing:0; font-size:14px; width:max-content; min-width:100%; }
             #termAttBody th, #termAttBody td { padding:5px 8px; border-bottom:1px solid #e8edf4; border-right:1px solid #eef1f6; white-space:nowrap; text-align:center; background:#fff; }
             #termAttBody thead th { position:sticky; top:0; z-index:3; background:#14213D; color:#fff; font-weight:600; }
             #termAttBody .ta-name { position:sticky; left:0; z-index:2; text-align:left; min-width:190px; font-weight:600; }
             #termAttBody thead .ta-name { z-index:4; }
-            #termAttBody .ta-lrn { font-family:ui-monospace,Consolas,monospace; font-size:11.5px; color:#5b6b7f; }
+            #termAttBody .ta-lrn { font-family:ui-monospace,Consolas,monospace; font-size:13px; color:#5b6b7f; }
             #termAttBody .ta-c { display:inline-block; min-width:22px; padding:1px 0; border-radius:5px; font-weight:700; }
             #termAttBody .ta-P { background:#ddf3e7; color:#0f7b4e; }
             #termAttBody .ta-L { background:#fff0cc; color:#9a6400; }
@@ -2466,7 +2466,7 @@ include '../../includes/header.php';
             <?php if ($term_readonly): ?>
                 <?php /* Completed term: the term tab above already says so (and links back to the current term). */ ?>
             <?php elseif ($is_finalized): ?>
-                <div class="alert alert-success d-flex justify-content-between align-items-center flex-wrap gap-2" style="border-radius:8px;font-size:13px;">
+                <div class="alert alert-success d-flex justify-content-between align-items-center flex-wrap gap-2" style="border-radius:8px;font-size:14.5px;">
                     <div>
                         <i class="fas fa-check-circle me-1"></i>
                         <strong><?php echo htmlspecialchars($term); ?> finalized</strong>
@@ -2476,7 +2476,7 @@ include '../../includes/header.php';
                     <?php $gm_notice_tail(); ?>
                 </div>
             <?php elseif ($no_active_term && $encode_mode === 'all'): ?>
-                <div class="alert d-flex justify-content-between align-items-center flex-wrap gap-2" style="border-radius:8px;font-size:13px;background:#FDECEA;color:#B3261E;border:1px solid #F5C2BE;">
+                <div class="alert d-flex justify-content-between align-items-center flex-wrap gap-2" style="border-radius:8px;font-size:14.5px;background:#FDECEA;color:#B3261E;border:1px solid #F5C2BE;">
                     <div>
                         <i class="fas fa-triangle-exclamation me-1"></i>
                         <strong>No term is active today.</strong>
@@ -2485,7 +2485,7 @@ include '../../includes/header.php';
                     <?php $gm_notice_tail(); ?>
                 </div>
             <?php elseif ($encode_mode === 'all'): ?>
-                <div class="alert alert-warning gm-notice d-flex justify-content-between align-items-center flex-wrap gap-2" style="border-radius:8px;font-size:13px;">
+                <div class="alert alert-warning gm-notice d-flex justify-content-between align-items-center flex-wrap gap-2" style="border-radius:8px;font-size:14.5px;">
                     <div>
                         <i class="fas fa-hourglass-half me-1"></i>
                         <strong><?php echo htmlspecialchars($term); ?> is in progress.</strong>
@@ -2501,7 +2501,7 @@ include '../../includes/header.php';
                 </div>
             <?php endif; ?>
             <?php if (!$term_readonly && (!$term_window || empty($term_window['end_date']))): ?>
-                <div class="alert d-flex align-items-start gap-2" style="border-radius:10px;font-size:13.5px;background:#FEF3E6;color:#8A4B00;border:1px solid #F5D3A6;">
+                <div class="alert d-flex align-items-start gap-2" style="border-radius:10px;font-size:15px;background:#FEF3E6;color:#8A4B00;border:1px solid #F5D3A6;">
                     <i class="fas fa-calendar-xmark mt-1"></i>
                     <div><strong><?php echo htmlspecialchars($term); ?> has no End Date yet.</strong>
                         The class moves to the next term only after the End Date set by the administrator, so ask them to set it in Teacher Management &rsaquo; Term Dates.
@@ -2558,7 +2558,7 @@ include '../../includes/header.php';
             <!-- A learner requested by URL who is not in this section -->
             <?php if ($single_error !== ''): ?>
                 <div class="p-3">
-                    <div class="alert alert-danger mb-0" style="border-radius:8px;font-size:13px;">
+                    <div class="alert alert-danger mb-0" style="border-radius:8px;font-size:14.5px;">
                         <?php echo htmlspecialchars($single_error); ?>
                         <div class="mt-2">
                             <a href="?step=4&section_id=<?php echo $selected_section; ?>&subject_code=<?php echo urlencode($selected_subject); ?>&term=<?php echo urlencode($term); ?>&grade=<?php echo urlencode($selected_grade); ?>"
@@ -2623,7 +2623,7 @@ include '../../includes/header.php';
                 ?>
 
                 <?php if (!empty($gh_notices)): ?>
-                    <div class="alert alert-warning" style="border-radius:8px;font-size:13px;">
+                    <div class="alert alert-warning" style="border-radius:8px;font-size:14.5px;">
                         <strong>Configuration required.</strong>
                         <ul style="margin:8px 0 0 0;padding-left:18px;">
                             <?php foreach ($gh_notices as $n): ?>
@@ -2635,7 +2635,7 @@ include '../../includes/header.php';
 
                 <?php if (!empty($weights['blocked'])): ?>
                     <?php $gm_subject_select(false); ?>
-                    <div class="alert alert-danger" style="border-radius:8px;font-size:13px;">
+                    <div class="alert alert-danger" style="border-radius:8px;font-size:14.5px;">
                         Grades cannot be computed for this subject until the configuration above is completed.
                         No grading rule is being guessed.
                     </div>
@@ -2752,7 +2752,7 @@ include '../../includes/header.php';
                                             <!-- Add an item and set its Highest possible right here -->
                                             <div class="grade-setup-row" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin-bottom:12px;">
                                                 <div style="flex:1 1 200px;">
-                                                    <label style="font-size:12px;display:block;margin-bottom:3px;">
+                                                    <label style="font-size:13.5px;display:block;margin-bottom:3px;">
                                                         <?php echo $cat_key === 'PT' ? 'Performance task name' : 'Item name'; ?>
                                                     </label>
                                                     <input type="text" name="new_item[<?php echo $cat_key; ?>][name]" class="grade-input" style="width:100%;text-align:left;"
@@ -2760,11 +2760,11 @@ include '../../includes/header.php';
                                                            placeholder="<?php echo $cat_key === 'PT' ? 'e.g. PETA 1, Project, Demonstration' : 'e.g. Quiz 1, Recitation'; ?>">
                                                 </div>
                                                 <div style="flex:0 0 160px;">
-                                                    <label style="font-size:12px;display:block;margin-bottom:3px;">Highest possible</label>
+                                                    <label style="font-size:13.5px;display:block;margin-bottom:3px;">Highest possible</label>
                                                     <input type="number" name="new_item[<?php echo $cat_key; ?>][hps]" class="grade-input" style="width:100%;"
                                                            min="0.01" step="0.01" placeholder="e.g. 50">
                                                 </div>
-                                                <div style="font-size:12px;opacity:.75;flex:1 1 100%;">
+                                                <div style="font-size:13.5px;opacity:.75;flex:1 1 100%;">
                                                     Type the name and Highest possible, then press <strong>Done</strong> to add it &mdash; the score boxes appear right after.
                                                 </div>
                                             </div>
@@ -2786,7 +2786,7 @@ include '../../includes/header.php';
                                             <div class="grade-setup-row" style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:12px;">
                                                 <?php foreach ($__missing_subtypes as $__c): ?>
                                                     <div style="flex:1 1 200px;">
-                                                        <label style="font-size:12px;display:block;margin-bottom:3px;">
+                                                        <label style="font-size:13.5px;display:block;margin-bottom:3px;">
                                                             <?php echo htmlspecialchars($__exam_subtypes[$__c]['label']); ?>
                                                             <?php if ($weights['exam_mode'] === 'standard'): ?>(<?php echo (int)round($__exam_subtypes[$__c]['weight'] * 100); ?>% of exam)<?php endif; ?>
                                                             &mdash; Highest possible
@@ -2795,7 +2795,7 @@ include '../../includes/header.php';
                                                                min="0.01" step="0.01" placeholder="e.g. 60">
                                                     </div>
                                                 <?php endforeach; ?>
-                                                <div style="font-size:12px;opacity:.75;flex:1 1 100%;">
+                                                <div style="font-size:13.5px;opacity:.75;flex:1 1 100%;">
                                                     Type the Highest possible for each test, then press <strong>Done</strong> &mdash; the score boxes appear right after.
                                                 </div>
                                             </div>

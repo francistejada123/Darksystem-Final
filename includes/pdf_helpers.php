@@ -128,7 +128,7 @@ function pdfShell($reportTitle, $reportSubtitle, $bodyHtml) {
     $style = <<<CSS
         @page { margin: 118px 30px 60px 30px; }
         * { box-sizing: border-box; }
-        body { font-family: 'DejaVu Sans', sans-serif; font-size: 11px; color: #172033; margin: 0; }
+        body { font-family: 'DejaVu Sans', sans-serif; font-size: 12.5px; color: #172033; margin: 0; }
 
         header { position: fixed; top: -100px; left: 0; right: 0; height: 84px; background: #14213D; color: #fff; padding: 14px 26px; }
         .pdf-accent { position: fixed; top: -14px; left: 0; right: 0; height: 4px; background: #5B5FEF; }
@@ -138,25 +138,25 @@ function pdfShell($reportTitle, $reportSubtitle, $bodyHtml) {
         .pdf-school-name { font-size: 15px; font-weight: bold; color: #fff; margin: 0; }
         .pdf-school-tag { font-size: 8.5px; letter-spacing: 1.5px; color: #AEB4E8; margin: 2px 0 0 0; text-transform: uppercase; }
         .pdf-report-title { font-size: 16px; font-weight: bold; color: #fff; margin: 0; text-align: right; }
-        .pdf-report-subtitle { font-size: 10px; color: #C7CAF5; margin: 3px 0 0 0; text-align: right; }
+        .pdf-report-subtitle { font-size: 12px; color: #C7CAF5; margin: 3px 0 0 0; text-align: right; }
 
         footer { position: fixed; bottom: -46px; left: 0; right: 0; height: 40px; border-top: 1px solid #DCE3EC; padding-top: 8px; font-size: 8.5px; color: #667085; }
         .pdf-footer-left { float: left; }
         .pdf-footer-right { float: right; }
 
         h1, h2, h3, h4 { font-family: 'DejaVu Sans', sans-serif; }
-        .pdf-section-title { font-size: 13px; font-weight: bold; color: #14213D; margin: 18px 0 8px 0; padding-bottom: 5px; border-bottom: 2px solid #5B5FEF; }
+        .pdf-section-title { font-size: 14.5px; font-weight: bold; color: #14213D; margin: 18px 0 8px 0; padding-bottom: 5px; border-bottom: 2px solid #5B5FEF; }
         .pdf-section-title:first-child { margin-top: 0; }
 
         .pdf-info-box { background: #F3F6F9; border: 1px solid #DCE3EC; border-radius: 8px; padding: 10px 16px; margin-bottom: 14px; }
         .pdf-info-table { width: 100%; border-collapse: collapse; }
-        .pdf-info-table td { border: none; padding: 3px 0; font-size: 11px; }
+        .pdf-info-table td { border: none; padding: 3px 0; font-size: 12.5px; }
         .pdf-info-label { color: #667085; width: 160px; font-weight: normal; }
         .pdf-info-value { color: #172033; font-weight: bold; }
 
         table.pdf-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
-        table.pdf-table th { background: #EEF0FF; color: #14213D; font-size: 10px; font-weight: bold; padding: 7px 8px; border: 1px solid #DCE3EC; text-transform: uppercase; letter-spacing: 0.3px; }
-        table.pdf-table td { padding: 6px 8px; border: 1px solid #E7ECF2; font-size: 10.5px; }
+        table.pdf-table th { background: #EEF0FF; color: #14213D; font-size: 12px; font-weight: bold; padding: 7px 8px; border: 1px solid #DCE3EC; text-transform: uppercase; letter-spacing: 0.3px; }
+        table.pdf-table td { padding: 6px 8px; border: 1px solid #E7ECF2; font-size: 12px; }
         table.pdf-table tbody tr:nth-child(even) { background: #F8FAFC; }
         .pdf-table-empty { text-align: center; color: #98A2B3; padding: 14px; font-style: italic; }
         .pdf-table-foot td { font-weight: bold; background: #F3F6F9; }
@@ -167,7 +167,7 @@ function pdfShell($reportTitle, $reportSubtitle, $bodyHtml) {
            vertical space for it), which was pushing everything after the
            table down by nearly a full page. A flat tag with a colored
            left rule reads just as clearly as a pill without tripping it. */
-        .pdf-badge { padding: 2px 10px 2px 8px; border-left: 3px solid; font-size: 9px; font-weight: bold; white-space: nowrap; }
+        .pdf-badge { padding: 2px 10px 2px 8px; border-left: 3px solid; font-size: 11px; font-weight: bold; white-space: nowrap; }
         .pdf-badge-success { background: #EAF7F1; color: #238863; border-left-color: #238863; }
         .pdf-badge-warning { background: #FFF7E6; color: #B7791F; border-left-color: #B7791F; }
         .pdf-badge-danger  { background: #FDEEEE; color: #C94A4A; border-left-color: #C94A4A; }

@@ -222,28 +222,28 @@ $att_t = function ($v) { return $v ? date('g:i A', strtotime($v)) : ''; };
 .att2 .hero-art svg { margin-top: auto; width: 100%; height: auto; display: block; }
 .att2 .hero-main { padding: 26px 26px 24px; }
 .att2 .today-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
-.att2 .today-lbl { font-size: 13px; font-weight: 700; letter-spacing: .06em; color: var(--a-muted); }
+.att2 .today-lbl { font-size: 14.5px; font-weight: 700; letter-spacing: .06em; color: var(--a-muted); }
 .att2 .today-date { font-size: 30px; font-weight: 800; color: var(--a-ink); letter-spacing: -.01em; }
-.att2 .date-chip { display: inline-flex; align-items: center; gap: 10px; border: 1px solid var(--a-line); border-radius: 10px; padding: 9px 14px; font-size: 14px; color: var(--a-ink); background: var(--a-soft); }
+.att2 .date-chip { display: inline-flex; align-items: center; gap: 10px; border: 1px solid var(--a-line); border-radius: 10px; padding: 9px 14px; font-size: 15px; color: var(--a-ink); background: var(--a-soft); }
 .att2 .panels { display: grid; grid-template-columns: 1fr 1.25fr; gap: 16px; }
 .att2 .panel { border: 1px solid var(--a-line); border-radius: 12px; padding: 16px 18px; background: var(--a-soft); }
-.att2 .panel-title { font-size: 12.5px; font-weight: 700; letter-spacing: .06em; color: var(--a-muted); margin-bottom: 14px; text-transform: uppercase; }
+.att2 .panel-title { font-size: 14px; font-weight: 700; letter-spacing: .06em; color: var(--a-muted); margin-bottom: 14px; text-transform: uppercase; }
 .att2 .duty { display: flex; gap: 14px; }
 .att2 .duty-ic { flex-shrink: 0; width: 58px; height: 58px; border-radius: 50%; background: #dbe8fb; color: #2f7fe0; display: flex; align-items: center; justify-content: center; font-size: 24px; }
 .att2 .duty-type { font-size: 19px; font-weight: 800; color: var(--a-ink); }
-.att2 .duty-exp { font-size: 14.5px; color: #4b5b73; margin-top: 4px; }
+.att2 .duty-exp { font-size: 15.5px; color: #4b5b73; margin-top: 4px; }
 .att2 .duty-exp strong { color: var(--a-ink); }
-.att2 .duty-assigned { border-top: 1px solid var(--a-line); margin-top: 12px; padding-top: 12px; font-size: 14.5px; color: #4b5b73; }
+.att2 .duty-assigned { border-top: 1px solid var(--a-line); margin-top: 12px; padding-top: 12px; font-size: 15.5px; color: #4b5b73; }
 .att2 .duty-assigned .cls { color: var(--a-ink); font-weight: 700; }
 .att2 .duty-assigned .tm { color: var(--a-muted); }
-.att2 .duty-empty { font-size: 14px; color: var(--a-muted); }
+.att2 .duty-empty { font-size: 15px; color: var(--a-muted); }
 .att2 .steps { display: flex; align-items: flex-start; justify-content: space-between; position: relative; margin: 2px 6px 16px; }
 .att2 .step { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 33%; position: relative; z-index: 1; }
 .att2 .step-ic { width: 48px; height: 48px; border-radius: 50%; background: #e9edf3; color: #6b7a90; display: flex; align-items: center; justify-content: center; font-size: 19px; border: 2px solid var(--a-card); }
 .att2 .step.done .step-ic { background: #1f9d6b; color: #fff; }
 .att2 .step.now .step-ic { background: #2f7fe0; color: #fff; box-shadow: 0 0 0 4px rgba(47,127,224,.18); }
 .att2 .step-name { font-size: 15px; font-weight: 700; color: var(--a-ink); }
-.att2 .step-state { font-size: 12.5px; border-radius: 6px; padding: 3px 10px; background: #eef1f5; color: var(--a-muted); white-space: nowrap; }
+.att2 .step-state { font-size: 14px; border-radius: 6px; padding: 3px 10px; background: #eef1f5; color: var(--a-muted); white-space: nowrap; }
 .att2 .step.done .step-state { background: #e3f5ec; color: #16704b; font-weight: 600; }
 .att2 .step.now .step-state { background: #e7f0fc; color: #1d5fbf; font-weight: 600; }
 .att2 .step.next .step-state { background: #e3f5ec; color: #16704b; }
@@ -256,23 +256,23 @@ $att_t = function ($v) { return $v ? date('g:i A', strtotime($v)) : ''; };
 .att2 .btn-att.endbreak { background: #2f7fe0; }
 .att2 .btn-att.out { background: #c2412d; }
 .att2 .btn-att.out-ghost { background: var(--a-card); color: #c2412d; border: 1px solid #e6b3aa; min-width: 150px; }
-.att2 .help { text-align: center; font-size: 13.5px; color: var(--a-muted); margin-top: 10px; }
-.att2 .status-row { text-align: center; margin-top: 8px; font-size: 13px; color: var(--a-muted); }
+.att2 .help { text-align: center; font-size: 15px; color: var(--a-muted); margin-top: 10px; }
+.att2 .status-row { text-align: center; margin-top: 8px; font-size: 14.5px; color: var(--a-muted); }
 .att2 .done-msg { text-align: center; color: #16704b; font-weight: 700; font-size: 15px; }
 
 .att2 .hist { background: var(--a-card); border: 1px solid var(--a-line); border-radius: 16px; padding: 22px 26px; box-shadow: 0 1px 3px rgba(16,24,40,.04); }
 .att2 .hist-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
 .att2 .hist-head .ic { font-size: 30px; color: var(--a-ink); }
 .att2 .hist-head h2 { font-size: 21px; font-weight: 800; color: var(--a-ink); margin: 0; }
-.att2 .hist-head p { margin: 2px 0 0; font-size: 14.5px; color: var(--a-muted); }
+.att2 .hist-head p { margin: 2px 0 0; font-size: 15.5px; color: var(--a-muted); }
 .att2 .month-pick { margin-left: auto; position: relative; }
 .att2 .month-pick i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--a-ink); pointer-events: none; }
-.att2 .month-pick select { height: 44px; border: 1px solid var(--a-line); border-radius: 10px; padding: 0 36px 0 40px; font-size: 14.5px; color: var(--a-ink); background: var(--a-card); min-width: 210px; }
+.att2 .month-pick select { height: 44px; border: 1px solid var(--a-line); border-radius: 10px; padding: 0 36px 0 40px; font-size: 15.5px; color: var(--a-ink); background: var(--a-card); min-width: 210px; }
 .att2 .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
 .att2 .tile { display: flex; align-items: center; gap: 16px; border-radius: 12px; padding: 16px 20px; }
 .att2 .tile i { font-size: 30px; }
 .att2 .tile b { display: block; font-size: 24px; color: var(--a-ink); line-height: 1.1; }
-.att2 .tile span { font-size: 14.5px; color: #4b5b73; }
+.att2 .tile span { font-size: 15.5px; color: #4b5b73; }
 .att2 .t-green { background: #e8f6ef; } .att2 .t-green i { color: #1f9d6b; }
 .att2 .t-orange { background: #fdf3e6; } .att2 .t-orange i { color: #e08a00; }
 .att2 .t-blue { background: #eaf2fc; } .att2 .t-blue i { color: #2f7fe0; }
@@ -280,7 +280,7 @@ $att_t = function ($v) { return $v ? date('g:i A', strtotime($v)) : ''; };
 .att2 .hist-empty { border: 1px solid var(--a-line); border-radius: 12px; text-align: center; padding: 26px 16px 30px; }
 .att2 .hist-empty .art { width: 110px; height: 110px; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle, #eef3f9 55%, transparent 56%); font-size: 46px; color: #8fa3bd; }
 .att2 .hist-empty strong { display: block; font-size: 17px; color: var(--a-ink); }
-.att2 .hist-empty span { font-size: 14.5px; color: var(--a-muted); }
+.att2 .hist-empty span { font-size: 15.5px; color: var(--a-muted); }
 .att2 .hist .table-responsive { border: 1px solid var(--a-line); border-radius: 12px; }
 
 html[data-theme="dark"] .att2 .hero-art { background: linear-gradient(180deg, #16223A 0%, #182a47 100%); }
@@ -489,7 +489,7 @@ html[data-theme="dark"] .att2 .hist-empty .art { background: radial-gradient(cir
                             ?>
                             <tr>
                                 <td class="cell-strong no-wrap"><?php echo date('M j, Y', strtotime($h['attendance_date'])); ?></td>
-                                <td style="font-size:12.5px;">
+                                <td style="font-size:14px;">
                                     <div><?php echo !empty($h['schedule_type']) ? htmlspecialchars($h['schedule_type']) : '<span class="text-muted-2">—</span>'; ?></div>
                                     <?php if (!empty($h['expected_time_in']) && !empty($h['expected_time_out'])): ?>
                                         <div class="text-muted-2"><?php echo date('g:i A', strtotime($h['expected_time_in'])) . ' – ' . date('g:i A', strtotime($h['expected_time_out'])); ?></div>

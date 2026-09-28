@@ -247,7 +247,7 @@ $status_meta['For Correction'] = $status_meta['Rejected'] = $status_meta['Incomp
             <div style="font-size:34px;text-align:center">👨‍👩‍👧</div>
             <h5 class="fw-bold text-center mb-1">Parent Portal</h5>
             <p class="text-center mb-2" style="font-size:15px">Para kay <strong><?php echo htmlspecialchars($pp_pop['guardian_name'] ?: 'Magulang'); ?></strong><?php echo $pp_pop['guardian_relationship'] ? ' (' . htmlspecialchars($pp_pop['guardian_relationship']) . ')' : ''; ?></p>
-            <p class="text-center text-muted" style="font-size:14.5px">Makikita ng magulang ang grades, attendance at activities ni <?php echo htmlspecialchars($pp_pop['first_name']); ?>.<br>Number: <strong><?php echo htmlspecialchars(smsMask($pp_pop['guardian_contact']) ?: '—'); ?></strong></p>
+            <p class="text-center text-muted" style="font-size:15.5px">Makikita ng magulang ang grades, attendance at activities ni <?php echo htmlspecialchars($pp_pop['first_name']); ?>.<br>Number: <strong><?php echo htmlspecialchars(smsMask($pp_pop['guardian_contact']) ?: '—'); ?></strong></p>
             <div class="d-grid gap-2">
                 <a href="parent/start.php?ref=<?php echo $pp_ref; ?>" class="btn btn-primary fw-bold" style="height:50px;padding-top:12px"><i class="fas fa-mobile-screen me-1"></i> I-setup ngayon sa phone na ito</a>
                 <a href="parent/start.php?ref=<?php echo $pp_ref; ?>&share=1" class="btn btn-outline-primary fw-semibold"><i class="fas fa-share-nodes me-1"></i> I-share sa magulang (Messenger / Copy code)</a>

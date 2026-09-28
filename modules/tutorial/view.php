@@ -132,7 +132,7 @@ include '../../includes/header.php';
     border-radius: 6px;
     background: var(--surface);
     color: #14213D;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     white-space: nowrap;
     cursor: pointer;
@@ -151,7 +151,7 @@ include '../../includes/header.php';
 .tut-page .material-card .material-icon { font-size: 20px; line-height:1; margin-top:2px; }
 .tut-page .material-card .material-title {
     font-weight: 700;
-    font-size: 14.5px;
+    font-size: 15.5px;
     color: var(--ink);
     white-space: nowrap;
     overflow: hidden;
@@ -161,7 +161,7 @@ include '../../includes/header.php';
     vertical-align: bottom;
 }
 .tut-page .material-card .material-type-badge {
-    font-size: 11px;
+    font-size: 12.5px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.03em;
@@ -176,7 +176,7 @@ include '../../includes/header.php';
     background: none;
     border: none;
     padding: 0;
-    font-size: 13px;
+    font-size: 14.5px;
     font-weight: 600;
     color: #14213D;
     text-decoration: none;
@@ -195,12 +195,12 @@ include '../../includes/header.php';
     background: var(--surface);
     border-radius: 8px;
     font-weight: 600;
-    font-size: 14.5px;
+    font-size: 15.5px;
     color: var(--text-muted);
     cursor: pointer;
 }
 .material-modal-tabs button.active { border-color:#14213D; background:#EDF4FB; color:#14213D; }
-.material-modal-form label { font-weight:600; font-size:14px; color: var(--ink); margin-bottom:4px; display:block; }
+.material-modal-form label { font-weight:600; font-size:15px; color: var(--ink); margin-bottom:4px; display:block; }
 .material-modal-form .form-control, .material-modal-form .form-select { margin-bottom:14px; }
 
 @media (max-width: 767px) {
@@ -211,7 +211,7 @@ include '../../includes/header.php';
     .tut-page table.table-hover td:before {
         content: attr(data-label);
         display:block;
-        font-size:11px;
+        font-size:12.5px;
         font-weight:700;
         text-transform:uppercase;
         letter-spacing:0.04em;
@@ -242,7 +242,7 @@ include '../../includes/header.php';
     <div class="card border-0 shadow-sm" style="margin-bottom:16px;">
         <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2" style="padding:18px 20px;">
             <div>
-                <span style="font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color: var(--text-muted);display:block;margin-bottom:4px;">Plan Status</span>
+                <span style="font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color: var(--text-muted);display:block;margin-bottom:4px;">Plan Status</span>
                 <?php
                 $sb = ['Draft' => '#f3f4f6,#667085', 'Active' => '#EDF4FB,#14213D', 'Completed' => '#EAF7F1,#238863', 'Cancelled' => '#f3f4f6,#667085'][$plan['status']] ?? '#f3f4f6,#667085';
                 list($sbg, $scl) = explode(',', $sb);
@@ -250,7 +250,7 @@ include '../../includes/header.php';
                 <span style="background:<?php echo $sbg; ?>;color:<?php echo $scl; ?>;padding:6px 16px;border-radius:20px;font-size:15px;font-weight:700;"><?php echo $plan['status']; ?></span>
             </div>
             <div style="min-width:200px;">
-                <span style="font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color: var(--text-muted);display:block;margin-bottom:4px;">Progress</span>
+                <span style="font-size:15px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color: var(--text-muted);display:block;margin-bottom:4px;">Progress</span>
                 <div class="d-flex align-items-center gap-2">
                     <div style="flex:1;height:10px;background: var(--surface-hover);border-radius:5px;">
                         <div style="height:100%;width:<?php echo $plan_progress; ?>%;background:#238863;border-radius:5px;"></div>
@@ -269,7 +269,7 @@ include '../../includes/header.php';
                 <button type="submit" class="btn" style="background:#14213D;color:#fff;border:none;font-size:15px;font-weight:600;padding:0 24px;height:44px;border-radius:6px;">Update</button>
             </form>
             <?php else: ?>
-            <span style="background:#eef4fb;color:#1565c0;font-weight:700;padding:8px 16px;border-radius:20px;font-size:14px;">
+            <span style="background:#eef4fb;color:#1565c0;font-weight:700;padding:8px 16px;border-radius:20px;font-size:15px;">
                 <i class="fas fa-eye me-1"></i> View Only
             </span>
             <?php endif; ?>
@@ -285,14 +285,14 @@ include '../../includes/header.php';
                 <table class="table table-hover mb-0 align-middle" style="font-size:16px;">
                     <thead style="background: var(--surface-hover);">
                         <tr>
-                            <th style="font-size:13px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Subject</th>
-                            <th style="font-size:13px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Current</th>
-                            <th style="font-size:13px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Target</th>
-                            <th style="font-size:13px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Teacher</th>
-                            <th style="font-size:13px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Focus</th>
-                            <th style="font-size:13px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Learning Material</th>
-                            <th style="font-size:13px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Status</th>
-                            <th style="font-size:13px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Progress</th>
+                            <th style="font-size:14.5px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Subject</th>
+                            <th style="font-size:14.5px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Current</th>
+                            <th style="font-size:14.5px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Target</th>
+                            <th style="font-size:14.5px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Teacher</th>
+                            <th style="font-size:14.5px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Focus</th>
+                            <th style="font-size:14.5px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Learning Material</th>
+                            <th style="font-size:14.5px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Status</th>
+                            <th style="font-size:14.5px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Progress</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -354,7 +354,7 @@ include '../../includes/header.php';
                                     };
                                     list($sbg, $scl) = explode(',', $sw);
                                     ?>
-                                    <span style="display:inline-block;background:<?php echo $sbg; ?>;color:<?php echo $scl; ?>;padding:6px 16px;border-radius:20px;font-size:14px;font-weight:700;white-space:nowrap;"><?php echo htmlspecialchars($status_label); ?></span>
+                                    <span style="display:inline-block;background:<?php echo $sbg; ?>;color:<?php echo $scl; ?>;padding:6px 16px;border-radius:20px;font-size:15px;font-weight:700;white-space:nowrap;"><?php echo htmlspecialchars($status_label); ?></span>
                                 </td>
                                 <td data-label="Progress" style="border-bottom: 1px solid var(--border-soft);padding:14px 16px;min-width:150px;">
                                     <?php if ($is_trackable): ?>

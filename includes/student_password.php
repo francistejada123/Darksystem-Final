@@ -107,7 +107,7 @@ function spwSendSetupLink(array $student, $purpose = 'setup')
         . '<h2 style="margin:0 0 14px;font-size:21px;color:#14213D;">' . $e($title) . '</h2>'
         . '<p style="font-size:15px;color:#334155;line-height:1.6;">Hi ' . $e($student['first_name'] ?? '') . ', click the button below to ' . ($purpose === 'reset' ? 'set a new' : 'create your') . ' password. You will sign in with your <strong>LRN ' . $e($student['lrn'] ?? '') . '</strong> and this password.</p>'
         . '<p style="margin:22px 0;"><a href="' . $e($link) . '" style="display:inline-block;background:#2563eb;color:#ffffff !important;text-decoration:none;font-weight:700;font-size:15px;padding:12px 24px;border-radius:8px;">🔐 ' . ($purpose === 'reset' ? 'Set New Password' : 'Create My Password') . '</a></p>'
-        . '<p style="font-size:12.5px;color:#64748b;">This link is only for you, works once and expires in ' . SPT_VALID_DAYS . ' days. If you did not ask for it, you can ignore this email.<br>Link: <span style="word-break:break-all;">' . $e($link) . '</span></p>'
+        . '<p style="font-size:14px;color:#64748b;">This link is only for you, works once and expires in ' . SPT_VALID_DAYS . ' days. If you did not ask for it, you can ignore this email.<br>Link: <span style="word-break:break-all;">' . $e($link) . '</span></p>'
         . '</div></div></div>';
     $r = mailSendOne($email, $title . ' - EGradePro', $html);
     return $r['success'] ? ['success' => true, 'masked' => spwMaskEmail($email)] : ['success' => false, 'error' => $r['error']];

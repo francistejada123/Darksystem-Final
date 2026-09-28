@@ -72,8 +72,8 @@ function tiEmailHtml($title, $lines, $buttonText, $buttonUrl, $footnote = '')
         . '<h2 style="margin:0 0 16px;font-size:21px;color:#14213D;">' . $e($title) . '</h2>'
         . $body
         . '<p style="margin:22px 0;"><a href="' . $e($buttonUrl) . '" style="display:inline-block;background:#2563eb;color:#ffffff !important;text-decoration:none;font-weight:700;font-size:15px;padding:12px 24px;border-radius:8px;">' . $e($buttonText) . '</a></p>'
-        . '<p style="margin:0;font-size:12.5px;color:#64748b;line-height:1.5;">If the button does not work, copy this link into your browser:<br><span style="word-break:break-all;">' . $e($buttonUrl) . '</span></p>'
-        . ($footnote !== '' ? '<p style="margin:14px 0 0;font-size:12.5px;color:#64748b;">' . $footnote . '</p>' : '')
+        . '<p style="margin:0;font-size:14px;color:#64748b;line-height:1.5;">If the button does not work, copy this link into your browser:<br><span style="word-break:break-all;">' . $e($buttonUrl) . '</span></p>'
+        . ($footnote !== '' ? '<p style="margin:14px 0 0;font-size:14px;color:#64748b;">' . $footnote . '</p>' : '')
         . '</div></div></div>';
 }
 

@@ -132,7 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         .login-header p {
             color: #ffffff;
-            font-size: 14px;
+            font-size: 15px;
             margin-top: 5px;
             text-shadow: 0 2px 8px rgba(0,0,0,0.7);
         }
@@ -148,7 +148,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 12px 15px;
             border: 2px solid rgba(255, 255, 255, 0.5);
             background: rgba(255, 255, 255, 0.7);
-            font-size: 14px;
+            font-size: 15px;
             color: #1a1a2e;
         }
         .form-control::placeholder {
@@ -239,7 +239,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             color: #ffffff;
             text-decoration: none !important;
             font-weight: 600;
-            font-size: 14px;
+            font-size: 15px;
             text-shadow: 0 2px 6px rgba(0,0,0,0.6);
             transition: all 0.2s;
         }
@@ -261,7 +261,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .footer-text {
             color: #ffffff;
-            font-size: 11px;
+            font-size: 12.5px;
             text-align: center;
             text-shadow: 0 2px 8px rgba(0,0,0,0.7);
             margin-top: 15px;

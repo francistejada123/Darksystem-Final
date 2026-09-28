@@ -64,9 +64,9 @@ include __DIR__ . '/../../includes/header.php';
     .smsp .card-x { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; margin-bottom: 18px; }
     .smsp .card-x h5 { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
     .smsp table { width: 100%; border-collapse: collapse; }
-    .smsp th { background: var(--surface-hover); padding: 10px 12px; font-size: 12.5px; text-transform: uppercase; color: var(--text-muted); text-align: left; }
-    .smsp td { padding: 10px 12px; border-top: 1px solid var(--border-soft); font-size: 14.5px; vertical-align: top; }
-    .smsp code { font-size: 13px; }
+    .smsp th { background: var(--surface-hover); padding: 10px 12px; font-size: 14px; text-transform: uppercase; color: var(--text-muted); text-align: left; }
+    .smsp td { padding: 10px 12px; border-top: 1px solid var(--border-soft); font-size: 15.5px; vertical-align: top; }
+    .smsp code { font-size: 14.5px; }
 </style>
 <div class="smsp" style="padding:24px;max-width:1200px">
     <h4><i class="fas fa-comment-sms me-2"></i>SMS Settings</h4>
@@ -78,10 +78,10 @@ include __DIR__ . '/../../includes/header.php';
         <p style="font-size:15px;margin-bottom:6px"><b><?php echo htmlspecialchars($p['label']); ?></b>
             <?php if ($p['provider'] !== '' && $p['problem'] === ''): ?><span class="badge bg-success ms-2">Ready</span>
             <?php else: ?><span class="badge bg-warning text-dark ms-2">Not ready</span><?php endif; ?></p>
-        <?php if ($p['problem']): ?><p class="text-muted mb-2" style="font-size:14px"><?php echo htmlspecialchars($p['problem']); ?> Until then, texts are recorded as "Not sent" and staff can send them from a phone.</p><?php endif; ?>
+        <?php if ($p['problem']): ?><p class="text-muted mb-2" style="font-size:15px"><?php echo htmlspecialchars($p['problem']); ?> Until then, texts are recorded as "Not sent" and staff can send them from a phone.</p><?php endif; ?>
         <form method="POST" class="row g-2 mt-1 mb-2" autocomplete="off">
             <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>"><input type="hidden" name="action" value="sender">
-            <div class="col-md-4"><label class="form-label fw-semibold mb-1" style="font-size:14px">Send texts using</label>
+            <div class="col-md-4"><label class="form-label fw-semibold mb-1" style="font-size:15px">Send texts using</label>
                 <select class="form-select" name="provider" id="smsProv" onchange="document.querySelectorAll('.prov-f').forEach(function(e){e.style.display=e.dataset.p===this.value?'':'none'},this)">
                     <option value="" <?php echo $p['provider'] === '' ? 'selected' : ''; ?>>None (staff send from a phone)</option>
                     <option value="traccar" <?php echo $p['provider'] === 'traccar' ? 'selected' : ''; ?>>Android phone (Traccar SMS Gateway, Google Play)</option>
@@ -89,22 +89,22 @@ include __DIR__ . '/../../includes/header.php';
                     <option value="semaphore" <?php echo $p['provider'] === 'semaphore' ? 'selected' : ''; ?>>Semaphore</option>
                 </select></div>
             <div class="col-md-8 prov-f" data-p="android_gateway" style="<?php echo $p['provider'] === 'android_gateway' ? '' : 'display:none'; ?>"><div class="row g-2">
-                <div class="col-md-5"><label class="form-label fw-semibold mb-1" style="font-size:14px">Address (from the app)</label><input class="form-control" name="gw_url" placeholder="192.168.1.5:8080" value="<?php echo htmlspecialchars((string) mailEnv('SMS_GATEWAY_URL')); ?>"></div>
-                <div class="col-md-3"><label class="form-label fw-semibold mb-1" style="font-size:14px">Username</label><input class="form-control" name="gw_user" value="<?php echo htmlspecialchars((string) mailEnv('SMS_GATEWAY_USER')); ?>"></div>
-                <div class="col-md-4"><label class="form-label fw-semibold mb-1" style="font-size:14px">Password</label><input class="form-control" type="password" name="gw_pass" placeholder="<?php echo mailEnv('SMS_GATEWAY_PASSWORD') ? '(saved — leave blank to keep)' : ''; ?>"></div>
+                <div class="col-md-5"><label class="form-label fw-semibold mb-1" style="font-size:15px">Address (from the app)</label><input class="form-control" name="gw_url" placeholder="192.168.1.5:8080" value="<?php echo htmlspecialchars((string) mailEnv('SMS_GATEWAY_URL')); ?>"></div>
+                <div class="col-md-3"><label class="form-label fw-semibold mb-1" style="font-size:15px">Username</label><input class="form-control" name="gw_user" value="<?php echo htmlspecialchars((string) mailEnv('SMS_GATEWAY_USER')); ?>"></div>
+                <div class="col-md-4"><label class="form-label fw-semibold mb-1" style="font-size:15px">Password</label><input class="form-control" type="password" name="gw_pass" placeholder="<?php echo mailEnv('SMS_GATEWAY_PASSWORD') ? '(saved — leave blank to keep)' : ''; ?>"></div>
             </div></div>
             <div class="col-md-8 prov-f" data-p="traccar" style="<?php echo $p['provider'] === 'traccar' ? '' : 'display:none'; ?>"><div class="row g-2">
-                <div class="col-md-6"><label class="form-label fw-semibold mb-1" style="font-size:14px">Phone address (from the app)</label><input class="form-control" name="tc_url" placeholder="192.168.1.5:8082" value="<?php echo htmlspecialchars((string) mailEnv('SMS_GATEWAY_URL')); ?>"></div>
-                <div class="col-md-6"><label class="form-label fw-semibold mb-1" style="font-size:14px">Key / token (from the app)</label><input class="form-control" type="password" name="tc_key" placeholder="<?php echo mailEnv('SMS_GATEWAY_TOKEN') ? '(saved — leave blank to keep)' : ''; ?>"></div>
+                <div class="col-md-6"><label class="form-label fw-semibold mb-1" style="font-size:15px">Phone address (from the app)</label><input class="form-control" name="tc_url" placeholder="192.168.1.5:8082" value="<?php echo htmlspecialchars((string) mailEnv('SMS_GATEWAY_URL')); ?>"></div>
+                <div class="col-md-6"><label class="form-label fw-semibold mb-1" style="font-size:15px">Key / token (from the app)</label><input class="form-control" type="password" name="tc_key" placeholder="<?php echo mailEnv('SMS_GATEWAY_TOKEN') ? '(saved — leave blank to keep)' : ''; ?>"></div>
             </div></div>
             <div class="col-md-8 prov-f" data-p="semaphore" style="<?php echo $p['provider'] === 'semaphore' ? '' : 'display:none'; ?>"><div class="row g-2">
-                <div class="col-md-7"><label class="form-label fw-semibold mb-1" style="font-size:14px">API key</label><input class="form-control" type="password" name="sem_key" placeholder="<?php echo mailEnv('SEMAPHORE_API_KEY') ? '(saved — leave blank to keep)' : ''; ?>"></div>
-                <div class="col-md-5"><label class="form-label fw-semibold mb-1" style="font-size:14px">Sender name (optional)</label><input class="form-control" name="sem_sender" maxlength="11" placeholder="EGradePro" value="<?php echo htmlspecialchars((string) mailEnv('SEMAPHORE_SENDER')); ?>"></div>
+                <div class="col-md-7"><label class="form-label fw-semibold mb-1" style="font-size:15px">API key</label><input class="form-control" type="password" name="sem_key" placeholder="<?php echo mailEnv('SEMAPHORE_API_KEY') ? '(saved — leave blank to keep)' : ''; ?>"></div>
+                <div class="col-md-5"><label class="form-label fw-semibold mb-1" style="font-size:15px">Sender name (optional)</label><input class="form-control" name="sem_sender" maxlength="11" placeholder="EGradePro" value="<?php echo htmlspecialchars((string) mailEnv('SEMAPHORE_SENDER')); ?>"></div>
             </div></div>
             <div class="col-12"><button class="btn btn-primary"><i class="fas fa-save me-1"></i> Save sender</button>
                 <small class="text-muted ms-2">Saved on the server only (.env). Passwords and keys are never shown again.</small></div>
         </form>
-        <details style="font-size:14px"><summary>How to set up (in the <code>.env</code> file of the server)</summary>
+        <details style="font-size:15px"><summary>How to set up (in the <code>.env</code> file of the server)</summary>
             <div class="mt-2"><b>For the defense (Android phone):</b> install "SMS Gateway for Android" on a phone with load / unli-text, start it, and copy the address, username and password it shows:
 <pre style="background:var(--surface-hover);padding:10px;border-radius:8px">SMS_PROVIDER=android_gateway
 SMS_GATEWAY_URL=http://192.168.x.x:8080   (Local mode, same Wi-Fi)  or  https://api.sms-gate.app/3rdparty/v1  (Cloud mode)
@@ -125,7 +125,7 @@ SEMAPHORE_SENDER=EGradePro   (only after Semaphore approves the sender name)</pr
                 <input class="form-control" name="to" placeholder="09XXXXXXXXX" inputmode="numeric" maxlength="13" required>
                 <button class="btn btn-primary" style="white-space:nowrap"><i class="fas fa-paper-plane me-1"></i> Send</button>
             </form>
-            <p class="text-muted mt-2 mb-0" style="font-size:13px">This month: <?php echo (int) ($month['sent'] ?? 0); ?> text(s) sent (<?php echo (int) ($month['parts'] ?? 0); ?> SMS part(s); Semaphore ≈ ₱0.56 each).</p>
+            <p class="text-muted mt-2 mb-0" style="font-size:14.5px">This month: <?php echo (int) ($month['sent'] ?? 0); ?> text(s) sent (<?php echo (int) ($month['parts'] ?? 0); ?> SMS part(s); Semaphore ≈ ₱0.56 each).</p>
         </div></div>
         <div class="col-lg-6"><div class="card-x h-100">
             <h5>Texts that are sent</h5>
@@ -150,7 +150,7 @@ SEMAPHORE_SENDER=EGradePro   (only after Semaphore approves the sender name)</pr
                     <td><?php echo htmlspecialchars($m['kind']); ?></td>
                     <td><?php echo $m['first_name'] ? htmlspecialchars($m['last_name'] . ', ' . $m['first_name']) : '—'; ?></td>
                     <td><span class="badge bg-<?php echo $m['status'] === 'Sent' ? 'success' : ($m['status'] === 'Failed' ? 'danger' : 'secondary'); ?>"><?php echo $m['status']; ?></span><?php if ($m['error']): ?><small class="d-block text-muted" style="max-width:260px"><?php echo htmlspecialchars($m['error']); ?></small><?php endif; ?></td>
-                    <td style="max-width:360px;font-size:13.5px"><?php echo htmlspecialchars(preg_replace('/Code: [A-Z0-9]{8}/', 'Code: ••••••••', preg_replace('/c=[A-Z0-9]{8}/', 'c=••••••••', $m['message']))); ?></td>
+                    <td style="max-width:360px;font-size:15px"><?php echo htmlspecialchars(preg_replace('/Code: [A-Z0-9]{8}/', 'Code: ••••••••', preg_replace('/c=[A-Z0-9]{8}/', 'c=••••••••', $m['message']))); ?></td>
                 </tr>
             <?php endforeach; ?>
         </table></div>

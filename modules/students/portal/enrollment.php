@@ -89,32 +89,32 @@ $page_title = 'Enrollment Status';
         .sidebar .logo { padding: 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; gap: 10px; }
         .sidebar .logo img { height: 36px; width: 36px; border-radius: 8px; object-fit: contain; }
         .sidebar .logo span { color: #fff; font-size: 15px; font-weight: 700; letter-spacing: 0.02em; line-height: 1.3; }
-        .sidebar .logo small { display: block; font-size: 9px; font-weight: 500; letter-spacing: 0.1em; color: rgba(255,255,255,0.4); }
+        .sidebar .logo small { display: block; font-size: 11px; font-weight: 500; letter-spacing: 0.1em; color: rgba(255,255,255,0.4); }
         .sidebar .nav { padding: 12px 0; flex: 1; }
-        .sidebar .nav-link { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: rgba(255,255,255,0.55); font-size: 13px; font-weight: 500; text-decoration: none; transition: all 0.15s ease; border-left: 3px solid transparent; }
-        .sidebar .nav-link i { width: 18px; text-align: center; font-size: 14px; }
+        .sidebar .nav-link { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: rgba(255,255,255,0.55); font-size: 14.5px; font-weight: 500; text-decoration: none; transition: all 0.15s ease; border-left: 3px solid transparent; }
+        .sidebar .nav-link i { width: 18px; text-align: center; font-size: 15px; }
         .sidebar .nav-link:hover { color: #fff; background: rgba(255,255,255,0.06); }
         .sidebar .nav-link.active { color: #fff; background: rgba(255,255,255,0.08); border-left-color: #fff; }
         .sidebar .nav-link.text-danger { color: rgba(201,74,74,0.7); }
         .sidebar .nav-link.text-danger:hover { color: #C94A4A; background: rgba(201,74,74,0.08); }
         .sidebar .nav-divider { height: 1px; background: rgba(255,255,255,0.08); margin: 8px 20px; }
         .sidebar-footer { padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.08); }
-        .sidebar-footer small { color: rgba(255,255,255,0.3); font-size: 11px; }
+        .sidebar-footer small { color: rgba(255,255,255,0.3); font-size: 12.5px; }
 
         .main-content { padding: 24px 32px; min-height: 100vh; }
         .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
         .topbar-left { display: flex; align-items: center; gap: 14px; }
         .topbar-right { display: flex; align-items: center; gap: 10px; }
         .topbar h4 { margin: 0; font-size: 20px; font-weight: 700; color: var(--portal-primary); }
-        .topbar small { color: var(--portal-gray); font-size: 12px; }
-        .btn-portal-back { padding: 7px 16px; border-radius: 6px; font-size: 12px; font-weight: 500; border: 1px solid var(--portal-border); background: var(--portal-card); color: var(--portal-gray); text-decoration: none; transition: all 0.15s; }
+        .topbar small { color: var(--portal-gray); font-size: 13.5px; }
+        .btn-portal-back { padding: 7px 16px; border-radius: 6px; font-size: 13.5px; font-weight: 500; border: 1px solid var(--portal-border); background: var(--portal-card); color: var(--portal-gray); text-decoration: none; transition: all 0.15s; }
         .btn-portal-back:hover { background: #f1f5f9; color: var(--portal-primary); }
 
         .card-portal { background: var(--portal-card); border: 1px solid var(--portal-border); border-radius: 8px; margin-bottom: 20px; }
-        .card-portal-header { padding: 16px 20px; border-bottom: 1px solid var(--portal-border); font-size: 14px; font-weight: 600; color: var(--portal-primary); display: flex; align-items: center; justify-content: space-between; }
+        .card-portal-header { padding: 16px 20px; border-bottom: 1px solid var(--portal-border); font-size: 15px; font-weight: 600; color: var(--portal-primary); display: flex; align-items: center; justify-content: space-between; }
         .card-portal-body { padding: 20px; }
 
-        .enrollment-status { display: inline-flex; align-items: center; gap: 6px; padding: 6px 16px; border-radius: 6px; font-size: 13px; font-weight: 600; }
+        .enrollment-status { display: inline-flex; align-items: center; gap: 6px; padding: 6px 16px; border-radius: 6px; font-size: 14.5px; font-weight: 600; }
         .enrollment-status.approved { background: rgba(35,136,99,0.08); color: var(--portal-green); }
         .enrollment-status.pending { background: rgba(183,121,31,0.1); color: var(--portal-yellow); }
         .enrollment-status.rejected { background: rgba(201,74,74,0.08); color: var(--portal-red); }
@@ -122,20 +122,20 @@ $page_title = 'Enrollment Status';
 
         .info-row { display: flex; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
         .info-row:last-child { border-bottom: none; }
-        .info-label { width: 140px; font-size: 13px; font-weight: 500; color: var(--portal-gray); flex-shrink: 0; }
-        .info-value { font-size: 13px; color: #374151; font-weight: 500; }
+        .info-label { width: 140px; font-size: 14.5px; font-weight: 500; color: var(--portal-gray); flex-shrink: 0; }
+        .info-value { font-size: 14.5px; color: #374151; font-weight: 500; }
 
         .grade-table { width: 100%; border-collapse: collapse; }
-        .grade-table th { text-align: left; padding: 10px 16px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--portal-gray); border-bottom: 1px solid var(--portal-border); background: #f9fafb; }
-        .grade-table td { padding: 12px 16px; font-size: 13px; color: #374151; border-bottom: 1px solid #f3f4f6; }
+        .grade-table th { text-align: left; padding: 10px 16px; font-size: 12.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--portal-gray); border-bottom: 1px solid var(--portal-border); background: #f9fafb; }
+        .grade-table td { padding: 12px 16px; font-size: 14.5px; color: #374151; border-bottom: 1px solid #f3f4f6; }
         .grade-table tr:last-child td { border-bottom: none; }
         .grade-table tr:hover td { background: #f9fafb; }
 
-        .status-badge-sm { padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+        .status-badge-sm { padding: 3px 10px; border-radius: 4px; font-size: 13.5px; font-weight: 600; }
         .status-approved { background: rgba(35,136,99,0.08); color: var(--portal-green); }
         .status-pending { background: rgba(183,121,31,0.1); color: var(--portal-yellow); }
         .status-rejected { background: rgba(201,74,74,0.08); color: var(--portal-red); }
-        .badge-strand { background: #F2F4F7; color: #344054; padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; border: 1px solid #E4E7EC; }
+        .badge-strand { background: #F2F4F7; color: #344054; padding: 3px 10px; border-radius: 4px; font-size: 13.5px; font-weight: 600; border: 1px solid #E4E7EC; }
 
         .empty-state { text-align: center; padding: 48px 20px; color: var(--portal-gray); }
         .empty-state i { font-size: 40px; margin-bottom: 12px; opacity: 0.3; }

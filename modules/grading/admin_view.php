@@ -192,7 +192,7 @@ include __DIR__ . '/../../includes/header.php';
        Everything else here is scoped under .grading-admin-view. */
 
     .grading-admin-view .page-subtitle {
-        font-size: 14px;
+        font-size: 15px;
         color: var(--text-muted);
         margin-top: 2px;
     }
@@ -203,7 +203,7 @@ include __DIR__ . '/../../includes/header.php';
         font-weight: 600;
         padding: 8px 16px;
         border-radius: 20px;
-        font-size: 13.5px;
+        font-size: 15px;
         white-space: nowrap;
     }
 
@@ -215,7 +215,7 @@ include __DIR__ . '/../../includes/header.php';
         align-items: center;
         flex-wrap: wrap;
         gap: 8px;
-        font-size: 14px;
+        font-size: 15px;
         margin-bottom: 20px;
     }
     .grading-admin-view .admin-crumb a {
@@ -235,7 +235,7 @@ include __DIR__ . '/../../includes/header.php';
     }
     .grading-admin-view .admin-crumb .crumb-sep {
         color: var(--text-muted-2, var(--border));
-        font-size: 12px;
+        font-size: 13.5px;
     }
 
     /* Compact hint panel shown below the Grade Level cards on the very
@@ -251,12 +251,12 @@ include __DIR__ . '/../../includes/header.php';
     .grading-admin-view .empty-hint-panel h6 {
         color: var(--ink);
         font-weight: 600;
-        font-size: 14px;
+        font-size: 15px;
         margin-bottom: 4px;
     }
     .grading-admin-view .empty-hint-panel p {
         margin: 0;
-        font-size: 13.5px;
+        font-size: 15px;
         color: var(--text-muted);
     }
 
@@ -279,7 +279,7 @@ include __DIR__ . '/../../includes/header.php';
         box-shadow: var(--shadow-md) !important;
     }
     .grading-admin-view .subject-card .subject-teacher {
-        font-size: 12px;
+        font-size: 13.5px;
         color: var(--text-muted);
         margin-top: 6px;
     }
@@ -291,7 +291,7 @@ include __DIR__ . '/../../includes/header.php';
         padding: 14px 16px;
     }
     .grading-admin-view .table thead th {
-        font-size: 11.5px;
+        font-size: 13px;
         text-transform: uppercase;
         letter-spacing: 0.03em;
         font-weight: 600;
@@ -304,7 +304,7 @@ include __DIR__ . '/../../includes/header.php';
     .grading-admin-view td .badge {
         padding: 5px 14px;
         border-radius: 20px;
-        font-size: 13px;
+        font-size: 14.5px;
         font-weight: 600;
     }
     .grading-admin-view .btn-eye {
@@ -327,7 +327,7 @@ include __DIR__ . '/../../includes/header.php';
         max-width: 200px;
         border-radius: 8px;
         border: 1px solid var(--border);
-        font-size: 13.5px;
+        font-size: 15px;
         padding: 8px 12px;
     }
 
@@ -336,9 +336,9 @@ include __DIR__ . '/../../includes/header.php';
     .grading-admin-view .page-subtitle { font-size: 16px; }
     .grading-admin-view .view-only-badge { font-size: 15px; padding: 9px 18px; }
     .grading-admin-view .admin-crumb { font-size: 16px; }
-    .grading-admin-view .admin-crumb .crumb-sep { font-size: 13px; }
+    .grading-admin-view .admin-crumb .crumb-sep { font-size: 14.5px; }
     .grading-admin-view h4 { font-size: 24px; }
-    .grading-admin-view .btn-sm { font-size: 14.5px; padding: 8px 14px; }
+    .grading-admin-view .btn-sm { font-size: 15.5px; padding: 8px 14px; }
     .grading-admin-view .grade-card .grade-num { font-size: 36px !important; }
     .grading-admin-view .grade-card .grade-label { font-size: 18px !important; }
     .grading-admin-view .grade-card .section-count { font-size: 15px !important; }
@@ -347,9 +347,9 @@ include __DIR__ . '/../../includes/header.php';
     .grading-admin-view .section-card .card-body { padding-top: 24px; padding-bottom: 24px; }
     .grading-admin-view .empty-hint-panel h6 { font-size: 16px; }
     .grading-admin-view .empty-hint-panel p { font-size: 15px; }
-    .grading-admin-view .subject-card .subject-teacher { font-size: 14px; }
+    .grading-admin-view .subject-card .subject-teacher { font-size: 15px; }
     .grading-admin-view .subject-card h5, .grading-admin-view .subject-card .card-title { font-size: 18px; }
-    .grading-admin-view .table thead th { font-size: 12.5px; }
+    .grading-admin-view .table thead th { font-size: 14px; }
     .grading-admin-view .term-select { font-size: 15px; }
 </style>
 
@@ -411,7 +411,7 @@ if (!empty($selected_grade)):
         <h4 class="mb-0">
             <i class="fas fa-book text-primary me-2"></i>
             <?php echo htmlspecialchars($selected_subject_info['subject_name']); ?>
-            <span class="badge bg-secondary ms-2" style="font-size:14px;padding:6px 13px;"><?php echo count($section_students); ?></span>
+            <span class="badge bg-secondary ms-2" style="font-size:15px;padding:6px 13px;"><?php echo count($section_students); ?></span>
             <div class="mt-1" style="font-size: 15px; font-weight: 400; color: var(--text-muted);">
                 <i class="fas fa-chalkboard-teacher me-1"></i> Teacher:
                 <?php echo !empty($selected_subject_info['teacher_name']) ? htmlspecialchars($selected_subject_info['teacher_name']) : 'Not yet assigned'; ?>
@@ -495,7 +495,7 @@ if (!empty($selected_grade)):
         <h4 class="mb-0">
             <i class="fas fa-book text-primary me-2"></i>
             Subjects in <?php echo htmlspecialchars($section_info['grade_level'] . ' - ' . $section_info['section_name']); ?>
-            <span class="badge bg-secondary ms-2" style="font-size:14px;padding:6px 13px;"><?php echo count($section_subjects); ?></span>
+            <span class="badge bg-secondary ms-2" style="font-size:15px;padding:6px 13px;"><?php echo count($section_subjects); ?></span>
         </h4>
         <a href="?grade=<?php echo urlencode($selected_grade); ?>" class="btn btn-outline-secondary btn-sm">
             <i class="fas fa-arrow-left me-1"></i> Back to Sections
@@ -513,7 +513,7 @@ if (!empty($selected_grade)):
                             <h6 class="mb-1" style="color: var(--ink);font-weight:600;"><?php echo htmlspecialchars($subject['subject_name']); ?></h6>
                             <small style="color: var(--text-muted);"><?php echo htmlspecialchars($subject['subject_code']); ?></small>
                             <div class="mt-2">
-                                <span style="background: var(--surface-hover);color: var(--text-muted);padding:3px 8px;border-radius:4px;font-size:11px;font-weight:500;"><?php echo htmlspecialchars($subject['subject_type'] ?? 'General'); ?></span>
+                                <span style="background: var(--surface-hover);color: var(--text-muted);padding:3px 8px;border-radius:4px;font-size:12.5px;font-weight:500;"><?php echo htmlspecialchars($subject['subject_type'] ?? 'General'); ?></span>
                             </div>
                             <div class="subject-teacher">
                                 <i class="fas fa-chalkboard-teacher me-1"></i>
@@ -521,7 +521,7 @@ if (!empty($selected_grade)):
                             </div>
                             <a href="?grade=<?php echo urlencode($selected_grade); ?>&section_id=<?php echo $selected_section; ?>&subject_code=<?php echo urlencode($subject['subject_code']); ?>"
                                class="btn btn-sm mt-3"
-                               style="background:#14213D;color:#fff;border:none;padding:5px 16px;font-size:13px;">
+                               style="background:#14213D;color:#fff;border:none;padding:5px 16px;font-size:14.5px;">
                                 View Students
                             </a>
                         </div>
@@ -540,7 +540,7 @@ if (!empty($selected_grade)):
         <h4 class="mb-0">
             <i class="fas fa-layer-group text-primary me-2"></i>
             Sections in <?php echo htmlspecialchars($selected_grade); ?>
-            <span class="badge bg-secondary ms-2" style="font-size:14px;padding:6px 13px;"><?php echo count($grade_sections); ?></span>
+            <span class="badge bg-secondary ms-2" style="font-size:15px;padding:6px 13px;"><?php echo count($grade_sections); ?></span>
         </h4>
         <a href="index.php" class="btn btn-outline-secondary btn-sm">
             <i class="fas fa-arrow-left me-1"></i> Back to Grade Levels

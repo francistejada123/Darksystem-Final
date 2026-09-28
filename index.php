@@ -574,7 +574,7 @@ function dw_widget_close() {
         transition: background 0.2s, color 0.2s;
     }
     .dash-stat-label {
-        font-size: 13px;
+        font-size: 14.5px;
         text-transform: uppercase;
         letter-spacing: 0.04em;
         color: var(--text-muted);
@@ -624,10 +624,10 @@ function dw_widget_close() {
     .overview-row:last-child { border-bottom: none; }
     .overview-icon {
         width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
-        display: flex; align-items: center; justify-content: center; font-size: 13px;
+        display: flex; align-items: center; justify-content: center; font-size: 14.5px;
     }
-    .overview-label { flex: 1; font-size: 13.5px; color: var(--text); }
-    .overview-value { font-size: 14px; font-weight: 700; color: var(--ink); }
+    .overview-label { flex: 1; font-size: 15px; color: var(--text); }
+    .overview-value { font-size: 15px; font-weight: 700; color: var(--ink); }
     .dash-table {
         width: 100%;
         border-collapse: collapse;
@@ -636,7 +636,7 @@ function dw_widget_close() {
     .dash-table th {
         padding: 12px 20px;
         text-align: left;
-        font-size: 12px;
+        font-size: 13.5px;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.04em;
@@ -660,7 +660,7 @@ function dw_widget_close() {
         display: inline-block;
         padding: 5px 14px;
         border-radius: 20px;
-        font-size: 13px;
+        font-size: 14.5px;
         font-weight: 600;
         line-height: 1.4;
     }
@@ -674,7 +674,7 @@ function dw_widget_close() {
     .dash-table tr.dash-row-alert:hover td { background: #FCE9E9; }
     .dash-table tr.dash-row-alert td:first-child { box-shadow: inset 4px 0 0 #D64545; }
     .dash-unknown-user { display: inline-flex; align-items: center; gap: 7px; font-weight: 500; font-style: italic; color: var(--text-muted); }
-    .dash-badge-alert { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; background: #FDE3E3; color: #B42323; font-size: 13px; font-weight: 700; }
+    .dash-badge-alert { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; background: #FDE3E3; color: #B42323; font-size: 14.5px; font-weight: 700; }
     html[data-theme="dark"] .dash-table tr.dash-row-alert td { background: rgba(226, 114, 111, 0.10); }
     html[data-theme="dark"] .dash-table tr.dash-row-alert:hover td { background: rgba(226, 114, 111, 0.17); }
     html[data-theme="dark"] .dash-table tr.dash-row-alert td:first-child { box-shadow: inset 4px 0 0 #EE8683; }
@@ -685,7 +685,7 @@ function dw_widget_close() {
         justify-content: space-between;
         padding: 10px 20px;
         border-bottom: 1px solid var(--border);
-        font-size: 13px;
+        font-size: 14.5px;
     }
     .risk-item:last-child {
         border-bottom: none;
@@ -705,7 +705,7 @@ function dw_widget_close() {
         font-size: 16px;
     }
     .section-label {
-        font-size: 13px;
+        font-size: 14.5px;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.05em;
@@ -716,7 +716,7 @@ function dw_widget_close() {
         display: flex;
         align-items: center;
         gap: 16px;
-        font-size: 14px;
+        font-size: 15px;
         color: var(--text-muted);
         flex-wrap: wrap;
     }
@@ -741,7 +741,7 @@ function dw_widget_close() {
        area and label size change. */
     .dash-btn-viewall {
         padding: 7px 16px;
-        font-size: 13px;
+        font-size: 14.5px;
         line-height: 1.2;
         white-space: nowrap;
         flex-shrink: 0;
@@ -778,7 +778,7 @@ function dw_widget_close() {
         border-radius: 4px;
         background: #F0F1F4;
         color: #667085;
-        font-size: 13px;
+        font-size: 14.5px;
         line-height: 1.6;
         max-width: 100%;
     }
@@ -860,7 +860,7 @@ function dw_widget_close() {
         overflow: hidden;
     }
     .gc-card-subtitle {
-        font-size: 11.5px;
+        font-size: 13px;
         color: rgba(255,255,255,0.95);
         opacity: 1;
         margin-top: 4px;
@@ -908,7 +908,7 @@ function dw_widget_close() {
         display: block;
         padding: 8px 10px;
         border-radius: 6px;
-        font-size: 13px;
+        font-size: 14.5px;
         color: var(--text);
         text-decoration: none;
     }
@@ -929,7 +929,7 @@ function dw_widget_close() {
         display: flex;
         align-items: center;
         gap: 8px;
-        font-size: 12.5px;
+        font-size: 14px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: .03em;
@@ -947,7 +947,7 @@ function dw_widget_close() {
         color: var(--text-muted);
         border-radius: 20px;
         padding: 2px 10px;
-        font-size: 11px;
+        font-size: 12.5px;
         text-transform: none;
         letter-spacing: normal;
         font-weight: 600;
@@ -979,7 +979,7 @@ function dw_widget_close() {
         flex-direction: column;
     }
     .gc-card-meta {
-        font-size: 12px;
+        font-size: 13.5px;
         color: var(--text-muted);
         margin-bottom: 14px;
     }
@@ -996,7 +996,7 @@ function dw_widget_close() {
         padding: 6px 4px;
         border-radius: 8px;
         color: var(--text-muted);
-        font-size: 11.5px;
+        font-size: 13px;
         text-decoration: none;
     }
     .gc-card-footer a:hover {
@@ -1005,7 +1005,7 @@ function dw_widget_close() {
     }
     .gc-card-footer a i {
         display: block;
-        font-size: 14px;
+        font-size: 15px;
         margin-bottom: 2px;
     }
 </style>
@@ -1017,7 +1017,7 @@ function dw_widget_close() {
 
 <?php $dash_terms_no_end = $active_sy ? gh_termsWithoutEndDate((int) $active_sy['sy_id']) : []; ?>
 <?php if (!empty($dash_terms_no_end)): ?>
-    <div class="alert alert-warning d-flex align-items-start gap-2" style="border-radius:10px;font-size:14px;">
+    <div class="alert alert-warning d-flex align-items-start gap-2" style="border-radius:10px;font-size:15px;">
         <i class="fas fa-calendar-xmark mt-1"></i>
         <div>
             <strong><?php echo htmlspecialchars(implode(', ', $dash_terms_no_end)); ?> <?php echo count($dash_terms_no_end) === 1 ? 'has' : 'have'; ?> no End Date yet.</strong>
@@ -1054,7 +1054,7 @@ function dw_widget_close() {
                 </div>
                 <div class="modal-body" style="padding:20px 22px;">
                     <div class="section-label" style="margin-bottom:4px;">Dashboard Widgets</div>
-                    <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:12px;">Drag to reorder. Check a widget to show it, uncheck to hide it.</div>
+                    <div style="font-size:14px;color:var(--text-muted);margin-bottom:12px;">Drag to reorder. Check a widget to show it, uncheck to hide it.</div>
                     <div class="dw-select-all-row">
                         <input type="checkbox" id="dwSelectAllChk">
                         <label for="dwSelectAllChk">Select All</label>
@@ -1142,7 +1142,7 @@ function dw_widget_close() {
 <?php dw_widget_open($dw, 'card_enrollment_status', $is_dashboard_admin); ?>
         <div class="dash-card" style="height:100%;">
             <div class="dash-card-header">
-                <h6><i class="fas fa-chart-pie me-2" style="color:#14213D;font-size:14px;"></i>Enrollment Status</h6>
+                <h6><i class="fas fa-chart-pie me-2" style="color:#14213D;font-size:15px;"></i>Enrollment Status</h6>
             </div>
             <div class="dash-card-body padded">
                 <?php if ($enrollment_status_total > 0): ?>
@@ -1150,7 +1150,7 @@ function dw_widget_close() {
                     <canvas id="enrollmentStatusChart" width="170" height="170"></canvas>
                     <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;">
                         <div style="font-size:22px;font-weight:700;color:var(--ink);line-height:1;"><?php echo number_format($enrollment_status_total); ?></div>
-                        <div style="font-size:11px;color:var(--text-muted);">Total</div>
+                        <div style="font-size:12.5px;color:var(--text-muted);">Total</div>
                     </div>
                 </div>
                 <div style="display:flex;flex-direction:column;gap:8px;">
@@ -1158,7 +1158,7 @@ function dw_widget_close() {
                         $es_pct = $enrollment_status_total > 0 ? round(($es_row['total'] / $enrollment_status_total) * 100, 1) : 0;
                         $es_color = $es_color_map[$es_row['enrollment_status']] ?? '#98A2B3';
                     ?>
-                    <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;">
+                    <div style="display:flex;align-items:center;gap:8px;font-size:14px;">
                         <span style="width:9px;height:9px;border-radius:50%;flex-shrink:0;background:<?php echo $es_color; ?>;"></span>
                         <span style="flex:1;color:var(--text);"><?php echo htmlspecialchars($es_row['enrollment_status']); ?></span>
                         <span style="color:var(--text-muted);white-space:nowrap;"><?php echo (int)$es_row['total']; ?> (<?php echo $es_pct; ?>%)</span>
@@ -1176,8 +1176,8 @@ function dw_widget_close() {
 <?php dw_widget_open($dw, 'card_enrollment_trend', $is_dashboard_admin); ?>
         <div class="dash-card" style="height:100%;">
             <div class="dash-card-header">
-                <h6><i class="fas fa-chart-line me-2" style="color:#14213D;font-size:14px;"></i>Enrollment Trend</h6>
-                <span style="font-size:12px;color:var(--text-muted);">Last 6 weeks</span>
+                <h6><i class="fas fa-chart-line me-2" style="color:#14213D;font-size:15px;"></i>Enrollment Trend</h6>
+                <span style="font-size:13.5px;color:var(--text-muted);">Last 6 weeks</span>
             </div>
             <div class="dash-card-body padded">
                 <?php if (!empty($enrollment_trend_values) && array_sum($enrollment_trend_values) > 0): ?>
@@ -1195,7 +1195,7 @@ function dw_widget_close() {
 <?php dw_widget_open($dw, 'card_system_overview', $is_dashboard_admin); ?>
         <div class="dash-card" data-dashboard-substagger="50" style="height:100%;">
             <div class="dash-card-header">
-                <h6><i class="fas fa-layer-group me-2" style="color:#14213D;font-size:14px;"></i>System Overview</h6>
+                <h6><i class="fas fa-layer-group me-2" style="color:#14213D;font-size:15px;"></i>System Overview</h6>
             </div>
             <div class="dash-card-body padded">
                 <div class="overview-row" data-dashboard-subitem>
@@ -1226,7 +1226,7 @@ function dw_widget_close() {
 <?php dw_widget_open($dw, 'card_recent_enrollments', $is_dashboard_admin); ?>
         <div class="dash-card" data-dashboard-substagger="40">
             <div class="dash-card-header">
-                <h6><i class="fas fa-user-plus me-2" style="color:#14213D;font-size:14px;"></i>Recent Enrollments</h6>
+                <h6><i class="fas fa-user-plus me-2" style="color:#14213D;font-size:15px;"></i>Recent Enrollments</h6>
                 <a href="modules/enrollment/" class="btn btn-sm btn-outline-secondary dash-btn-viewall">View All</a>
             </div>
             <div class="dash-card-body">
@@ -1246,7 +1246,7 @@ function dw_widget_close() {
                         <?php foreach ($recent_enrollments as $enroll): ?>
                         <tr data-dashboard-subitem>
                             <td style="font-weight:500;"><?php echo htmlspecialchars($enroll['last_name'] . ', ' . $enroll['first_name']); ?></td>
-                            <td style="font-family:'IBM Plex Mono',monospace;font-size:14px;"><?php echo attQrLrnLink($enroll['lrn'] ?? ''); ?></td>
+                            <td style="font-family:'IBM Plex Mono',monospace;font-size:15px;"><?php echo attQrLrnLink($enroll['lrn'] ?? ''); ?></td>
                             <td>
                                 <?php
                                     // Grade and Section in one column. When the learner has no
@@ -1270,7 +1270,7 @@ function dw_widget_close() {
                                 ?>
                                 <span class="dash-badge dash-badge-<?php echo $e_class; ?>"><?php echo htmlspecialchars($e_status); ?></span>
                             </td>
-                            <td style="color:var(--text-muted);font-size:14px;white-space:nowrap;">
+                            <td style="color:var(--text-muted);font-size:15px;white-space:nowrap;">
                                 <?php
                                     // Real enrollment date from the record, always with the year.
                                     $e_date = $enroll['enrollment_date'] ?? '';
@@ -1297,7 +1297,7 @@ function dw_widget_close() {
 <?php dw_widget_open($dw, 'card_at_risk_students', $is_dashboard_admin); ?>
         <div class="dash-card" style="height:100%;">
             <div class="dash-card-header dash-card-header-wrap">
-                <h6><i class="fas fa-exclamation-triangle me-2" style="color:#C94A4A;font-size:14px;"></i>At-Risk Students</h6>
+                <h6><i class="fas fa-exclamation-triangle me-2" style="color:#C94A4A;font-size:15px;"></i>At-Risk Students</h6>
                 <div class="dash-card-header-actions">
                     <span class="dash-badge dash-badge-danger"><?php echo (int)$dash_at_risk_total; ?></span>
                     <a href="modules/reports/at_risk.php" class="btn btn-sm btn-outline-secondary dash-btn-viewall">View All</a>
@@ -1321,7 +1321,7 @@ function dw_widget_close() {
                         ?>
                         <tr>
                             <td style="font-weight:500;white-space:nowrap;"><?php echo htmlspecialchars($ar['student_name']); ?></td>
-                            <td style="color:var(--text-muted);font-size:14px;white-space:nowrap;">
+                            <td style="color:var(--text-muted);font-size:15px;white-space:nowrap;">
                                 <?php
                                     // Grade level from the learner's record, section from
                                     // their approved enrolment — never derived from the
@@ -1353,7 +1353,7 @@ function dw_widget_close() {
 <?php dw_widget_open($dw, 'card_recent_activity', $is_dashboard_admin); ?>
         <div class="dash-card">
             <div class="dash-card-header">
-                <h6><i class="fas fa-clock me-2" style="color:#14213D;font-size:14px;"></i>Recent Activity</h6>
+                <h6><i class="fas fa-clock me-2" style="color:#14213D;font-size:15px;"></i>Recent Activity</h6>
                 <a href="modules/logs/index.php" class="btn btn-sm btn-outline-secondary dash-btn-viewall">View All</a>
             </div>
             <div class="dash-card-body">
@@ -1383,12 +1383,12 @@ function dw_widget_close() {
                             <?php endif; ?>
                             <td><span class="dash-badge dash-badge-gray"><?php echo htmlspecialchars($log['module']); ?></span></td>
                             <?php if ($log_failed): ?>
-                            <td style="font-size:14px;"><span class="dash-badge-alert"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i> <?php echo htmlspecialchars($log['action']); ?></span></td>
+                            <td style="font-size:15px;"><span class="dash-badge-alert"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i> <?php echo htmlspecialchars($log['action']); ?></span></td>
                             <?php else: ?>
-                            <td style="font-size:14px;"><?php echo htmlspecialchars($log['action']); ?></td>
+                            <td style="font-size:15px;"><?php echo htmlspecialchars($log['action']); ?></td>
                             <?php endif; ?>
-                            <td style="font-size:14px;color:var(--text-muted);max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?php echo htmlspecialchars($log['description']); ?></td>
-                            <td style="font-size:14px;color:var(--text-muted);white-space:nowrap;"><?php echo date('M d, g:i A', strtotime($log['created_at'])); ?></td>
+                            <td style="font-size:15px;color:var(--text-muted);max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?php echo htmlspecialchars($log['description']); ?></td>
+                            <td style="font-size:15px;color:var(--text-muted);white-space:nowrap;"><?php echo date('M d, g:i A', strtotime($log['created_at'])); ?></td>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -1433,7 +1433,7 @@ $__dash_range = ($__dash_window && !empty($__dash_window['start_date']) && !empt
 ?>
 <div class="mb-3">
     <span class="btn btn-sm" title="<?php echo htmlspecialchars($__dash_status['label']); ?>"
-          style="background:#fff;border:1px solid var(--border, #E4E7EC);color:<?php echo $__dash_fg; ?>;font-size:13px;cursor:default;">
+          style="background:#fff;border:1px solid var(--border, #E4E7EC);color:<?php echo $__dash_fg; ?>;font-size:14.5px;cursor:default;">
         <i class="fas fa-calendar-alt me-1"></i><?php echo htmlspecialchars($__dash_term_display . ': ' . $__dash_range); ?>
     </span>
 </div>
@@ -1483,9 +1483,9 @@ $__dash_range = ($__dash_window && !empty($__dash_window['start_date']) && !empt
     <div class="col-12">
         <div class="dash-card" data-dashboard-order="5" data-dashboard-substagger="40">
             <div class="dash-card-header">
-                <h6><i class="fas fa-chalkboard me-2" style="color:#14213D;font-size:12px;"></i>My Classes</h6>
+                <h6><i class="fas fa-chalkboard me-2" style="color:#14213D;font-size:13.5px;"></i>My Classes</h6>
                 <div class="d-flex align-items-center gap-2">
-                    <a href="modules/teachers/my_sections.php" class="btn btn-sm btn-outline-secondary" style="font-size:11px;padding:2px 10px;">View All</a>
+                    <a href="modules/teachers/my_sections.php" class="btn btn-sm btn-outline-secondary" style="font-size:12.5px;padding:2px 10px;">View All</a>
                 </div>
             </div>
             <div class="dash-card-body" id="my-classes">
@@ -1584,8 +1584,8 @@ document.addEventListener('click', function (e) {
     <div class="col-12">
         <div class="dash-card" data-dashboard-order="6">
             <div class="dash-card-header">
-                <h6><i class="fas fa-exclamation-triangle me-2" style="color:#C94A4A;font-size:12px;"></i>Students Needing Attention</h6>
-                <a href="modules/ai/index.php" class="btn btn-sm btn-outline-secondary" style="font-size:11px;padding:2px 10px;">View All</a>
+                <h6><i class="fas fa-exclamation-triangle me-2" style="color:#C94A4A;font-size:13.5px;"></i>Students Needing Attention</h6>
+                <a href="modules/ai/index.php" class="btn btn-sm btn-outline-secondary" style="font-size:12.5px;padding:2px 10px;">View All</a>
             </div>
             <div class="dash-card-body">
                 <table class="dash-table">
@@ -1613,7 +1613,7 @@ document.addEventListener('click', function (e) {
                         ?>
                         <tr>
                             <td style="font-weight:500;"><?php echo htmlspecialchars($student['last_name'] . ', ' . $student['first_name']); ?></td>
-                            <td style="color:var(--text-muted);font-size:12px;"><?php echo htmlspecialchars($student['section_name']); ?></td>
+                            <td style="color:var(--text-muted);font-size:13.5px;"><?php echo htmlspecialchars($student['section_name']); ?></td>
                             <td class="text-center"><span class="risk-item-avg" style="color:#C94A4A;"><?php echo $avg; ?>%</span></td>
                             <td class="text-center"><span class="dash-badge <?php echo $risk_class; ?>"><?php echo $risk_label; ?></span></td>
                         </tr>
@@ -1628,7 +1628,7 @@ document.addEventListener('click', function (e) {
 <div class="row g-3 mb-4">
     <div class="col-12">
         <div class="dash-card" data-dashboard-order="6">
-            <div class="dash-card-body padded" style="text-align:center;color:var(--text-muted);font-size:13px;">
+            <div class="dash-card-body padded" style="text-align:center;color:var(--text-muted);font-size:14.5px;">
                 <i class="fas fa-check-circle me-1" style="color:#238863;"></i> No grade data yet &mdash; risk analysis will appear once grades are encoded.
             </div>
         </div>
@@ -1705,7 +1705,7 @@ document.addEventListener('click', function (e) {
     <div class="col-lg-6">
         <div class="dash-card" data-dashboard-order="5" data-dashboard-substagger="40" style="height:100%;">
             <div class="dash-card-header">
-                <h6><i class="fas fa-inbox me-2" style="color:#14213D;font-size:14px;"></i>Recent Online Applications</h6>
+                <h6><i class="fas fa-inbox me-2" style="color:#14213D;font-size:15px;"></i>Recent Online Applications</h6>
                 <a href="modules/enrollment/applications.php" class="btn btn-sm btn-outline-secondary dash-btn-viewall">View All</a>
             </div>
             <div class="dash-card-body">
@@ -1740,7 +1740,7 @@ document.addEventListener('click', function (e) {
                                 ?>
                                 <span class="dash-badge dash-badge-<?php echo $a_class; ?>"><?php echo htmlspecialchars($a_status); ?></span>
                             </td>
-                            <td style="color:var(--text-muted);font-size:14px;white-space:nowrap;">
+                            <td style="color:var(--text-muted);font-size:15px;white-space:nowrap;">
                                 <?php $a_ts = strtotime($app['created_at']); echo $a_ts ? date('M d, Y', $a_ts) : '&mdash;'; ?>
                             </td>
                         </tr>
@@ -1760,7 +1760,7 @@ document.addEventListener('click', function (e) {
     <div class="col-lg-6">
         <div class="dash-card" data-dashboard-order="6" data-dashboard-substagger="40" style="height:100%;">
             <div class="dash-card-header">
-                <h6><i class="fas fa-door-open me-2" style="color:#14213D;font-size:14px;"></i>Recent Walk-in Enrollments</h6>
+                <h6><i class="fas fa-door-open me-2" style="color:#14213D;font-size:15px;"></i>Recent Walk-in Enrollments</h6>
                 <a href="modules/enrollment/index.php" class="btn btn-sm btn-outline-secondary dash-btn-viewall">View All</a>
             </div>
             <div class="dash-card-body">
@@ -1803,7 +1803,7 @@ document.addEventListener('click', function (e) {
                                 ?>
                                 <span class="dash-badge dash-badge-<?php echo $w_class; ?>"><?php echo htmlspecialchars($w_status); ?></span>
                             </td>
-                            <td style="color:var(--text-muted);font-size:14px;white-space:nowrap;">
+                            <td style="color:var(--text-muted);font-size:15px;white-space:nowrap;">
                                 <?php $w_ts = $enroll['enrollment_date'] ? strtotime($enroll['enrollment_date']) : false; echo $w_ts ? date('M d, Y', $w_ts) : '&mdash;'; ?>
                             </td>
                         </tr>

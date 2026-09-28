@@ -217,7 +217,7 @@ include '../../includes/header.php';
     </div>
     <div class="card-body">
         <?php if (!$current_term_live): ?>
-            <div class="alert alert-warning" style="font-size:13px;">
+            <div class="alert alert-warning" style="font-size:14.5px;">
                 <i class="fas fa-triangle-exclamation me-1"></i>
                 No term is active today. A Senior High subject cannot be assigned until this term's dates are set
                 (Teacher Management's "Term Dates" button) -- Junior High assignment is unaffected.

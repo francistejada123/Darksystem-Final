@@ -99,19 +99,19 @@ include __DIR__ . '/../../includes/header.php';
 </div>
 
 <?php if (isset($_GET['retake'])): ?>
-    <div class="alert alert-<?php echo $_GET['retake'] === '1' ? 'success' : 'danger'; ?>" style="border-radius:8px;font-size:13px;">
+    <div class="alert alert-<?php echo $_GET['retake'] === '1' ? 'success' : 'danger'; ?>" style="border-radius:8px;font-size:14.5px;">
         <?php echo $_GET['retake'] === '1'
             ? '<i class="fas fa-check-circle me-1"></i>Retake allowed. The student can answer this quiz once more; the new score will replace the current one.'
             : 'Could not allow a retake for that submission.'; ?>
     </div>
 <?php endif; ?>
 <?php if (isset($_GET['reviewed'])): ?>
-    <div class="alert alert-success" style="border-radius:8px;font-size:13px;">
+    <div class="alert alert-success" style="border-radius:8px;font-size:14.5px;">
         <i class="fas fa-check-circle me-1"></i>Marked as reviewed.
         <?php if (isset($_GET['synced'])): ?>The grade was also recorded in Grade Management and this activity is no longer missing.<?php endif; ?>
     </div>
 <?php elseif (isset($_GET['review_error']) || !empty($post_error)): ?>
-    <div class="alert alert-danger" style="border-radius:8px;font-size:13px;"><?php echo htmlspecialchars($post_error ?? 'Could not save your review.'); ?></div>
+    <div class="alert alert-danger" style="border-radius:8px;font-size:14.5px;"><?php echo htmlspecialchars($post_error ?? 'Could not save your review.'); ?></div>
 <?php endif; ?>
 
 <div class="card border-0 shadow-sm rounded-3 mb-4">
@@ -229,19 +229,19 @@ include __DIR__ . '/../../includes/header.php';
                                                 ?>
                                                 <p><strong>Score:</strong> <?php echo htmlspecialchars(rtrim(rtrim(number_format((float) $s['score'], 1), '0'), '.')); ?>/<?php echo htmlspecialchars(rtrim(rtrim(number_format((float) $s['max_score'], 1), '0'), '.')); ?></p>
                                                 <?php if ($is_linked): ?>
-                                                    <div style="font-size:12px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:8px 12px;margin-bottom:12px;color:#166534;">
+                                                    <div style="font-size:13.5px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:8px 12px;margin-bottom:12px;color:#166534;">
                                                         <i class="fas fa-link me-1"></i>Recorded in Manage Assessment Items (<?php echo htmlspecialchars($cat_labels_local[$s['link_category']] ?? $s['link_category']); ?>, <?php echo htmlspecialchars($s['link_term']); ?>). This is the student's one attempt.
                                                     </div>
                                                 <?php endif; ?>
                                                 <?php if ($is_linked || !empty($s['quiz_one_attempt'])): ?>
                                                     <?php if ((int) ($s['retake_allowed'] ?? 0) === 1): ?>
-                                                        <p class="text-muted" style="font-size:12.5px;"><i class="fas fa-rotate-right me-1"></i>Retake allowed &mdash; waiting for the student to answer again.</p>
+                                                        <p class="text-muted" style="font-size:14px;"><i class="fas fa-rotate-right me-1"></i>Retake allowed &mdash; waiting for the student to answer again.</p>
                                                     <?php else: ?>
                                                         <form method="POST" action="resources.php" class="mb-3" onsubmit="return confirm('Let this student answer the quiz once more? Their new score will replace the current one in Grade Management.');">
                                                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
                                                             <input type="hidden" name="submission_id" value="<?php echo $sid; ?>">
                                                             <button type="submit" name="allow_retake" value="1" class="btn btn-sm btn-outline-warning"><i class="fas fa-rotate-right me-1"></i>Allow retake</button>
-                                                            <span class="text-muted ms-2" style="font-size:12px;">One attempt only unless you allow this.</span>
+                                                            <span class="text-muted ms-2" style="font-size:13.5px;">One attempt only unless you allow this.</span>
                                                         </form>
                                                     <?php endif; ?>
                                                 <?php endif; ?>
@@ -252,9 +252,9 @@ include __DIR__ . '/../../includes/header.php';
                                                         $is_correct = $chosen !== null && $correct !== null && (int) $chosen === $correct;
                                                     ?>
                                                     <div class="quiz-review-block" style="border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;margin-bottom:8px;">
-                                                        <div style="font-weight:600;font-size:13.5px;"><?php echo $qi + 1; ?>. <?php echo htmlspecialchars($q['question'] ?? ''); ?></div>
+                                                        <div style="font-weight:600;font-size:15px;"><?php echo $qi + 1; ?>. <?php echo htmlspecialchars($q['question'] ?? ''); ?></div>
                                                         <?php foreach ((array) ($q['choices'] ?? []) as $ci => $choice): ?>
-                                                            <div style="font-size:13px;padding:2px 0;<?php echo $ci === $correct ? 'color:#238863;font-weight:600;' : ($ci == $chosen ? 'color:#C94A4A;' : ''); ?>">
+                                                            <div style="font-size:14.5px;padding:2px 0;<?php echo $ci === $correct ? 'color:#238863;font-weight:600;' : ($ci == $chosen ? 'color:#C94A4A;' : ''); ?>">
                                                                 <?php echo $ci === $correct ? '<i class="fas fa-check me-1"></i>' : ($ci == $chosen ? '<i class="fas fa-times me-1"></i>' : ''); ?>
                                                                 <?php echo htmlspecialchars($choice); ?>
                                                                 <?php echo $ci == $chosen ? ' (student\'s answer)' : ''; ?>
@@ -264,20 +264,20 @@ include __DIR__ . '/../../includes/header.php';
                                                 <?php endforeach; ?>
                                             <?php else: ?>
                                                 <?php $manual = json_decode((string) ($s['answers_json'] ?? ''), true) ?: []; ?>
-                                                <p class="text-muted" style="font-size:12.5px;">Student's attached file:</p>
+                                                <p class="text-muted" style="font-size:14px;">Student's attached file:</p>
                                                 <?php if (!empty($s['answer_stored_filename'])): ?>
-                                                    <div style="display:flex;align-items:center;gap:10px;background:#F8FAFC;border:1px solid #e5e7eb;border-radius:8px;padding:12px 14px;margin-bottom:12px;font-size:13.5px;">
+                                                    <div style="display:flex;align-items:center;gap:10px;background:#F8FAFC;border:1px solid #e5e7eb;border-radius:8px;padding:12px 14px;margin-bottom:12px;font-size:15px;">
                                                         <i class="fas fa-paperclip"></i>
                                                         <span style="flex:1;word-break:break-word;"><?php echo htmlspecialchars($s['answer_original_filename'] ?: 'Answered file'); ?></span>
                                                         <a href="view_submission_answer.php?id=<?php echo (int) $s['submission_id']; ?>" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">View</a>
                                                         <a href="download_submission_answer.php?id=<?php echo (int) $s['submission_id']; ?>" class="btn btn-sm btn-outline-secondary">Download</a>
                                                     </div>
                                                 <?php else: ?>
-                                                    <div style="background:#F8FAFC;border:1px solid #e5e7eb;border-radius:8px;padding:12px 14px;margin-bottom:12px;font-size:13.5px;color:#9CA3AF;">No file attached.</div>
+                                                    <div style="background:#F8FAFC;border:1px solid #e5e7eb;border-radius:8px;padding:12px 14px;margin-bottom:12px;font-size:15px;color:#9CA3AF;">No file attached.</div>
                                                 <?php endif; ?>
                                                 <?php if (!empty($manual['note'])): ?>
-                                                    <p class="text-muted mb-1" style="font-size:12.5px;">Student's note:</p>
-                                                    <div style="white-space:pre-wrap;font-size:13.5px;margin-bottom:16px;"><?php echo nl2br(htmlspecialchars($manual['note'])); ?></div>
+                                                    <p class="text-muted mb-1" style="font-size:14px;">Student's note:</p>
+                                                    <div style="white-space:pre-wrap;font-size:15px;margin-bottom:16px;"><?php echo nl2br(htmlspecialchars($manual['note'])); ?></div>
                                                 <?php endif; ?>
 
                                                 <!-- ---- Gradebook link: required for a confirmed score to sync
@@ -288,11 +288,11 @@ include __DIR__ . '/../../includes/header.php';
                                                      existed. ---- -->
                                                 <?php if (!$is_locked): ?>
                                                     <?php if ($is_linked): ?>
-                                                        <div id="linkStatus<?php echo $sid; ?>" style="font-size:12px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:8px 12px;margin-bottom:14px;color:#166534;">
+                                                        <div id="linkStatus<?php echo $sid; ?>" style="font-size:13.5px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:8px 12px;margin-bottom:14px;color:#166534;">
                                                             <i class="fas fa-link me-1"></i>Linked to gradebook item: <strong><?php echo htmlspecialchars($cat_labels_local[$s['link_category']] ?? $s['link_category']); ?>, <?php echo htmlspecialchars($s['link_term']); ?></strong> — a confirmed score below will be recorded automatically and this will clear from Missing Assessments.
                                                         </div>
                                                     <?php else: ?>
-                                                        <div id="linkStatus<?php echo $sid; ?>" class="ai-link-picker" style="font-size:12px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:10px 12px;margin-bottom:14px;">
+                                                        <div id="linkStatus<?php echo $sid; ?>" class="ai-link-picker" style="font-size:13.5px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:10px 12px;margin-bottom:14px;">
                                                             <div style="font-weight:600;color:#92400E;margin-bottom:6px;"><i class="fas fa-triangle-exclamation me-1"></i>Not linked to a gradebook item yet</div>
                                                             <div style="color:#92400E;margin-bottom:8px;">Link this to the existing assessment it recovers so a confirmed score below is recorded automatically and clears from Missing Assessments. Otherwise you'll need to re-type the score in Grade Management yourself.</div>
                                                             <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -410,32 +410,32 @@ include __DIR__ . '/../../includes/header.php';
                                                 <?php endif; ?>
 
                                                 <?php if ($is_locked): ?>
-                                                    <p class="text-muted mb-1" style="font-size:12.5px;">Score:</p>
-                                                    <p style="font-size:14px;font-weight:600;"><?php echo $s['score'] !== null ? htmlspecialchars(rtrim(rtrim(number_format((float) $s['score'], 1), '0'), '.')) . '/' . htmlspecialchars(rtrim(rtrim(number_format((float) $s['max_score'], 1), '0'), '.')) : '(no numeric score)'; ?></p>
-                                                    <p class="text-muted mb-1" style="font-size:12.5px;">Your feedback:</p>
-                                                    <div style="white-space:pre-wrap;font-size:13.5px;"><?php echo htmlspecialchars($s['teacher_feedback'] ?: '(no feedback left)'); ?></div>
+                                                    <p class="text-muted mb-1" style="font-size:14px;">Score:</p>
+                                                    <p style="font-size:15px;font-weight:600;"><?php echo $s['score'] !== null ? htmlspecialchars(rtrim(rtrim(number_format((float) $s['score'], 1), '0'), '.')) . '/' . htmlspecialchars(rtrim(rtrim(number_format((float) $s['max_score'], 1), '0'), '.')) : '(no numeric score)'; ?></p>
+                                                    <p class="text-muted mb-1" style="font-size:14px;">Your feedback:</p>
+                                                    <div style="white-space:pre-wrap;font-size:15px;"><?php echo htmlspecialchars($s['teacher_feedback'] ?: '(no feedback left)'); ?></div>
                                                 <?php else: ?>
                                                     <?php if ($s['status'] === 'AI-Checked'): ?>
-                                                        <div style="font-size:12px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:8px 12px;margin-bottom:10px;color:#1E40AF;">
+                                                        <div style="font-size:13.5px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:8px 12px;margin-bottom:10px;color:#1E40AF;">
                                                             <i class="fas fa-wand-magic-sparkles me-1"></i><strong>AI-suggested — review before confirming.</strong>
                                                             <?php if ($s['answer_source_type'] === 'image'): ?> The AI read this from a photo/scan, so double-check it carefully against the actual file.<?php endif; ?>
                                                         </div>
                                                     <?php endif; ?>
-                                                    <div id="aiCheckError<?php echo $sid; ?>" class="text-danger" style="font-size:12.5px;display:none;margin-bottom:8px;"></div>
+                                                    <div id="aiCheckError<?php echo $sid; ?>" class="text-danger" style="font-size:14px;display:none;margin-bottom:8px;"></div>
                                                     <form method="POST" action="resources.php" id="reviewForm<?php echo $sid; ?>">
                                                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
                                                         <input type="hidden" name="submission_id" value="<?php echo $sid; ?>">
                                                         <div class="row g-2 mb-2">
                                                             <div class="col-auto">
-                                                                <label class="form-label" style="font-size:12.5px;font-weight:600;">Score</label>
+                                                                <label class="form-label" style="font-size:14px;font-weight:600;">Score</label>
                                                                 <input type="number" step="0.01" min="0" name="score" id="scoreInput<?php echo $sid; ?>" class="form-control form-control-sm" style="width:100px;" value="<?php echo $s['score'] !== null ? htmlspecialchars((string) $s['score']) : ''; ?>" placeholder="—">
                                                             </div>
                                                             <div class="col-auto">
-                                                                <label class="form-label" style="font-size:12.5px;font-weight:600;">Out of</label>
+                                                                <label class="form-label" style="font-size:14px;font-weight:600;">Out of</label>
                                                                 <input type="number" step="0.01" min="0" name="max_score" id="maxScoreInput<?php echo $sid; ?>" class="form-control form-control-sm" style="width:100px;" value="<?php echo $s['max_score'] !== null ? htmlspecialchars((string) $s['max_score']) : ''; ?>" placeholder="—">
                                                             </div>
                                                         </div>
-                                                        <label class="form-label" style="font-size:12.5px;font-weight:600;">Feedback (optional)</label>
+                                                        <label class="form-label" style="font-size:14px;font-weight:600;">Feedback (optional)</label>
                                                         <textarea name="teacher_feedback" id="feedbackInput<?php echo $sid; ?>" class="form-control mb-3" rows="3" placeholder="Good job! / Review pages 10-12 again..."><?php echo htmlspecialchars($s['teacher_feedback'] ?? ''); ?></textarea>
                                                         <div class="d-flex gap-2">
                                                             <?php if ($ai_checkable): ?>

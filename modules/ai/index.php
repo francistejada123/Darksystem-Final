@@ -505,7 +505,7 @@ include '../../includes/header.php';
         box-shadow: 0 2px 8px rgba(20,33,61,.045) !important;
     }
     .ai-analytics-page .stats-card .card-body { padding: 20px; }
-    .ai-analytics-page .stats-card h6 { color: var(--analytics-muted) !important; font-size: 12px; font-weight: 600; }
+    .ai-analytics-page .stats-card h6 { color: var(--analytics-muted) !important; font-size: 13.5px; font-weight: 600; }
     .ai-analytics-page .stats-card h2 { color: var(--analytics-navy); font-size: 28px; }
     .ai-analytics-page .stats-card .text-success { color: var(--analytics-good) !important; }
     .ai-analytics-page .stats-card .text-danger { color: var(--analytics-risk) !important; }
@@ -526,7 +526,7 @@ include '../../includes/header.php';
     .ai-analytics-page .table thead th {
         background: #F5F7FA !important;
         color: #667085;
-        font-size: 11px;
+        font-size: 12.5px;
         font-weight: 700;
         letter-spacing: .04em;
         text-transform: uppercase;
@@ -977,7 +977,7 @@ include '../../includes/header.php';
         border-radius: 5px;
         background: #14213D;
         color: #fff;
-        font-size: 11px;
+        font-size: 12.5px;
         font-weight: 600;
         line-height: 1.2;
         white-space: nowrap;
@@ -996,7 +996,7 @@ include '../../includes/header.php';
         transform: translateY(0);
     }
     .at-risk-toggle { display:inline-flex; background: var(--surface, #F1F3F6); border: 1px solid var(--border, #DDE2E8); border-radius:8px; padding:3px; gap:2px; }
-    .at-risk-toggle-btn { border:none; background:transparent; padding:7px 16px; font-size:13px; font-weight:500; color: var(--text-muted, #6B7280); border-radius:6px; cursor:pointer; transition: background .15s ease, color .15s ease; white-space:nowrap; }
+    .at-risk-toggle-btn { border:none; background:transparent; padding:7px 16px; font-size:14.5px; font-weight:500; color: var(--text-muted, #6B7280); border-radius:6px; cursor:pointer; transition: background .15s ease, color .15s ease; white-space:nowrap; }
     .at-risk-toggle-btn:hover { color: var(--ink, #14213D); }
     .at-risk-toggle-btn.active { background:#14213D; color:#fff; box-shadow: 0 1px 3px rgba(0,0,0,.15); }
     @media (max-width: 480px) {
@@ -1006,37 +1006,37 @@ include '../../includes/header.php';
     /* ---- Grouped At-Risk view (Grade Level > Subject > shared problem) ---- */
     .arg-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px; margin-top: 14px; }
     .arg-filter { min-width: 210px; flex: 0 1 260px; }
-    .arg-filter label { display: block; margin-bottom: 4px; font-size: 13px; font-weight: 600; color: var(--ink, #14213D); }
-    .arg-filter .form-select { font-size: 14px; }
-    .arg-summary { margin-left: auto; padding-bottom: 8px; font-size: 13px; color: var(--text-muted, #667085); }
+    .arg-filter label { display: block; margin-bottom: 4px; font-size: 14.5px; font-weight: 600; color: var(--ink, #14213D); }
+    .arg-filter .form-select { font-size: 15px; }
+    .arg-summary { margin-left: auto; padding-bottom: 8px; font-size: 14.5px; color: var(--text-muted, #667085); }
     .arg-wrap { padding: 4px 16px 16px; }
     .arg-grade { margin-top: 14px; border: 1px solid var(--border, #DCE3EC); border-radius: 10px; overflow: hidden; background: var(--surface, #FCFDFE); }
     .arg-grade-head { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 14px; border: 0; background: var(--surface-muted, #F3F6F9); color: var(--ink, #14213D); font-size: 15px; font-weight: 700; text-align: left; cursor: pointer; }
     .arg-grade-head:hover { background: var(--surface-hover, #EEF3F8); }
     .arg-grade-meta { display: inline-flex; align-items: center; gap: 6px; }
-    .arg-chev { color: var(--text-muted, #667085); font-size: 12px; margin-left: 4px; transition: transform .18s ease; }
+    .arg-chev { color: var(--text-muted, #667085); font-size: 13.5px; margin-left: 4px; transition: transform .18s ease; }
     .arg-grade.is-collapsed .arg-chev { transform: rotate(-90deg); }
     .arg-grade.is-collapsed .arg-grade-body { display: none; }
     .arg-grade-body { padding: 4px 14px 14px; }
-    .arg-subject { margin: 14px 0 8px; font-size: 13px; font-weight: 700; letter-spacing: .02em; color: var(--text-muted, #667085); text-transform: uppercase; }
+    .arg-subject { margin: 14px 0 8px; font-size: 14.5px; font-weight: 700; letter-spacing: .02em; color: var(--text-muted, #667085); text-transform: uppercase; }
     .arg-card { margin-bottom: 12px; border: 1px solid var(--border, #DCE3EC); border-left: 4px solid var(--danger, #B94A48); border-radius: 10px; background: var(--surface, #fff); }
     .arg-subj-block:first-child .arg-card:first-of-type { margin-top: 12px; }
     .arg-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border-soft, #E7ECF2); }
     .arg-card-title { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; color: var(--ink, #14213D); }
     .arg-card-title i { color: var(--danger, #B94A48); }
     .arg-card-title strong { overflow-wrap: anywhere; }
-    .arg-chip { padding: 1px 8px; border-radius: 999px; background: var(--surface-muted, #F3F6F9); border: 1px solid var(--border, #DCE3EC); color: var(--text-muted, #667085); font-size: 11px; font-weight: 600; }
+    .arg-chip { padding: 1px 8px; border-radius: 999px; background: var(--surface-muted, #F3F6F9); border: 1px solid var(--border, #DCE3EC); color: var(--text-muted, #667085); font-size: 12.5px; font-weight: 600; }
     .arg-ask-btn { flex: 0 0 auto; display: inline-flex; align-items: center; border: 1px solid var(--primary, #5B5FEF); background: var(--primary, #5B5FEF); color: #fff; font-weight: 600; }
     .arg-ask-btn:hover, .arg-ask-btn:focus-visible { filter: brightness(.94); color: #fff; }
     .arg-card-body { padding: 4px 14px 12px; }
     .arg-why { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
-    .arg-why-chip { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 10px; font-size: 12.5px; font-weight: 600; background: #FDECEC; color: #B42318; }
+    .arg-why-chip { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 10px; font-size: 14px; font-weight: 600; background: #FDECEC; color: #B42318; }
     .arg-why-chip.is-topic { background: #EEF4FD; color: #1D5FBF; }
     .arg-missing { margin: 8px 0 6px; }
-    .arg-missing-head { font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted, #667085); margin-bottom: 4px; }
+    .arg-missing-head { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted, #667085); margin-bottom: 4px; }
     .arg-missing-head small { text-transform: none; letter-spacing: 0; font-weight: 500; }
     .arg-missing ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 5px; }
-    .arg-remedy { display: flex; align-items: flex-start; gap: 8px; width: 100%; text-align: left; border: 1px solid var(--border, #DCE3EC); border-radius: 8px; background: var(--surface, #fff); padding: 7px 10px; font-size: 13.5px; color: var(--ink, #14213D); }
+    .arg-remedy { display: flex; align-items: flex-start; gap: 8px; width: 100%; text-align: left; border: 1px solid var(--border, #DCE3EC); border-radius: 8px; background: var(--surface, #fff); padding: 7px 10px; font-size: 15px; color: var(--ink, #14213D); }
     button.arg-remedy:hover { border-color: #5B5FEF; background: #F4F4FF; }
     .arg-remedy i { color: #5B5FEF; margin-top: 3px; }
     .arg-remedy.is-static i { color: var(--text-muted, #667085); }
@@ -1051,15 +1051,15 @@ include '../../includes/header.php';
     /* The card's own checkboxes only carry each student's id/subject for the group dialog; picking students happens there. */
     .arg-member > input[type="checkbox"] { display: none; }
     .arg-member-main { flex: 1 1 auto; min-width: 0; }
-    .arg-member-name { font-weight: 600; color: var(--ink, #14213D); font-size: 14px; }
-    .arg-member-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 2px; font-size: 12px; }
+    .arg-member-name { font-weight: 600; color: var(--ink, #14213D); font-size: 15px; }
+    .arg-member-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 2px; font-size: 13.5px; }
     .arg-badge-grade { background: var(--danger-tint, #FBEDEE) !important; color: var(--danger, #B94A48) !important; }
     .arg-more { color: #916A25; background: rgba(224,168,61,.16); padding: 0 7px; border-radius: 999px; font-weight: 600; cursor: help; }
     .arg-more:focus-visible { outline: 2px solid #916A25; outline-offset: 1px; }
     /* Hover / focus / tap card that lists the other missing items (fixed-position, so no card can clip it). */
-    .arg-more-tip { position: fixed; z-index: 2000; display: none; max-width: 300px; min-width: 170px; padding: 9px 12px; border-radius: 9px; background: #14213D; color: #fff; font-size: 12.5px; line-height: 1.4; box-shadow: 0 8px 24px rgba(20,33,61,.28); pointer-events: none; }
+    .arg-more-tip { position: fixed; z-index: 2000; display: none; max-width: 300px; min-width: 170px; padding: 9px 12px; border-radius: 9px; background: #14213D; color: #fff; font-size: 14px; line-height: 1.4; box-shadow: 0 8px 24px rgba(20,33,61,.28); pointer-events: none; }
     .arg-more-tip.is-open { display: block; }
-    .arg-more-tip strong { display: block; margin-bottom: 4px; font-size: 11.5px; letter-spacing: .03em; text-transform: uppercase; color: #F2C86B; }
+    .arg-more-tip strong { display: block; margin-bottom: 4px; font-size: 13px; letter-spacing: .03em; text-transform: uppercase; color: #F2C86B; }
     .arg-more-tip ul { margin: 0; padding-left: 16px; }
     .arg-more-tip li { margin: 1px 0; overflow-wrap: anywhere; }
     .arg-subj-att { color: var(--text-muted, #667085); font-style: italic; }
@@ -1072,62 +1072,62 @@ include '../../includes/header.php';
     .arg-ask { display: flex; gap: 8px; margin-bottom: 10px; }
     .arg-ask .arg-note { flex: 1 1 auto; min-width: 0; }
     .arg-ask .arg-gen { flex: 0 0 auto; white-space: nowrap; }
-    .arg-rec-note { margin-top: 8px; color: var(--text-muted, #667085); font-size: 13px; }
-    .arg-rec-loading { color: var(--text-muted, #667085); font-size: 13px; padding: 6px 0; }
+    .arg-rec-note { margin-top: 8px; color: var(--text-muted, #667085); font-size: 14.5px; }
+    .arg-rec-loading { color: var(--text-muted, #667085); font-size: 14.5px; padding: 6px 0; }
     .arg-rec-title { font-size: 15px; font-weight: 700; color: var(--ink, #14213D); margin-bottom: 4px; }
-    .arg-rec-insight { font-size: 13px; color: var(--text-muted, #667085); margin-bottom: 8px; }
-    .arg-rec-steps { margin: 0 0 12px 18px; padding: 0; font-size: 13px; color: var(--ink, #14213D); }
+    .arg-rec-insight { font-size: 14.5px; color: var(--text-muted, #667085); margin-bottom: 8px; }
+    .arg-rec-steps { margin: 0 0 12px 18px; padding: 0; font-size: 14.5px; color: var(--ink, #14213D); }
     .arg-rec-steps li { margin-bottom: 3px; }
-    .arg-msg-label { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted, #667085); margin-bottom: 4px; }
+    .arg-msg-label { display: flex; justify-content: space-between; align-items: baseline; font-size: 13.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted, #667085); margin-bottom: 4px; }
     .arg-msg-count { font-weight: 500; text-transform: none; letter-spacing: 0; }
-    .arg-msg { width: 100%; min-height: 96px; resize: vertical; font-size: 13px; line-height: 1.45; }
-    .arg-source { display: inline-block; margin-top: 6px; font-size: 11px; color: var(--text-muted, #667085); }
+    .arg-msg { width: 100%; min-height: 96px; resize: vertical; font-size: 14.5px; line-height: 1.45; }
+    .arg-source { display: inline-block; margin-top: 6px; font-size: 12.5px; color: var(--text-muted, #667085); }
     .arg-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
-    .arg-selectall { font-size: 12px; color: var(--text-muted, #667085); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; margin: 0 6px 0 0; }
-    .arg-confirm { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--border, #DCE3EC); border-radius: 8px; background: var(--surface, #fff); font-size: 13px; color: var(--ink, #14213D); }
+    .arg-selectall { font-size: 13.5px; color: var(--text-muted, #667085); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; margin: 0 6px 0 0; }
+    .arg-confirm { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--border, #DCE3EC); border-radius: 8px; background: var(--surface, #fff); font-size: 14.5px; color: var(--ink, #14213D); }
     .arg-confirm .btn { margin-top: 8px; margin-right: 6px; }
-    .arg-result { margin-top: 10px; font-size: 13px; }
+    .arg-result { margin-top: 10px; font-size: 14.5px; }
     .arg-result.ok { color: var(--success, #2F7564); }
     .arg-result.err { color: var(--danger, #B94A48); }
     /* ---- Group Ask AI dialog ---- */
     #argModal .argm-why, #argModal .argm-rec { border: 1px solid var(--border, #DCE3EC); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; background: var(--surface, #fff); }
     #argModal .argm-why { border-left: 4px solid #D92D20; }
     #argModal .argm-rec { border-left: 4px solid #1F9D6E; }
-    #argModal .argm-why-head { font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink, #14213D); margin-bottom: 4px; }
-    #argModal .argm-why ul, #argModal .argm-rec ol { margin: 0; padding-left: 20px; font-size: 13.5px; }
+    #argModal .argm-why-head { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink, #14213D); margin-bottom: 4px; }
+    #argModal .argm-why ul, #argModal .argm-rec ol { margin: 0; padding-left: 20px; font-size: 15px; }
     #argModal .argm-items { margin-bottom: 10px; display: grid; gap: 6px; }
     #argModal .argm-item { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; text-align: left; border: 1px solid var(--border, #DCE3EC); border-radius: 8px; background: var(--surface, #fff); padding: 8px 12px; color: var(--ink, #14213D); }
-    #argModal .argm-item span { grid-column: 1; font-size: 12.5px; color: var(--text-muted, #667085); }
-    #argModal .argm-item em { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-style: normal; font-size: 12px; font-weight: 600; color: #5B5FEF; }
+    #argModal .argm-item span { grid-column: 1; font-size: 14px; color: var(--text-muted, #667085); }
+    #argModal .argm-item em { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-style: normal; font-size: 13.5px; font-weight: 600; color: #5B5FEF; }
     #argModal .argm-item:hover, #argModal .argm-item.is-active { border-color: #5B5FEF; background: #F4F4FF; }
-    #argModal .argm-summary { margin: 0 0 6px; font-size: 14px; color: var(--ink, #14213D); }
+    #argModal .argm-summary { margin: 0 0 6px; font-size: 15px; color: var(--ink, #14213D); }
     #argModal .argm-item.is-low em { color: #C2410C; }
-    #argModal .argm-hint { font-size: 13.5px; color: var(--text-muted, #667085); padding: 8px 2px; }
-    #argModal .argm-preview { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--text-muted, #667085); }
+    #argModal .argm-hint { font-size: 15px; color: var(--text-muted, #667085); padding: 8px 2px; }
+    #argModal .argm-preview { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14.5px; color: var(--text-muted, #667085); }
     html[data-theme="dark"] #argModal .argm-item:hover, html[data-theme="dark"] #argModal .argm-item.is-active { background: rgba(91,95,239,.14); }
-    .argm-intro { padding: 10px 12px; border: 1px solid #cfe0ff; border-radius: 8px; background: #eef4ff; color: #14213D; font-size: 13px; line-height: 1.5; }
+    .argm-intro { padding: 10px 12px; border: 1px solid #cfe0ff; border-radius: 8px; background: #eef4ff; color: #14213D; font-size: 14.5px; line-height: 1.5; }
     .argm-students { margin-top: 12px; border: 1px solid var(--border, #DCE3EC); border-radius: 10px; overflow: hidden; }
-    .argm-students-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; background: var(--surface-muted, #F3F6F9); font-size: 12px; font-weight: 700; color: var(--ink, #14213D); }
+    .argm-students-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; background: var(--surface-muted, #F3F6F9); font-size: 13.5px; font-weight: 700; color: var(--ink, #14213D); }
     .argm-student { display: flex; align-items: center; gap: 10px; margin: 0; padding: 9px 12px; border-top: 1px solid var(--border-soft, #E7ECF2); cursor: pointer; }
     .argm-student.is-off { cursor: default; opacity: .7; }
     .argm-student-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
-    .argm-student-main b { font-size: 14px; color: var(--ink, #14213D); }
-    .argm-student-main small { color: var(--text-muted, #667085); font-size: 12px; }
-    .argm-tag { flex: 0 0 auto; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: #f1f3f6; color: #667085; }
+    .argm-student-main b { font-size: 15px; color: var(--ink, #14213D); }
+    .argm-student-main small { color: var(--text-muted, #667085); font-size: 13.5px; }
+    .argm-tag { flex: 0 0 auto; font-size: 12.5px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: #f1f3f6; color: #667085; }
     .argm-tag.is-sent { background: rgba(47,117,100,.12); color: var(--success, #2F7564); }
     .argm-body { margin-top: 12px; }
     .argm-quiz { padding: 12px 14px; border: 1px solid var(--border, #DCE3EC); border-radius: 10px; background: var(--surface-muted, #F3F6F9); }
-    .argm-qlist summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--ink, #14213D); }
-    .argm-qlist > ol { max-height: 260px; overflow: auto; margin: 8px 0 0; padding-left: 20px; font-size: 13px; }
+    .argm-qlist summary { cursor: pointer; font-size: 14.5px; font-weight: 600; color: var(--ink, #14213D); }
+    .argm-qlist > ol { max-height: 260px; overflow: auto; margin: 8px 0 0; padding-left: 20px; font-size: 14.5px; }
     .argm-qlist > ol > li { margin-bottom: 8px; }
     .argm-q { font-weight: 600; color: var(--ink, #14213D); }
     .argm-choices { list-style: none; margin: 3px 0 0; padding: 0; color: var(--text-muted, #667085); }
     .argm-choices li.is-correct { color: var(--success, #2F7564); font-weight: 600; }
-    .argm-how { margin-top: 10px; padding: 9px 12px; border-radius: 8px; background: #eef4ff; border: 1px solid #cfe0ff; color: #14213D; font-size: 12.5px; line-height: 1.45; }
-    .argm-record { margin-top: 10px; padding: 9px 12px; border-radius: 8px; background: #fff8e6; border: 1px solid #f1dfae; color: #6b5314; font-size: 12.5px; line-height: 1.45; }
-    .argm-forms { font-size: 12.5px; line-height: 1.6; }
+    .argm-how { margin-top: 10px; padding: 9px 12px; border-radius: 8px; background: #eef4ff; border: 1px solid #cfe0ff; color: #14213D; font-size: 14px; line-height: 1.45; }
+    .argm-record { margin-top: 10px; padding: 9px 12px; border-radius: 8px; background: #fff8e6; border: 1px solid #f1dfae; color: #6b5314; font-size: 14px; line-height: 1.45; }
+    .argm-forms { font-size: 14px; line-height: 1.6; }
     .argm-forms a { color: var(--primary, #5B5FEF); font-weight: 600; text-decoration: none; }
-    .argm-warn { margin-top: 8px; font-size: 12.5px; color: #916A25; }
+    .argm-warn { margin-top: 8px; font-size: 14px; color: #916A25; }
     .argm-footer .arg-confirm { margin: 0 0 6px; }
     .argm-footer .arg-result { margin: 0; min-height: 0; }
     @media (max-width: 640px) { #argModal .modal-footer { flex-wrap: wrap; } }
@@ -3770,12 +3770,12 @@ document.addEventListener('DOMContentLoaded', function () {
             pickerWrap.style.cssText = 'margin-top:10px;padding:10px;border:1px solid #e5e7eb;border-radius:8px;background:#F8FAFC;';
 
             const pickerLabel = document.createElement('div');
-            pickerLabel.style.cssText = 'font-size:12px;font-weight:600;color:#14213D;margin-bottom:6px;';
+            pickerLabel.style.cssText = 'font-size:13.5px;font-weight:600;color:#14213D;margin-bottom:6px;';
             pickerLabel.textContent = 'Recover Missing Assessment (required)';
             pickerWrap.appendChild(pickerLabel);
 
             const termSelect = document.createElement('select');
-            termSelect.style.cssText = 'font-size:12.5px;padding:5px 8px;border:1px solid #d0d5dd;border-radius:6px;width:100%;';
+            termSelect.style.cssText = 'font-size:14px;padding:5px 8px;border:1px solid #d0d5dd;border-radius:6px;width:100%;';
             [['', 'Term…'], ['Term 1', 'Term 1'], ['Term 2', 'Term 2'], ['Term 3', 'Term 3']].forEach(function (pair) {
                 const opt = document.createElement('option');
                 opt.value = pair[0];
@@ -3785,7 +3785,7 @@ document.addEventListener('DOMContentLoaded', function () {
             pickerWrap.appendChild(termSelect);
 
             const itemSelect = document.createElement('select');
-            itemSelect.style.cssText = 'font-size:12.5px;padding:5px 8px;border:1px solid #d0d5dd;border-radius:6px;width:100%;margin-top:8px;';
+            itemSelect.style.cssText = 'font-size:14px;padding:5px 8px;border:1px solid #d0d5dd;border-radius:6px;width:100%;margin-top:8px;';
             itemSelect.disabled = true;
             const itemPlaceholder = document.createElement('option');
             itemPlaceholder.value = '';
@@ -3794,12 +3794,12 @@ document.addEventListener('DOMContentLoaded', function () {
             pickerWrap.appendChild(itemSelect);
 
             const itemHint = document.createElement('div');
-            itemHint.style.cssText = 'font-size:11px;color:#98A2B3;margin-top:3px;';
+            itemHint.style.cssText = 'font-size:12.5px;color:#98A2B3;margin-top:3px;';
             itemHint.textContent = 'The quiz score is saved onto whichever existing item you pick here — every other item\'s score is preserved untouched. No item to recover yet? Add it first in Manage Assessment Items.';
             pickerWrap.appendChild(itemHint);
 
             const gformOnlyHint = document.createElement('div');
-            gformOnlyHint.style.cssText = 'font-size:11px;color:#98A2B3;margin-top:6px;';
+            gformOnlyHint.style.cssText = 'font-size:12.5px;color:#98A2B3;margin-top:6px;';
             gformOnlyHint.textContent = 'Quizzes are only sent as an interactive Google Form the student can open and answer — pick a Term and item, then use "Create Google Form Quiz" above.';
             pickerWrap.appendChild(gformOnlyHint);
 
@@ -3918,12 +3918,12 @@ document.addEventListener('DOMContentLoaded', function () {
             pdfPickerWrap.style.cssText = 'margin-top:10px;padding:10px;border:1px solid #e5e7eb;border-radius:8px;background:#F8FAFC;';
 
             const pdfPickerLabel = document.createElement('div');
-            pdfPickerLabel.style.cssText = 'font-size:12px;font-weight:600;color:#14213D;margin-bottom:6px;';
+            pdfPickerLabel.style.cssText = 'font-size:13.5px;font-weight:600;color:#14213D;margin-bottom:6px;';
             pdfPickerLabel.textContent = 'Link to Gradebook Item (optional)';
             pdfPickerWrap.appendChild(pdfPickerLabel);
 
             const pdfTermSelect = document.createElement('select');
-            pdfTermSelect.style.cssText = 'font-size:12.5px;padding:5px 8px;border:1px solid #d0d5dd;border-radius:6px;width:100%;';
+            pdfTermSelect.style.cssText = 'font-size:14px;padding:5px 8px;border:1px solid #d0d5dd;border-radius:6px;width:100%;';
             [['', 'Term…'], ['Term 1', 'Term 1'], ['Term 2', 'Term 2'], ['Term 3', 'Term 3']].forEach(function (pair) {
                 const opt = document.createElement('option');
                 opt.value = pair[0];
@@ -3933,7 +3933,7 @@ document.addEventListener('DOMContentLoaded', function () {
             pdfPickerWrap.appendChild(pdfTermSelect);
 
             const pdfItemSelect = document.createElement('select');
-            pdfItemSelect.style.cssText = 'font-size:12.5px;padding:5px 8px;border:1px solid #d0d5dd;border-radius:6px;width:100%;margin-top:8px;';
+            pdfItemSelect.style.cssText = 'font-size:14px;padding:5px 8px;border:1px solid #d0d5dd;border-radius:6px;width:100%;margin-top:8px;';
             pdfItemSelect.disabled = true;
             const pdfItemPlaceholder = document.createElement('option');
             pdfItemPlaceholder.value = '';
@@ -3942,7 +3942,7 @@ document.addEventListener('DOMContentLoaded', function () {
             pdfPickerWrap.appendChild(pdfItemSelect);
 
             const pdfItemHint = document.createElement('div');
-            pdfItemHint.style.cssText = 'font-size:11px;color:#98A2B3;margin-top:3px;';
+            pdfItemHint.style.cssText = 'font-size:12.5px;color:#98A2B3;margin-top:3px;';
             pdfItemHint.textContent = 'Optional: pick which existing assessment this activity recovers, so a confirmed score on the student\'s attached-file submission is recorded automatically and clears from Missing Assessments. Leave as "No gradebook item" for a plain practice resource.';
             pdfPickerWrap.appendChild(pdfItemHint);
 
@@ -4023,7 +4023,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (hasQuizQuestions) {
             const oneAttemptRow = document.createElement('label');
             oneAttemptRow.className = 'ai-one-attempt-toggle';
-            oneAttemptRow.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:12.5px;color:#667085;margin-top:8px;cursor:pointer;';
+            oneAttemptRow.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:14px;color:#667085;margin-top:8px;cursor:pointer;';
             const oneAttemptCheckbox = document.createElement('input');
             oneAttemptCheckbox.type = 'checkbox';
             oneAttemptCheckbox.style.cssText = 'margin:0;';
@@ -4465,7 +4465,7 @@ document.addEventListener('DOMContentLoaded', function () {
         quizzes.forEach(function (q) {
             const badge = quizStatusBadge(q);
             const item = document.createElement('div');
-            item.style.cssText = 'border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;font-size:12.5px;';
+            item.style.cssText = 'border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;font-size:14px;';
 
             const topLine = document.createElement('div');
             topLine.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:8px;';
@@ -4473,7 +4473,7 @@ document.addEventListener('DOMContentLoaded', function () {
             titleEl.style.cssText = 'font-weight:600;color:#14213D;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
             titleEl.textContent = q.title;
             const badgeEl = document.createElement('span');
-            badgeEl.style.cssText = 'flex-shrink:0;font-size:11px;font-weight:600;padding:1px 8px;border-radius:10px;color:#fff;background:' + badge.color + ';';
+            badgeEl.style.cssText = 'flex-shrink:0;font-size:12.5px;font-weight:600;padding:1px 8px;border-radius:10px;color:#fff;background:' + badge.color + ';';
             badgeEl.textContent = badge.label + (q.new_this_check ? ' • New' : '');
             topLine.appendChild(titleEl);
             topLine.appendChild(badgeEl);
@@ -4581,14 +4581,14 @@ document.addEventListener('DOMContentLoaded', function () {
             linkArea.innerHTML = '';
             if (sub.is_linked) {
                 const linked = document.createElement('div');
-                linked.style.cssText = 'font-size:12px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:8px 10px;color:#166534;';
+                linked.style.cssText = 'font-size:13.5px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:8px 10px;color:#166534;';
                 linked.innerHTML = '<i class="fas fa-link me-1"></i>Naka-link sa gradebook: <strong>' + (sub.link_category_label || '') + ', ' + (sub.link_term || '') + '</strong> — awtomatikong mare-record ang score na i-co-confirm at mawawala ito sa Missing Assessments.';
                 linkArea.appendChild(linked);
                 return;
             }
 
             const warn = document.createElement('div');
-            warn.style.cssText = 'font-size:12px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:10px;';
+            warn.style.cssText = 'font-size:13.5px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:10px;';
             warn.innerHTML = '<div style="font-weight:600;color:#92400E;margin-bottom:6px;"><i class="fas fa-triangle-exclamation me-1"></i>Hindi pa naka-link sa isang gradebook item</div>' +
                 '<div style="color:#92400E;margin-bottom:8px;">I-link muna dito para awtomatikong ma-record sa Encode Grades ang score na i-co-confirm mo sa ibaba.</div>';
             const pickerRow = document.createElement('div');
@@ -4706,12 +4706,12 @@ document.addEventListener('DOMContentLoaded', function () {
             body.innerHTML = '';
             const errEl = document.createElement('div');
             errEl.className = 'text-danger';
-            errEl.style.cssText = 'font-size:12.5px;display:none;margin-bottom:8px;';
+            errEl.style.cssText = 'font-size:14px;display:none;margin-bottom:8px;';
             body.appendChild(errEl);
 
             if (!sub.ai_checkable) {
                 const note = document.createElement('div');
-                note.style.cssText = 'font-size:12.5px;color:#667085;';
+                note.style.cssText = 'font-size:14px;color:#667085;';
                 note.textContent = 'Hindi pa suportado ang AI checking para sa lumang .doc file — buksan at suriin na lang nang manu-mano.';
                 body.appendChild(note);
                 return;
@@ -4761,7 +4761,7 @@ document.addEventListener('DOMContentLoaded', function () {
             body.innerHTML = '';
 
             const banner = document.createElement('div');
-            banner.style.cssText = 'font-size:12px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:8px 10px;margin-bottom:10px;color:#1E40AF;';
+            banner.style.cssText = 'font-size:13.5px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:8px 10px;margin-bottom:10px;color:#1E40AF;';
             let bannerText = '<i class="fas fa-wand-magic-sparkles me-1"></i><strong>Panukalang score ng AI — suriin bago i-record.</strong>';
             if (sub.answer_source_type === 'image') {
                 bannerText += ' Binasa ito ng AI mula sa larawan/scan — i-double-check laban sa mismong file.';
@@ -4771,14 +4771,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const errEl = document.createElement('div');
             errEl.className = 'text-danger';
-            errEl.style.cssText = 'font-size:12.5px;display:none;margin-bottom:8px;';
+            errEl.style.cssText = 'font-size:14px;display:none;margin-bottom:8px;';
             body.appendChild(errEl);
 
             const scoreRow = document.createElement('div');
             scoreRow.style.cssText = 'display:flex;gap:10px;margin-bottom:8px;';
 
             const scoreWrap = document.createElement('div');
-            scoreWrap.innerHTML = '<label style="font-size:12px;font-weight:600;display:block;">Score</label>';
+            scoreWrap.innerHTML = '<label style="font-size:13.5px;font-weight:600;display:block;">Score</label>';
             const scoreInput = document.createElement('input');
             scoreInput.type = 'number';
             scoreInput.step = '0.01';
@@ -4789,7 +4789,7 @@ document.addEventListener('DOMContentLoaded', function () {
             scoreWrap.appendChild(scoreInput);
 
             const maxWrap = document.createElement('div');
-            maxWrap.innerHTML = '<label style="font-size:12px;font-weight:600;display:block;">Sa Labas ng</label>';
+            maxWrap.innerHTML = '<label style="font-size:13.5px;font-weight:600;display:block;">Sa Labas ng</label>';
             const maxInput = document.createElement('input');
             maxInput.type = 'number';
             maxInput.step = '0.01';
@@ -4804,7 +4804,7 @@ document.addEventListener('DOMContentLoaded', function () {
             body.appendChild(scoreRow);
 
             const fbLabel = document.createElement('label');
-            fbLabel.style.cssText = 'font-size:12px;font-weight:600;display:block;';
+            fbLabel.style.cssText = 'font-size:13.5px;font-weight:600;display:block;';
             fbLabel.textContent = 'Feedback';
             body.appendChild(fbLabel);
             const fbInput = document.createElement('textarea');
@@ -4856,7 +4856,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
                         body.innerHTML = '';
                         const done = document.createElement('div');
-                        done.style.cssText = 'font-size:13px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:10px 12px;color:#166534;';
+                        done.style.cssText = 'font-size:14.5px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:10px 12px;color:#166534;';
                         let msg = '<i class="fas fa-circle-check me-1"></i>Na-record ang grade';
                         if (scoreInput.value !== '' && maxInput.value !== '') {
                             msg += ': <strong>' + scoreInput.value + '/' + maxInput.value + '</strong>';

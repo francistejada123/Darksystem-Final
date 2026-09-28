@@ -31,31 +31,31 @@ function ppHead($title)
         .pp-bar { position: sticky; top: 0; z-index: 50; background: var(--pp-ink); color: #fff; padding: 12px 16px; display: flex; align-items: center; gap: 10px; }
         .pp-bar img { width: 32px; height: 32px; border-radius: 8px; background: #fff; object-fit: contain; }
         .pp-bar .t { font-weight: 800; font-size: 17px; line-height: 1.1; }
-        .pp-bar .t small { display: block; font-weight: 500; font-size: 12px; opacity: .75; }
+        .pp-bar .t small { display: block; font-weight: 500; font-size: 13.5px; opacity: .75; }
         .pp-bar .r { margin-left: auto; display: flex; gap: 8px; align-items: center; }
-        .pp-bar a.lang { color: #fff; font-size: 13px; font-weight: 700; text-decoration: none; border: 1px solid rgba(255,255,255,.35); border-radius: 999px; padding: 4px 10px; }
+        .pp-bar a.lang { color: #fff; font-size: 14.5px; font-weight: 700; text-decoration: none; border: 1px solid rgba(255,255,255,.35); border-radius: 999px; padding: 4px 10px; }
         .pp-wrap { max-width: 720px; margin: 0 auto; padding: 16px; }
         .pp-child { display: flex; align-items: center; gap: 12px; background: #fff; border-radius: 14px; padding: 14px 16px; margin-bottom: 14px; border: 1px solid #E2E8F0; }
         .pp-child .av { width: 46px; height: 46px; border-radius: 50%; background: #E0ECFF; color: var(--pp-blue); display: grid; place-items: center; font-weight: 800; font-size: 18px; flex: 0 0 auto; }
         .pp-child .n { font-weight: 800; font-size: 17px; }
-        .pp-child .m { color: var(--pp-muted); font-size: 14px; }
-        .pp-child select { margin-left: auto; max-width: 46%; font-size: 14px; }
+        .pp-child .m { color: var(--pp-muted); font-size: 15px; }
+        .pp-child select { margin-left: auto; max-width: 46%; font-size: 15px; }
         .pp-card { background: #fff; border: 1px solid #E2E8F0; border-radius: 14px; padding: 16px; margin-bottom: 14px; }
         .pp-card h2 { font-size: 17px; font-weight: 800; margin: 0 0 12px; }
         .pp-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
         .pp-stat { background: #fff; border: 1px solid #E2E8F0; border-radius: 14px; padding: 12px 10px; text-align: center; text-decoration: none; color: inherit; }
         .pp-stat b { display: block; font-size: 22px; font-weight: 800; }
-        .pp-stat span { font-size: 13px; color: var(--pp-muted); }
+        .pp-stat span { font-size: 14.5px; color: var(--pp-muted); }
         .pp-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 11px 0; border-top: 1px solid #EEF2F6; font-size: 15.5px; }
         .pp-row:first-of-type { border-top: 0; }
-        .pp-row small { color: var(--pp-muted); display: block; font-size: 13px; }
-        .pp-tag { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+        .pp-row small { color: var(--pp-muted); display: block; font-size: 14.5px; }
+        .pp-tag { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 14.5px; font-weight: 700; white-space: nowrap; }
         .t-ok { background: #ECFDF5; color: #047857; } .t-warn { background: #FFF7ED; color: #B45309; } .t-bad { background: #FEF2F2; color: #B91C1C; } .t-info { background: #EFF6FF; color: #1D4ED8; } .t-mute { background: #F1F5F9; color: #475569; }
         .pp-alert { border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; font-size: 15px; }
         .pp-empty { text-align: center; color: var(--pp-muted); padding: 22px 8px; font-size: 15px; }
-        .pp-note { font-size: 13px; color: var(--pp-muted); text-align: center; margin-top: 6px; }
+        .pp-note { font-size: 14.5px; color: var(--pp-muted); text-align: center; margin-top: 6px; }
         .pp-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; background: #fff; border-top: 1px solid #E2E8F0; display: flex; padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); }
-        .pp-nav a { flex: 1; text-align: center; text-decoration: none; color: #64748B; font-size: 12px; font-weight: 600; padding: 4px 0; }
+        .pp-nav a { flex: 1; text-align: center; text-decoration: none; color: #64748B; font-size: 13.5px; font-weight: 600; padding: 4px 0; }
         .pp-nav a i { display: block; font-size: 20px; margin-bottom: 3px; }
         .pp-nav a.on { color: var(--pp-blue); }
         .pp-install { display: none; width: 100%; }

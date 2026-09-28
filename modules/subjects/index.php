@@ -319,7 +319,7 @@ include '../../includes/header.php';
         padding: 14px 16px;
     }
     .subj-page .table thead th {
-        font-size: 12px;
+        font-size: 13.5px;
         text-transform: uppercase;
         letter-spacing: 0.04em;
         font-weight: 600;
@@ -335,7 +335,7 @@ include '../../includes/header.php';
     .subj-page td .badge {
         padding: 5px 14px;
         border-radius: 20px;
-        font-size: 13px;
+        font-size: 14.5px;
         font-weight: 600;
     }
     /* .section-card and .strand-card also now come from the shared global
@@ -352,7 +352,7 @@ include '../../includes/header.php';
         display: inline-block;
         padding: 2px 10px;
         border-radius: 20px;
-        font-size: 11px;
+        font-size: 12.5px;
         background: #e8f5e9;
         color: #1b5e20;
         border: 1px solid #a5d6a7;
@@ -397,7 +397,7 @@ include '../../includes/header.php';
         margin: 4px 0 4px 0;
     }
     .subj-page .sp-header p {
-        font-size: 14px;
+        font-size: 15px;
         color: var(--text-muted);
         margin: 0;
         max-width: 520px;
@@ -408,7 +408,7 @@ include '../../includes/header.php';
         gap: 8px;
         padding: 10px 20px;
         border-radius: 10px;
-        font-size: 13.5px;
+        font-size: 15px;
         font-weight: 600;
         color: #fff;
         background: var(--primary);
@@ -456,7 +456,7 @@ include '../../includes/header.php';
         flex: 0 0 auto;
     }
     .subj-page .sp-stat-label {
-        font-size: 12.5px;
+        font-size: 14px;
         color: var(--text-muted);
         text-transform: uppercase;
         letter-spacing: 0.03em;
@@ -490,7 +490,7 @@ include '../../includes/header.php';
         margin-bottom: 16px;
     }
     .subj-page .sp-filter-label {
-        font-size: 11.5px;
+        font-size: 13px;
         font-weight: 600;
         color: var(--text-muted);
         text-transform: uppercase;
@@ -505,7 +505,7 @@ include '../../includes/header.php';
         width: 26px;
         height: 26px;
         border-radius: 50%;
-        font-size: 11px;
+        font-size: 12.5px;
         font-weight: 700;
         margin-right: 6px;
         vertical-align: middle;
@@ -515,7 +515,7 @@ include '../../includes/header.php';
         display: flex;
         align-items: center;
         gap: 0;
-        font-size: 13.5px;
+        font-size: 15px;
         margin-bottom: 3px;
     }
     .subj-page .sp-teacher-row:last-child { margin-bottom: 0; }
@@ -525,7 +525,7 @@ include '../../includes/header.php';
     .subj-page .sp-more-teachers { position: relative; display: inline-block; margin: 4px 0 0 32px; outline: none; }
     .subj-page .sp-more-link {
         display: inline-flex; align-items: center; height: 22px; padding: 0 10px; border-radius: 999px;
-        font-size: 11.5px; font-weight: 600; color: var(--primary); background: var(--primary-soft, #EAF1FE);
+        font-size: 13px; font-weight: 600; color: var(--primary); background: var(--primary-soft, #EAF1FE);
         border: 1px solid transparent; cursor: default; transition: background 0.15s, border-color 0.15s;
     }
     .subj-page .sp-more-teachers:hover .sp-more-link,
@@ -542,7 +542,7 @@ include '../../includes/header.php';
     .subj-page .sp-more-teachers::after { content: ''; position: absolute; top: 0; bottom: 0; left: 100%; width: var(--bridge, 14px); }   /* hover bridge */
     .subj-page .sp-more-teachers:hover .sp-more-pop,
     .subj-page .sp-more-teachers:focus-within .sp-more-pop { display: block; }
-    .subj-page .sp-more-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); margin-bottom: 8px; }
+    .subj-page .sp-more-title { font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); margin-bottom: 8px; }
     .subj-page .sp-more-pop .sp-teacher-row { margin-bottom: 6px; }
     .subj-page .sp-more-pop .sp-teacher-name { max-width: 210px; }
     .subj-page .sp-pagination {
@@ -556,7 +556,7 @@ include '../../includes/header.php';
         margin-top: 10px;
     }
     .subj-page .sp-pagination-info {
-        font-size: 13px;
+        font-size: 14.5px;
         color: var(--text-muted);
     }
     .subj-page .sp-pagination-btns {
@@ -573,7 +573,7 @@ include '../../includes/header.php';
         border-radius: 8px;
         border: 1px solid var(--border);
         color: var(--ink);
-        font-size: 13px;
+        font-size: 14.5px;
         font-weight: 600;
         text-decoration: none;
         background: var(--surface);
@@ -607,20 +607,20 @@ include '../../includes/header.php';
        teacher's free / occupied class periods for the chosen day/s and shift. */
     .subj-page .slot-picker { margin-bottom: 12px; }
     .subj-page .slot-picker-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px; margin-bottom: 6px; }
-    .subj-page .slot-picker-title { font-size: 13px; font-weight: 600; color: var(--text); }
-    .subj-page .slot-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: var(--text-muted); }
+    .subj-page .slot-picker-title { font-size: 14.5px; font-weight: 600; color: var(--text); }
+    .subj-page .slot-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12.5px; color: var(--text-muted); }
     .subj-page .slot-legend span::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; border: 1px solid var(--border); background: #fff; }
     .subj-page .slot-legend .lg-free::before { border-color: #9AD5BC; background: var(--success-tint); }
     .subj-page .slot-legend .lg-sel::before { border-color: var(--primary); background: var(--primary); }
     .subj-page .slot-legend .lg-occ::before { border-color: #E4B4B4; background: var(--danger-tint); }
     .subj-page .slot-view { display: inline-flex; gap: 4px; margin-bottom: 6px; }
-    .subj-page .slot-view button { font-size: 12px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--border); background: #fff; color: var(--text-muted); }
+    .subj-page .slot-view button { font-size: 13.5px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--border); background: #fff; color: var(--text-muted); }
     .subj-page .slot-view button.active { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); font-weight: 600; }
     .subj-page .slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
     .subj-page .slot-btn { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; text-align: left; padding: 6px 9px; line-height: 1.25;
         border: 1px solid #9AD5BC; background: var(--success-tint); color: var(--text); border-radius: var(--radius-sm); cursor: pointer; transition: box-shadow .12s, background .12s; }
-    .subj-page .slot-btn .slot-time { font-size: 12.5px; font-weight: 600; }
-    .subj-page .slot-btn .slot-state { font-size: 11px; color: var(--success); font-weight: 500; }
+    .subj-page .slot-btn .slot-time { font-size: 14px; font-weight: 600; }
+    .subj-page .slot-btn .slot-state { font-size: 12.5px; color: var(--success); font-weight: 500; }
     .subj-page .slot-btn:hover { box-shadow: 0 0 0 2px rgba(91,95,239,0.18); }
     .subj-page .slot-btn.is-selected { background: var(--primary); border-color: var(--primary); color: #fff; }
     .subj-page .slot-btn.is-selected .slot-state { color: #fff; }
@@ -632,7 +632,7 @@ include '../../includes/header.php';
     .subj-page .slot-btn.is-break, .subj-page .slot-btn.is-idle { background: var(--surface-muted); border-color: var(--border); color: var(--text-muted); cursor: not-allowed; }
     .subj-page .slot-btn.is-break .slot-state, .subj-page .slot-btn.is-idle .slot-state { color: var(--text-muted); font-weight: 400; }
     .subj-page .slot-btn.is-occupied:hover, .subj-page .slot-btn.is-section:hover, .subj-page .slot-btn.is-break:hover, .subj-page .slot-btn.is-idle:hover { box-shadow: none; }
-    .subj-page .slot-msg { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+    .subj-page .slot-msg { font-size: 13.5px; color: var(--text-muted); margin-top: 6px; }
     .subj-page .slot-msg.is-warn { color: var(--danger); }
 
     /* ---- Bigger, easier-to-read text ---- */
@@ -642,19 +642,19 @@ include '../../includes/header.php';
     .subj-page .grade-card .grade-num { font-size: 36px !important; }
     .subj-page .grade-card .grade-label { font-size: 18px !important; }
     .subj-page .grade-card .section-count { font-size: 15px !important; }
-    .subj-page .grade-card .grade-selected-pill { font-size: 13px !important; padding: 4px 14px !important; }
+    .subj-page .grade-card .grade-selected-pill { font-size: 14.5px !important; padding: 4px 14px !important; }
     .subj-page .card-header h5 { font-size: 19px !important; }
-    .subj-page .card-header .badge { font-size: 13.5px; }
-    .subj-page .card-header .btn-sm { font-size: 14.5px; padding: 7px 14px; }
+    .subj-page .card-header .badge { font-size: 15px; }
+    .subj-page .card-header .btn-sm { font-size: 15.5px; padding: 7px 14px; }
     .subj-page .section-card .section-name { font-size: 19px !important; font-weight: 700; }
-    .subj-page .section-card .badge { font-size: 13px; }
+    .subj-page .section-card .badge { font-size: 14.5px; }
     .subj-page .section-card .card-body { padding-top: 22px !important; padding-bottom: 22px !important; }
-    .subj-page .sp-filter-label { font-size: 13px !important; }
+    .subj-page .sp-filter-label { font-size: 14.5px !important; }
     .subj-page .sp-filter-bar .form-control, .subj-page .sp-filter-bar .form-select { font-size: 15px; min-height: 44px; }
-    .subj-page .table > :not(caption) > * > th { font-size: 12.5px; }
+    .subj-page .table > :not(caption) > * > th { font-size: 14px; }
     .subj-page .table > :not(caption) > * > td { font-size: 15px; }
     .subj-page .sp-teacher-row { font-size: 15px; }
-    .subj-page .table .badge { font-size: 13px; }
+    .subj-page .table .badge { font-size: 14.5px; }
 </style>
 
 <div class="subj-page">
@@ -746,7 +746,7 @@ include '../../includes/header.php';
                     <i class="fas <?php echo $t[2]; ?>"></i>
                 </div>
                 <div>
-                    <div class="text-muted text-uppercase" style="font-size:13px;letter-spacing:0.04em;"><?php echo $t[0]; ?></div>
+                    <div class="text-muted text-uppercase" style="font-size:14.5px;letter-spacing:0.04em;"><?php echo $t[0]; ?></div>
                     <div class="fw-bold" style="font-size:28px;"><?php echo $t[1]; ?></div>
                 </div>
             </div>
@@ -773,7 +773,7 @@ include '../../includes/header.php';
                     $bar_color = $grade_palette[$g]['accent'] ?? '#356EA8';
                 ?>
                 <div class="mb-3">
-                    <div class="d-flex justify-content-between mb-1" style="font-size:14px;">
+                    <div class="d-flex justify-content-between mb-1" style="font-size:15px;">
                         <span class="fw-semibold"><?php echo $g; ?></span>
                         <span class="text-muted"><?php echo $val; ?> subject<?php echo $val == 1 ? '' : 's'; ?></span>
                     </div>
@@ -793,7 +793,7 @@ include '../../includes/header.php';
                 <h5 class="mb-0"><i class="fas fa-triangle-exclamation text-warning me-2"></i>Subjects Without Teacher</h5>
                 <div class="d-flex align-items-center gap-2">
                     <form method="get" class="m-0">
-                        <select name="ut_grade" class="form-select form-select-sm" style="font-size:14px;padding:6px 30px 6px 10px;width:auto;" onchange="this.form.submit();" aria-label="Filter subjects without teacher by grade level">
+                        <select name="ut_grade" class="form-select form-select-sm" style="font-size:15px;padding:6px 30px 6px 10px;width:auto;" onchange="this.form.submit();" aria-label="Filter subjects without teacher by grade level">
                             <option value="">All Grades</option>
                             <?php foreach ($ut_grade_options as $g_opt): ?>
                             <option value="<?php echo htmlspecialchars($g_opt); ?>" <?php echo $ut_grade === $g_opt ? 'selected' : ''; ?>><?php echo htmlspecialchars($g_opt); ?></option>
@@ -801,7 +801,7 @@ include '../../includes/header.php';
                         </select>
                         <noscript><button type="submit" class="btn btn-sm btn-outline-secondary">Apply</button></noscript>
                     </form>
-                    <span class="badge bg-secondary" style="font-size:13px;padding:6px 12px;"><?php echo $unassigned_total; ?></span>
+                    <span class="badge bg-secondary" style="font-size:14.5px;padding:6px 12px;"><?php echo $unassigned_total; ?></span>
                 </div>
             </div>
             <div class="card-body pt-0">
@@ -832,7 +832,7 @@ include '../../includes/header.php';
                     </table>
                 </div>
                 <?php if ($unassigned_total > count($unassigned)): ?>
-                    <div class="text-muted text-center mt-2" style="font-size:14px;">
+                    <div class="text-muted text-center mt-2" style="font-size:15px;">
                         Showing <?php echo count($unassigned); ?> of <?php echo $unassigned_total; ?>. Filter by grade to narrow the list.
                     </div>
                 <?php endif; ?>
@@ -1029,7 +1029,7 @@ document.querySelectorAll('.subj-page .sp-more-teachers').forEach(function (m) {
                 <h5 class="modal-title"><i class="fas fa-book me-2"></i>Subject Details</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body" id="subjectViewBody" style="font-size:14px;">
+            <div class="modal-body" id="subjectViewBody" style="font-size:15px;">
             </div>
         </div>
     </div>

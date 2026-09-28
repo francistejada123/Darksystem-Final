@@ -124,29 +124,29 @@ include '../../includes/header.php';
 .user-management-page .stats-card { transition:transform .18s ease, box-shadow .18s ease; }
 .user-management-page .stats-card:hover { transform:translateY(-3px); box-shadow:0 10px 24px rgba(35,75,125,.11) !important; }
 .user-management-page .stats-card .card-body { padding:18px 20px; }
-.user-management-page .stats-card h6 { font-size:11px; text-transform:uppercase; letter-spacing:.04em; font-weight:800; color:#73849d !important; }
+.user-management-page .stats-card h6 { font-size:12.5px; text-transform:uppercase; letter-spacing:.04em; font-weight:800; color:#73849d !important; }
 .user-management-page .stats-card h2 { color:#14213d; font-size:28px; }
 .user-management-page .stats-icon { width:44px; height:44px; display:grid; place-items:center; border-radius:13px; font-size:18px; }
 .user-management-page > .card { overflow:hidden; }
 .user-management-page > .card .card-body { padding:17px 20px; }
-.user-management-page form .form-label { color:#405875; font-size:11px; font-weight:800; margin-bottom:5px; text-transform:uppercase; letter-spacing:.03em; }
+.user-management-page form .form-label { color:#405875; font-size:12.5px; font-weight:800; margin-bottom:5px; text-transform:uppercase; letter-spacing:.03em; }
 .user-management-page form .form-control,
-.user-management-page form .form-select { height:40px; border-color:#dbe4ef; border-radius:9px; color:#304766; font-size:13px; }
+.user-management-page form .form-select { height:40px; border-color:#dbe4ef; border-radius:9px; color:#304766; font-size:14.5px; }
 .user-management-page form .form-control:focus,
 .user-management-page form .form-select:focus { border-color:#4b7bec; box-shadow:0 0 0 3px rgba(75,123,236,.12); }
-.user-management-page form .btn { height:40px; border-radius:9px; font-size:12px; font-weight:700; }
+.user-management-page form .btn { height:40px; border-radius:9px; font-size:13.5px; font-weight:700; }
 .user-management-page > .card .card-header { padding:17px 20px 13px !important; }
 .user-management-page > .card .card-header h5 { color:#14213d; font-weight:800; }
 .user-management-page > .card .card-header h5 i { color:#2769e8 !important; }
-.user-management-page .table thead th { background:#f5f8fc; color:#70829c; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; font-weight:800; padding:12px 16px; border-bottom:1px solid #e5edf6; }
-.user-management-page .table tbody td { padding:14px 16px; color:#304766; font-size:13px; border-color:#edf2f7; }
+.user-management-page .table thead th { background:#f5f8fc; color:#70829c; font-size:12px; text-transform:uppercase; letter-spacing:.05em; font-weight:800; padding:12px 16px; border-bottom:1px solid #e5edf6; }
+.user-management-page .table tbody td { padding:14px 16px; color:#304766; font-size:14.5px; border-color:#edf2f7; }
 .user-management-page .table tbody tr { transition:background .16s ease, transform .16s ease; }
 .user-management-page .table tbody tr:hover { background:#f8fbff; }
-.user-management-page .avatar-chip { width:40px; height:40px; display:grid; place-items:center; border-radius:50%; color:#fff; font-size:12px; font-weight:800; box-shadow:0 3px 8px rgba(35,75,125,.12); }
-.user-management-page .table .fw-semibold { color:#1c3152; font-size:13px; }
-.user-management-page .table .badge { border-radius:7px; padding:6px 9px; font-size:10.5px; font-weight:800; }
+.user-management-page .avatar-chip { width:40px; height:40px; display:grid; place-items:center; border-radius:50%; color:#fff; font-size:13.5px; font-weight:800; box-shadow:0 3px 8px rgba(35,75,125,.12); }
+.user-management-page .table .fw-semibold { color:#1c3152; font-size:14.5px; }
+.user-management-page .table .badge { border-radius:7px; padding:6px 9px; font-size:12px; font-weight:800; }
 .user-management-page .table .btn-group .btn { width:34px; height:34px; padding:0; display:inline-grid; place-items:center; border-radius:8px !important; margin:0 2px; }
-.user-management-page .pagination .page-link { border:0; border-radius:7px; margin:0 2px; color:#58708f; font-size:12px; }
+.user-management-page .pagination .page-link { border:0; border-radius:7px; margin:0 2px; color:#58708f; font-size:13.5px; }
 .user-management-page .pagination .active .page-link { background:#2769e8; color:#fff; }
 .user-management-page .modal-content { border:0; border-radius:16px; box-shadow:0 24px 70px rgba(15,26,60,.22); }
 .user-management-page .modal-header { padding:18px 22px; border-bottom:1px solid #e8eef6; }

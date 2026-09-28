@@ -64,11 +64,11 @@ $first_time = $student && empty($student['portal_password_hash']);
         .box .sub { text-align: center; color: #52607A; font-size: 15px; }
         .lrn-pill { display: block; text-align: center; margin: 14px auto 18px; padding: 10px; border-radius: 10px; background: #F1F5F9; font-size: 15px; }
         .lrn-pill b { font-family: ui-monospace, Consolas, monospace; letter-spacing: .05em; }
-        label { font-weight: 600; font-size: 14.5px; }
+        label { font-weight: 600; font-size: 15.5px; }
         .form-control { height: 48px; font-size: 16px; }
         .pw-meter { height: 6px; border-radius: 3px; background: #E5E7EB; margin-top: 6px; overflow: hidden; }
         .pw-meter div { height: 100%; width: 0; transition: width .2s, background .2s; }
-        .hint { font-size: 13px; color: #667085; margin-top: 5px; }
+        .hint { font-size: 14.5px; color: #667085; margin-top: 5px; }
         .btn-go { height: 50px; font-weight: 700; font-size: 16px; }
         @media (max-width: 520px) { .box { margin: 16px; } }
     </style>
@@ -90,7 +90,7 @@ $first_time = $student && empty($student['portal_password_hash']);
     <p class="sub"><?php echo $first_time ? 'Your enrollment is approved. Create your password to open your Student Portal.' : 'Choose a new password for your Student Portal.'; ?></p>
     <div class="lrn-pill">Your username is your LRN: <b><?php echo htmlspecialchars($student['lrn']); ?></b></div>
 
-    <?php if ($error): ?><div class="alert alert-danger py-2" style="font-size:14.5px;"><i class="fas fa-circle-exclamation me-1"></i><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
+    <?php if ($error): ?><div class="alert alert-danger py-2" style="font-size:15.5px;"><i class="fas fa-circle-exclamation me-1"></i><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
 
     <form method="POST" autocomplete="off">
         <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">

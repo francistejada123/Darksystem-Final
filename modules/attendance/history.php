@@ -177,14 +177,14 @@ include '../../includes/header.php';
 ?>
 
 <style>
-    .hist-grid-table th, .hist-grid-table td { white-space: nowrap; text-align: center; font-size: 14px; }
+    .hist-grid-table th, .hist-grid-table td { white-space: nowrap; text-align: center; font-size: 15px; }
     .hist-grid-table th:first-child, .hist-grid-table td:first-child { text-align: left; white-space: normal; }
-    .hist-status-dot { display:inline-flex; align-items:center; justify-content:center; width:26px; height:24px; border-radius:5px; font-weight:700; font-size:13px; line-height:1; color:#fff; text-align:center; }
+    .hist-status-dot { display:inline-flex; align-items:center; justify-content:center; width:26px; height:24px; border-radius:5px; font-weight:700; font-size:14.5px; line-height:1; color:#fff; text-align:center; }
     .hist-status-dot.st-present { background:#238863; }
     .hist-status-dot.st-late { background:#B7791F; }
     .hist-status-dot.st-absent { background:#C94A4A; }
     .hist-status-dot.st-excused { background:#356EA8; }
-    .hist-legend span { display:inline-flex; align-items:center; gap:6px; margin-right:14px; font-size:13px; color: var(--text-muted); }
+    .hist-legend span { display:inline-flex; align-items:center; gap:6px; margin-right:14px; font-size:14.5px; color: var(--text-muted); }
 </style>
 
 <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap gap-2">
@@ -201,7 +201,7 @@ include '../../includes/header.php';
     </a>
 </div>
 
-<div style="background:#EDF4FB;border: 1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:13px;color: var(--text-muted);">
+<div style="background:#EDF4FB;border: 1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:14.5px;color: var(--text-muted);">
     Read-only records of what was already saved in Take Attendance. This never adds to or subtracts from Written Works, Performance Tasks, or Examinations — it only feeds <a href="<?php echo BASE_URL; ?>modules/ai/index.php" style="color: var(--ink);">AI Analytics</a> as an additional risk indicator.
 </div>
 
@@ -223,8 +223,8 @@ include '../../includes/header.php';
         <form method="GET" class="d-flex align-items-end flex-wrap gap-2">
             <input type="hidden" name="tab" value="<?php echo htmlspecialchars($tab); ?>">
             <div>
-                <label class="form-label mb-1" style="font-size:12px;color: var(--text-muted);">Class</label>
-                <select name="class_pick" class="form-select form-select-sm" style="font-size:14px;border: 1px solid var(--border);border-radius:6px;" onchange="var v=this.value.split('|'); location.href='?section_id='+v[0]+'&subject_code='+encodeURIComponent(v[1])+'&term=<?php echo urlencode($term); ?>&tab=<?php echo urlencode($tab); ?>&start_date=<?php echo urlencode($start_date); ?>&end_date=<?php echo urlencode($end_date); ?>';">
+                <label class="form-label mb-1" style="font-size:13.5px;color: var(--text-muted);">Class</label>
+                <select name="class_pick" class="form-select form-select-sm" style="font-size:15px;border: 1px solid var(--border);border-radius:6px;" onchange="var v=this.value.split('|'); location.href='?section_id='+v[0]+'&subject_code='+encodeURIComponent(v[1])+'&term=<?php echo urlencode($term); ?>&tab=<?php echo urlencode($tab); ?>&start_date=<?php echo urlencode($start_date); ?>&end_date=<?php echo urlencode($end_date); ?>';">
                     <?php foreach ($my_assignments as $a): ?>
                         <option value="<?php echo $a['section_id']; ?>|<?php echo htmlspecialchars($a['subject_code']); ?>"
                             <?php echo ((int) $a['section_id'] === $section_id && $a['subject_code'] === $subject_code) ? 'selected' : ''; ?>>
@@ -234,25 +234,25 @@ include '../../includes/header.php';
                 </select>
             </div>
             <div>
-                <label class="form-label mb-1" style="font-size:12px;color: var(--text-muted);">Term</label>
-                <select name="term" class="form-select form-select-sm" style="font-size:14px;border: 1px solid var(--border);border-radius:6px;" onchange="this.form.submit()">
+                <label class="form-label mb-1" style="font-size:13.5px;color: var(--text-muted);">Term</label>
+                <select name="term" class="form-select form-select-sm" style="font-size:15px;border: 1px solid var(--border);border-radius:6px;" onchange="this.form.submit()">
                     <?php foreach ($terms as $t): ?>
                         <option value="<?php echo $t; ?>" <?php echo $term == $t ? 'selected' : ''; ?>><?php echo $t; ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
             <div>
-                <label class="form-label mb-1" style="font-size:12px;color: var(--text-muted);">From</label>
-                <input type="date" name="start_date" value="<?php echo htmlspecialchars($start_date); ?>" max="<?php echo $today; ?>" class="form-control form-control-sm" style="font-size:14px;border: 1px solid var(--border);border-radius:6px;">
+                <label class="form-label mb-1" style="font-size:13.5px;color: var(--text-muted);">From</label>
+                <input type="date" name="start_date" value="<?php echo htmlspecialchars($start_date); ?>" max="<?php echo $today; ?>" class="form-control form-control-sm" style="font-size:15px;border: 1px solid var(--border);border-radius:6px;">
             </div>
             <div>
-                <label class="form-label mb-1" style="font-size:12px;color: var(--text-muted);">To</label>
-                <input type="date" name="end_date" value="<?php echo htmlspecialchars($end_date); ?>" max="<?php echo $today; ?>" class="form-control form-control-sm" style="font-size:14px;border: 1px solid var(--border);border-radius:6px;">
+                <label class="form-label mb-1" style="font-size:13.5px;color: var(--text-muted);">To</label>
+                <input type="date" name="end_date" value="<?php echo htmlspecialchars($end_date); ?>" max="<?php echo $today; ?>" class="form-control form-control-sm" style="font-size:15px;border: 1px solid var(--border);border-radius:6px;">
             </div>
             <?php if ($tab === 'student'): ?>
                 <div>
-                    <label class="form-label mb-1" style="font-size:12px;color: var(--text-muted);">Student</label>
-                    <select name="student_id" class="form-select form-select-sm" style="font-size:14px;border: 1px solid var(--border);border-radius:6px;">
+                    <label class="form-label mb-1" style="font-size:13.5px;color: var(--text-muted);">Student</label>
+                    <select name="student_id" class="form-select form-select-sm" style="font-size:15px;border: 1px solid var(--border);border-radius:6px;">
                         <?php foreach ($section_students as $s): ?>
                             <option value="<?php echo $s['student_id']; ?>" <?php echo ((int) $s['student_id'] === $selected_student_id) ? 'selected' : ''; ?>>
                                 <?php echo htmlspecialchars($s['last_name'] . ', ' . $s['first_name']); ?>
@@ -337,19 +337,19 @@ include '../../includes/header.php';
             <div class="col-md-3 col-6">
                 <div class="card border-0 shadow-sm rounded-3 text-center py-3">
                     <div class="fw-bold" style="font-size:26px;color:#238863;"><?php echo (int) $student_summary['present']; ?></div>
-                    <div class="text-muted" style="font-size:13px;">Present</div>
+                    <div class="text-muted" style="font-size:14.5px;">Present</div>
                 </div>
             </div>
             <div class="col-md-3 col-6">
                 <div class="card border-0 shadow-sm rounded-3 text-center py-3">
                     <div class="fw-bold" style="font-size:26px;color:#B7791F;"><?php echo (int) $student_summary['late']; ?></div>
-                    <div class="text-muted" style="font-size:13px;">Late</div>
+                    <div class="text-muted" style="font-size:14.5px;">Late</div>
                 </div>
             </div>
             <div class="col-md-3 col-6">
                 <div class="card border-0 shadow-sm rounded-3 text-center py-3">
                     <div class="fw-bold" style="font-size:26px;color:#C94A4A;"><?php echo (int) $student_summary['absent']; ?></div>
-                    <div class="text-muted" style="font-size:13px;">Absent</div>
+                    <div class="text-muted" style="font-size:14.5px;">Absent</div>
                 </div>
             </div>
             <div class="col-md-3 col-6">
@@ -357,7 +357,7 @@ include '../../includes/header.php';
                     <div class="fw-bold" style="font-size:26px;<?php echo $student_summary['at_risk'] ? 'color:#C94A4A;' : 'color:#238863;'; ?>">
                         <?php echo $student_summary['percentage'] !== null ? number_format($student_summary['percentage'], 1) . '%' : '—'; ?>
                     </div>
-                    <div class="text-muted" style="font-size:13px;">Attendance %</div>
+                    <div class="text-muted" style="font-size:14.5px;">Attendance %</div>
                 </div>
             </div>
         </div>

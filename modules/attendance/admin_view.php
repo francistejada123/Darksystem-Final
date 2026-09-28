@@ -381,7 +381,7 @@ include '../../includes/header.php';
    name is shared with other pages (e.g. .stats-card, .page-header,
    .btn.btn-primary), the override always goes through the .att-page
    ancestor so nothing here leaks onto any other module. */
-.att-page .att-tab { font-size: 14px; font-weight: 500; padding: 12px 18px; text-decoration: none; display: inline-block; color: var(--text-muted); border-bottom: 3px solid transparent; position: relative; }
+.att-page .att-tab { font-size: 15px; font-weight: 500; padding: 12px 18px; text-decoration: none; display: inline-block; color: var(--text-muted); border-bottom: 3px solid transparent; position: relative; }
 .att-page .att-tab.active { color: var(--ink); font-weight: 600; border-bottom-color: transparent; }
 .att-page .att-tab.active::after { content: ''; position: absolute; left: 18px; right: 18px; bottom: -3px; height: 3px; border-radius: 3px; background: var(--primary); }
 .att-page .att-tab:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
@@ -418,7 +418,7 @@ include '../../includes/header.php';
 }
 
 /* ---- Filters card: icon + label header row above the existing form ---- */
-.att-page .att-filter-card-header { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: var(--space-4); }
+.att-page .att-filter-card-header { display: flex; align-items: center; gap: 8px; font-size: 14.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: var(--space-4); }
 /* Solid primary indigo, matching Section 20's button system — was a
    blue/purple gradient, which Section 1's "avoid excessive gradients"
    direction rules out even for a single button. */
@@ -453,29 +453,29 @@ include '../../includes/header.php';
 /* ---- Bigger, easier-to-read text in the tables (Today's Overview,
    Attendance History, Manage Teaching Schedule). !important beats the
    small inline font sizes on some cells. ---- */
-.att-page .table > :not(caption) > * > th { font-size: 12.5px !important; font-weight: 700; letter-spacing: .04em; padding-top: 13px; padding-bottom: 13px; }
+.att-page .table > :not(caption) > * > th { font-size: 14px !important; font-weight: 700; letter-spacing: .04em; padding-top: 13px; padding-bottom: 13px; }
 .att-page .table > :not(caption) > * > td { font-size: 15px !important; padding-top: 14px; padding-bottom: 14px; }
 .att-page .table .cell-strong { font-size: 15px; }
-.att-page .table .text-muted-2, .att-page .att-muted-dash { font-size: 14.5px !important; }
-.att-page .table .time-label { font-size: 13.5px; }
-.att-page .table .time-value { font-size: 14.5px; }
-.att-page .status-pill { font-size: 13px; padding: 5px 12px; }
+.att-page .table .text-muted-2, .att-page .att-muted-dash { font-size: 15.5px !important; }
+.att-page .table .time-label { font-size: 15px; }
+.att-page .table .time-value { font-size: 15.5px; }
+.att-page .status-pill { font-size: 14.5px; padding: 5px 12px; }
 .att-page .section-title { font-size: 17px !important; }
-.att-page .card-header .badge, .att-page .card-header .status-pill { font-size: 13px; }
+.att-page .card-header .badge, .att-page .card-header .status-pill { font-size: 14.5px; }
 /* Assignment chips (10-B, 11-GAS B, +5 more) */
 .att-page .assignment-chip-row { gap: 6px !important; }
-.att-page .assignment-chip-row .chip { font-size: 14px; font-weight: 600; padding: 6px 12px; border-radius: 8px; line-height: 1.2; }
-.att-page .assignment-chip-row .chip-more { font-size: 13.5px; }
+.att-page .assignment-chip-row .chip { font-size: 15px; font-weight: 600; padding: 6px 12px; border-radius: 8px; line-height: 1.2; }
+.att-page .assignment-chip-row .chip-more { font-size: 15px; }
 .att-page .table td:has(> .assignment-chip-row) { max-width: 360px !important; }
 /* Subjects under an opened section chip */
-.att-page .section-panel { font-size: 14.5px; }
-.att-page .section-panel-title { font-size: 14px !important; }
+.att-page .section-panel { font-size: 15.5px; }
+.att-page .section-panel-title { font-size: 15px !important; }
 /* Manage Teaching Schedule form */
-.att-page .card-body .form-label, .att-page .card-body label { font-size: 14.5px !important; }
+.att-page .card-body .form-label, .att-page .card-body label { font-size: 15.5px !important; }
 .att-page .card-body .form-select, .att-page .card-body .form-control { font-size: 15px; min-height: 44px; }
 .att-page .card-body .btn { font-size: 15px; }
 .att-page .card-header h5, .att-page .card-header h6 { font-size: 17px !important; }
-.att-page .table .btn-sm { font-size: 14px; padding: 6px 14px; }
+.att-page .table .btn-sm { font-size: 15px; padding: 6px 14px; }
 </style>
 
 <div class="att-page">
@@ -680,7 +680,7 @@ include '../../includes/header.php';
                                     <?php if (!$window): ?>
                                         <td colspan="3"><span class="att-muted-dash">No teaching duty configured for this date.</span></td>
                                     <?php else: ?>
-                                        <td style="font-size:12.5px;">
+                                        <td style="font-size:14px;">
                                             <div class="cell-strong"><?php echo htmlspecialchars($window['schedule_type']); ?></div>
                                             <div class="text-muted-2"><?php echo date('g:i A', strtotime($window['time_in'])) . ' – ' . date('g:i A', strtotime($window['time_out'])); ?></div>
                                         </td>
@@ -725,7 +725,7 @@ include '../../includes/header.php';
                             </div>
                             <div class="attendance-card-badges"><?php echo render_assignment_chips($by_section, 'msec-' . $t['user_id']); ?></div>
                             <?php if (!$window): ?>
-                                <div class="att-muted-dash" style="font-size:12.5px;">No teaching duty configured for this date.</div>
+                                <div class="att-muted-dash" style="font-size:14px;">No teaching duty configured for this date.</div>
                             <?php else: ?>
                                 <div class="attendance-card-section">
                                     <div class="attendance-card-section-label">Schedule</div>
@@ -858,7 +858,7 @@ include '../../includes/header.php';
                                     <tr>
                                         <td class="cell-strong no-wrap"><?php echo htmlspecialchars($r['last_name'] . ', ' . $r['first_name']); ?></td>
                                         <td style="max-width:280px;"><?php echo render_assignment_chips($r_by_section, 'hsec-' . $r_key); ?></td>
-                                        <td style="font-size:12.5px;">
+                                        <td style="font-size:14px;">
                                             <div class="cell-strong"><?php echo !empty($r['schedule_type']) ? htmlspecialchars($r['schedule_type']) : '<span class="att-muted-dash">—</span>'; ?></div>
                                             <?php if (!empty($r['expected_time_in']) && !empty($r['expected_time_out'])): ?>
                                                 <div class="text-muted-2"><?php echo date('g:i A', strtotime($r['expected_time_in'])) . ' – ' . date('g:i A', strtotime($r['expected_time_out'])); ?></div>
@@ -892,7 +892,7 @@ include '../../includes/header.php';
             </div>
             <div class="card-body">
                 <?php if (empty($assignment_options)): ?>
-                    <div class="text-muted" style="font-size:14px;">No teacher assignments found for the active school year. Assign teachers to subjects/sections first under Subjects.</div>
+                    <div class="text-muted" style="font-size:15px;">No teacher assignments found for the active school year. Assign teachers to subjects/sections first under Subjects.</div>
                 <?php else: ?>
                 <form method="POST" action="" class="row g-3 align-items-end">
                     <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
@@ -911,7 +911,7 @@ include '../../includes/header.php';
                         <label class="form-label">Day(s)</label>
                         <div class="d-flex flex-wrap gap-2" style="padding-top:6px;">
                             <?php foreach ($DAY_NAMES as $d_num => $d_name): if ($d_num > 5) continue; ?>
-                                <label style="font-size:13px;font-weight:500;color: var(--ink);background: var(--surface-hover);border: 1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;">
+                                <label style="font-size:14.5px;font-weight:500;color: var(--ink);background: var(--surface-hover);border: 1px solid var(--border);border-radius:6px;padding:6px 10px;cursor:pointer;">
                                     <input type="checkbox" name="day_of_week[]" value="<?php echo $d_num; ?>" style="margin-right:4px;"><?php echo substr($d_name, 0, 3); ?>
                                 </label>
                             <?php endforeach; ?>
@@ -948,7 +948,7 @@ include '../../includes/header.php';
             </div>
             <div class="card-body p-0">
                 <?php if (empty($schedule_by_teacher)): ?>
-                    <div class="text-center py-4" style="color: var(--text-muted);font-size:14px;">No teaching schedule entries have been added yet. Every teacher will show "Today's teaching schedule has not been configured" on My Attendance until at least one is added.</div>
+                    <div class="text-center py-4" style="color: var(--text-muted);font-size:15px;">No teaching schedule entries have been added yet. Every teacher will show "Today's teaching schedule has not been configured" on My Attendance until at least one is added.</div>
                 <?php else: ?>
                     <div class="table-responsive">
                         <table class="table table-hover mb-0 align-middle">
@@ -968,7 +968,7 @@ include '../../includes/header.php';
                                     <?php foreach ($rows as $row): ?>
                                         <tr>
                                             <td style="border-bottom: 1px solid var(--border-soft);"><strong><?php echo htmlspecialchars($row['last_name'] . ', ' . $row['first_name']); ?></strong></td>
-                                            <td style="border-bottom: 1px solid var(--border-soft);font-size:13px;"><?php echo htmlspecialchars($row['subject_name'] . ' — ' . $row['grade_level'] . ' ' . $row['section_name']); ?></td>
+                                            <td style="border-bottom: 1px solid var(--border-soft);font-size:14.5px;"><?php echo htmlspecialchars($row['subject_name'] . ' — ' . $row['grade_level'] . ' ' . $row['section_name']); ?></td>
                                             <td style="border-bottom: 1px solid var(--border-soft);"><?php echo htmlspecialchars($DAY_NAMES[(int) $row['day_of_week']] ?? $row['day_of_week']); ?></td>
                                             <td style="border-bottom: 1px solid var(--border-soft);"><?php echo date('g:i A', strtotime($row['start_time'])) . ' – ' . date('g:i A', strtotime($row['end_time'])); ?></td>
                                             <td style="border-bottom: 1px solid var(--border-soft);"><?php echo htmlspecialchars($row['shift_type']); ?></td>

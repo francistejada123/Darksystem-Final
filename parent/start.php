@@ -45,9 +45,9 @@ ppTop();
     <h2><i class="fas fa-share-nodes me-2"></i><?php echo $en ? 'Send this to the parent' : 'Ipadala ito sa magulang'; ?></h2>
     <p style="color:var(--pp-muted)"><?php echo $en ? 'They open the link (or type the code at the Parent Portal), enter the child\'s birthday, and create a PIN.' : 'Bubuksan nila ang link (o ita-type ang code sa Parent Portal), ilalagay ang birthday ng anak, at gagawa ng PIN.'; ?></p>
     <div style="background:#F1F5F9;border-radius:12px;padding:14px;text-align:center">
-        <div style="font-size:13px;color:var(--pp-muted)">Code</div>
+        <div style="font-size:14.5px;color:var(--pp-muted)">Code</div>
         <div style="font-size:28px;font-weight:800;letter-spacing:4px"><?php echo htmlspecialchars(ppFormatCode($code)); ?></div>
-        <div style="font-size:13px;word-break:break-all;margin-top:6px"><?php echo htmlspecialchars($link); ?></div>
+        <div style="font-size:14.5px;word-break:break-all;margin-top:6px"><?php echo htmlspecialchars($link); ?></div>
     </div>
     <div class="d-grid gap-2 mt-3">
         <button type="button" class="btn btn-primary" style="height:50px;font-weight:800" id="shareBtn"><i class="fas fa-share me-1"></i> <?php echo $en ? 'Share (Messenger, SMS...)' : 'I-share (Messenger, SMS...)'; ?></button>

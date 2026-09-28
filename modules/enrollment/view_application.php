@@ -114,15 +114,15 @@ $ar_can_decide = in_array($application['status'], ['Pending', 'Under Review', 'F
 
 <style>
 .app-review { padding: 20px 24px 110px; }
-.app-review .ar-crumbs { font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+.app-review .ar-crumbs { font-size: 14.5px; color: var(--text-muted); margin-bottom: 6px; }
 .app-review .ar-crumbs a { color: var(--text-muted); text-decoration: none; }
 .app-review .ar-crumbs a:hover { color: var(--ink); }
-.app-review .ar-crumbs .sep { margin: 0 8px; font-size: 10px; opacity: .7; }
+.app-review .ar-crumbs .sep { margin: 0 8px; font-size: 12px; opacity: .7; }
 .app-review .ar-crumbs .current { color: var(--ink); font-weight: 600; }
 .app-review .ar-title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
 .app-review .ar-title-row h4 { font-size: 26px; font-weight: 800; color: var(--ink); margin: 0 0 4px; letter-spacing: -.01em; }
-.app-review .ar-title-row p { margin: 0; font-size: 14px; color: var(--text-muted); }
-.app-review .btn-back { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 10px; font-size: 14px; font-weight: 600; color: var(--ink); background: var(--surface); border: 1px solid var(--border); text-decoration: none; }
+.app-review .ar-title-row p { margin: 0; font-size: 15px; color: var(--text-muted); }
+.app-review .btn-back { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 10px; font-size: 15px; font-weight: 600; color: var(--ink); background: var(--surface); border: 1px solid var(--border); text-decoration: none; }
 .app-review .btn-back:hover { background: var(--surface-hover); color: var(--ink); }
 
 .app-review .ar-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 1px 3px rgba(16,24,40,.04); }
@@ -130,17 +130,17 @@ $ar_can_decide = in_array($application['status'], ['Pending', 'Under Review', 'F
 .app-review .ar-avatar { width: 64px; height: 64px; border-radius: 50%; background: #dbe8fb; color: #1d5fbf; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; flex-shrink: 0; }
 .app-review .ar-who { min-width: 220px; }
 .app-review .ar-who .name { font-size: 21px; font-weight: 800; color: var(--ink); line-height: 1.2; }
-.app-review .ar-who .meta { font-size: 13.5px; color: var(--text-muted); margin-top: 4px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.app-review .ar-who .meta { font-size: 15px; color: var(--text-muted); margin-top: 4px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .app-review .ar-who .meta strong { color: var(--ink); font-weight: 600; }
 .app-review .ar-divider { width: 1px; align-self: stretch; background: var(--border-soft); }
 .app-review .ar-fact { display: flex; align-items: center; gap: 12px; }
 .app-review .ar-fact .ic { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--ink); font-size: 17px; }
-.app-review .ar-fact .lbl { font-size: 12px; color: var(--text-muted); }
+.app-review .ar-fact .lbl { font-size: 13.5px; color: var(--text-muted); }
 .app-review .ar-fact .val { font-size: 15px; font-weight: 700; color: var(--ink); }
-.app-review .ar-fact .sub { font-size: 12px; color: var(--text-muted); }
+.app-review .ar-fact .sub { font-size: 13.5px; color: var(--text-muted); }
 .app-review .ar-steps { display: flex; align-items: flex-start; margin-left: auto; }
-.app-review .ar-step { display: flex; flex-direction: column; align-items: center; width: 96px; position: relative; font-size: 13px; color: var(--text-muted); }
-.app-review .ar-step .dot { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #c5cedb; background: var(--surface); display: flex; align-items: center; justify-content: center; margin-bottom: 8px; z-index: 1; color: #fff; font-size: 11px; }
+.app-review .ar-step { display: flex; flex-direction: column; align-items: center; width: 96px; position: relative; font-size: 14.5px; color: var(--text-muted); }
+.app-review .ar-step .dot { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #c5cedb; background: var(--surface); display: flex; align-items: center; justify-content: center; margin-bottom: 8px; z-index: 1; color: #fff; font-size: 12.5px; }
 .app-review .ar-step.done .dot { background: #1f9d6b; border-color: #1f9d6b; }
 .app-review .ar-step.current .dot { border-color: #2563eb; box-shadow: 0 0 0 4px rgba(37,99,235,.15); }
 .app-review .ar-step.current .dot::after { content: ""; width: 12px; height: 12px; border-radius: 50%; background: #2563eb; }
@@ -148,26 +148,26 @@ $ar_can_decide = in_array($application['status'], ['Pending', 'Under Review', 'F
 .app-review .ar-step:not(:last-child)::after { content: ""; position: absolute; top: 11px; left: 60px; width: 72px; height: 2px; background: #c5cedb; }
 .app-review .ar-step.done:not(:last-child)::after { background: #1f9d6b; }
 
-.app-review .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+.app-review .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 13.5px; font-weight: 700; }
 .app-review .status-pending { background: #FFF7E6; color: #B7791F; }
 .app-review .status-review { background: #dff3fb; color: #0b6a8a; }
 .app-review .status-approved { background: #EAF7F1; color: #238863; }
 .app-review .status-rejected { background: #FDEEEE; color: #C94A4A; }
 .app-review .status-incomplete { background: #FFF4E5; color: #B45309; }
-.ar-missing { background: #FFF4E5; color: #92400E; border: 1px solid #F5C77E; border-radius: 10px; padding: 10px 12px; font-size: 13px; margin-bottom: 12px; }
+.ar-missing { background: #FFF4E5; color: #92400E; border: 1px solid #F5C77E; border-radius: 10px; padding: 10px 12px; font-size: 14.5px; margin-bottom: 12px; }
 
 .app-review .content-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
 .app-review .ar-card + .ar-card { margin-top: 18px; }
 .app-review .ar-card-head { display: flex; align-items: center; gap: 12px; padding: 16px 22px; border-bottom: 1px solid var(--border-soft); }
 .app-review .ar-card-head i.head-ic { color: #2563eb; font-size: 18px; width: 22px; text-align: center; }
 .app-review .ar-card-head h5 { margin: 0; font-size: 16.5px; font-weight: 700; color: var(--ink); }
-.app-review .ar-card-head .right { margin-left: auto; font-size: 13.5px; font-weight: 700; color: #1f9d6b; }
+.app-review .ar-card-head .right { margin-left: auto; font-size: 15px; font-weight: 700; color: #1f9d6b; }
 .app-review .ar-card-head .right.warn { color: #B7791F; }
 .app-review .detail-table { width: 100%; border-collapse: collapse; }
-.app-review .detail-table th { width: 36%; padding: 11px 22px; font-size: 13.5px; font-weight: 500; color: var(--text-muted); text-align: left; border-bottom: 1px solid var(--border-soft); background: var(--surface-hover); vertical-align: top; }
-.app-review .detail-table td { padding: 11px 22px; font-size: 14px; color: var(--ink); border-bottom: 1px solid var(--border-soft); }
+.app-review .detail-table th { width: 36%; padding: 11px 22px; font-size: 15px; font-weight: 500; color: var(--text-muted); text-align: left; border-bottom: 1px solid var(--border-soft); background: var(--surface-hover); vertical-align: top; }
+.app-review .detail-table td { padding: 11px 22px; font-size: 15px; color: var(--ink); border-bottom: 1px solid var(--border-soft); }
 .app-review .detail-table tr:last-child th, .app-review .detail-table tr:last-child td { border-bottom: none; }
-.app-review .ar-note-body { padding: 16px 22px; font-size: 13.5px; color: var(--ink); }
+.app-review .ar-note-body { padding: 16px 22px; font-size: 15px; color: var(--ink); }
 
 .app-review .ar-doc { display: flex; align-items: center; gap: 16px; padding: 16px 22px; border-bottom: 1px solid var(--border-soft); }
 .app-review .ar-doc:last-child { border-bottom: none; }
@@ -176,41 +176,41 @@ $ar_can_decide = in_array($application['status'], ['Pending', 'Under Review', 'F
 .app-review .ar-thumb.missing { color: #9aa4b2; font-size: 24px; }
 .app-review .ar-doc-main { flex: 1; min-width: 0; }
 .app-review .ar-doc-main .dname { font-size: 15px; font-weight: 700; color: var(--ink); }
-.app-review .ar-doc-main .dstate { font-size: 13.5px; font-weight: 600; color: #1f9d6b; margin-top: 3px; }
+.app-review .ar-doc-main .dstate { font-size: 15px; font-weight: 600; color: #1f9d6b; margin-top: 3px; }
 .app-review .ar-doc-main .dstate.missing { color: #C94A4A; }
 .app-review .ar-doc-main .dstate.optional { color: var(--text-muted); }
-.app-review .ar-doc-main .dmeta { font-size: 12.5px; color: var(--text-muted); margin-top: 3px; }
-.app-review .btn-view { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 10px; font-size: 14px; font-weight: 700; color: #2563eb; background: #eef4ff; border: 1px solid #d6e4ff; text-decoration: none; }
+.app-review .ar-doc-main .dmeta { font-size: 14px; color: var(--text-muted); margin-top: 3px; }
+.app-review .btn-view { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 10px; font-size: 15px; font-weight: 700; color: #2563eb; background: #eef4ff; border: 1px solid #d6e4ff; text-decoration: none; }
 .app-review .btn-view:hover { background: #2563eb; color: #fff; }
 .app-review .btn-dl { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--border); color: var(--text-muted); text-decoration: none; margin-left: 6px; }
 .app-review .btn-dl:hover { color: var(--ink); background: var(--surface-hover); }
 
 .app-review .ar-decision { padding: 18px 22px; }
 .app-review .ar-lrn-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
-.app-review .ar-lrn-row .lbl { font-size: 14.5px; font-weight: 700; color: var(--ink); }
-.app-review .ar-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 99px; font-size: 12.5px; font-weight: 700; }
+.app-review .ar-lrn-row .lbl { font-size: 15.5px; font-weight: 700; color: var(--ink); }
+.app-review .ar-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 99px; font-size: 14px; font-weight: 700; }
 .app-review .ar-chip.ok { background: #e7f6ee; color: #1f7a54; }
 .app-review .ar-chip.changed { background: #fff4e0; color: #9a5b00; }
 .app-review .ar-chip.none { background: var(--surface-hover); color: var(--text-muted); }
-.app-review .ar-lrn-help { font-size: 12.5px; color: var(--text-muted); margin: 0 0 12px; }
+.app-review .ar-lrn-help { font-size: 14px; color: var(--text-muted); margin: 0 0 12px; }
 .app-review .ar-lrn-grid { display: grid; grid-template-columns: minmax(180px, 220px) 1fr; gap: 12px; align-items: center; margin-bottom: 16px; }
 .app-review .ar-lrn-grid input { border: 1px solid var(--border); border-radius: 10px; padding: 11px 14px; font-size: 15px; width: 100%; font-family: ui-monospace, monospace; background: var(--surface-hover); color: var(--ink); }
 .app-review .ar-lrn-grid input:focus { outline: none; border-color: #2563eb; background: var(--surface); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
-.app-review .ar-info-box { display: flex; gap: 8px; font-size: 12px; color: #33507a; background: #eef4ff; border-radius: 10px; padding: 10px 12px; line-height: 1.45; }
+.app-review .ar-info-box { display: flex; gap: 8px; font-size: 13.5px; color: #33507a; background: #eef4ff; border-radius: 10px; padding: 10px 12px; line-height: 1.45; }
 .app-review .ar-info-box i { color: #2563eb; margin-top: 2px; }
-.app-review .ar-remarks-lbl { font-size: 14.5px; font-weight: 700; color: var(--ink); margin-bottom: 8px; display: block; }
+.app-review .ar-remarks-lbl { font-size: 15.5px; font-weight: 700; color: var(--ink); margin-bottom: 8px; display: block; }
 .app-review .ar-remarks-lbl span { font-weight: 400; color: var(--text-muted); }
 .app-review .ar-remarks { position: relative; }
-.app-review .ar-remarks textarea { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px 26px; font-size: 14px; color: var(--ink); width: 100%; resize: vertical; min-height: 92px; background: var(--surface); }
+.app-review .ar-remarks textarea { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px 26px; font-size: 15px; color: var(--ink); width: 100%; resize: vertical; min-height: 92px; background: var(--surface); }
 .app-review .ar-remarks textarea:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
-.app-review .ar-remarks .count { position: absolute; right: 12px; bottom: 10px; font-size: 12px; color: var(--text-muted); }
-.app-review .ar-hint { font-size: 12.5px; color: var(--text-muted); margin: 10px 0 0; }
-.app-review .ar-decided { padding: 18px 22px; font-size: 14px; color: var(--ink); }
+.app-review .ar-remarks .count { position: absolute; right: 12px; bottom: 10px; font-size: 13.5px; color: var(--text-muted); }
+.app-review .ar-hint { font-size: 14px; color: var(--text-muted); margin: 10px 0 0; }
+.app-review .ar-decided { padding: 18px 22px; font-size: 15px; color: var(--ink); }
 
 /* Sticky action bar */
 .ar-actionbar { position: fixed; left: var(--sidebar-width, 240px); right: 0; bottom: 0; z-index: 30; display: flex; align-items: center; gap: 14px; padding: 12px 28px; background: var(--surface); border-top: 1px solid var(--border); box-shadow: 0 -6px 18px rgba(16,24,40,.06); }
 body.sidebar-collapsed .ar-actionbar { left: var(--sidebar-collapsed-width, 72px); }
-.ar-actionbar .app-id { font-size: 14px; color: var(--text-muted); }
+.ar-actionbar .app-id { font-size: 15px; color: var(--text-muted); }
 .ar-actionbar .app-id strong { color: var(--ink); }
 .ar-actionbar .spacer { flex: 1; }
 .ar-actionbar .btn-reject { display: inline-flex; align-items: center; gap: 10px; padding: 12px 22px; border-radius: 10px; font-size: 15px; font-weight: 700; color: var(--ink); background: var(--surface); border: 1px solid var(--border); cursor: pointer; }
@@ -299,7 +299,7 @@ html[data-theme="dark"] .ar-actionbar .btn-reject:hover { background: rgba(217,4
                                 <tr><th><?php echo htmlspecialchars($df['label']); ?></th><td><span style="text-decoration:line-through;opacity:.65"><?php echo htmlspecialchars($df['was'] !== '' ? $df['was'] : '(empty)'); ?></span> &rarr; <strong><?php echo htmlspecialchars($df['now']); ?></strong></td></tr>
                             <?php endforeach; ?>
                         </table>
-                        <?php if ($application['status'] !== 'Approved'): ?><div style="font-size:12px;opacity:.75;margin-top:6px">These changed details are written to the student record when you approve.</div><?php endif; ?>
+                        <?php if ($application['status'] !== 'Approved'): ?><div style="font-size:13.5px;opacity:.75;margin-top:6px">These changed details are written to the student record when you approve.</div><?php endif; ?>
                     <?php elseif ($application['status'] === 'Approved'): ?>
                         <div style="opacity:.85"><i class="fas fa-circle-check"></i> Approved &mdash; the learner's changed details (if any) were applied to the student record.</div>
                     <?php else: ?>
@@ -341,7 +341,7 @@ html[data-theme="dark"] .ar-actionbar .btn-reject:hover { background: rgba(217,4
                         if ($ar_gc_status === '') { $ar_gc = oeGradeLevelCheck($ar_card, $application['grade_level']); $ar_gc_status = $ar_gc['status']; $ar_gc_note = $ar_gc['message']; }
                         $ar_gc_style = ['Validated' => 'background:#ECFDF5;color:#047857', 'For Manual Verification' => 'background:#FFFBEB;color:#92400E', 'Grade Level Mismatch' => 'background:#FEF2F2;color:#B91C1C'][$ar_gc_status] ?? 'background:#F2F4F7;color:#475467';
                     ?>
-                    <tr><th>Grade level check</th><td><span style="display:inline-block;padding:3px 10px;border-radius:999px;font-weight:700;font-size:12.5px;<?php echo $ar_gc_style; ?>"><?php echo htmlspecialchars($ar_gc_status); ?></span>
+                    <tr><th>Grade level check</th><td><span style="display:inline-block;padding:3px 10px;border-radius:999px;font-weight:700;font-size:14px;<?php echo $ar_gc_style; ?>"><?php echo htmlspecialchars($ar_gc_status); ?></span>
                         <small class="text-muted d-block mt-1">Applied for <?php echo htmlspecialchars($application['grade_level']); ?>. <?php echo htmlspecialchars($ar_gc_note); ?></small></td></tr>
                     <tr><th>General Average</th><td><strong><?php echo htmlspecialchars((string) ($ar_card['general_average'] ?? '')); ?></strong> <small class="text-muted">— used for section assignment</small></td></tr>
                     <?php if (!empty($ar_card['remarks'])): ?><tr><th>Remarks</th><td><?php echo htmlspecialchars($ar_card['remarks']); ?></td></tr><?php endif; ?>
@@ -448,7 +448,7 @@ html[data-theme="dark"] .ar-actionbar .btn-reject:hover { background: rgba(217,4
 <!-- Sticky action bar -->
 <div class="ar-actionbar">
     <span class="app-id">Application ID: <strong><?php echo htmlspecialchars($application['reference_no']); ?></strong></span>
-    <span class="status-badge status-<?php echo $badge; ?>" style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;<?php echo ['pending' => 'background:#FFF7E6;color:#B7791F', 'review' => 'background:#dff3fb;color:#0b6a8a', 'approved' => 'background:#EAF7F1;color:#238863', 'incomplete' => 'background:#FFF4E5;color:#B45309'][$badge]; ?>"><?php echo htmlspecialchars(in_array($application['status'], ['Rejected', 'For Correction'], true) ? OE_INCOMPLETE : $application['status']); ?></span>
+    <span class="status-badge status-<?php echo $badge; ?>" style="font-size:13.5px;font-weight:700;padding:4px 12px;border-radius:20px;<?php echo ['pending' => 'background:#FFF7E6;color:#B7791F', 'review' => 'background:#dff3fb;color:#0b6a8a', 'approved' => 'background:#EAF7F1;color:#238863', 'incomplete' => 'background:#FFF4E5;color:#B45309'][$badge]; ?>"><?php echo htmlspecialchars(in_array($application['status'], ['Rejected', 'For Correction'], true) ? OE_INCOMPLETE : $application['status']); ?></span>
     <span class="spacer"></span>
     <?php if ($ar_can_decide): ?>
         <?php if ($application['status'] !== OE_INCOMPLETE): ?>

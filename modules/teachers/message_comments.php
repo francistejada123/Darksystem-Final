@@ -75,15 +75,15 @@ include __DIR__ . '/../../includes/header.php';
 ?>
 <style>
     .mc-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; }
-    .mc-meta { font-size: 12px; color: var(--text-muted); }
-    .mc-type { display:inline-block; font-size:11px; font-weight:600; padding:2px 8px; border-radius:4px; background:#EDF4FB; color:#14213D; margin:6px 0; }
-    .mc-text { font-size: 14px; color: var(--ink); white-space: pre-line; line-height: 1.6; }
+    .mc-meta { font-size: 13.5px; color: var(--text-muted); }
+    .mc-type { display:inline-block; font-size:12.5px; font-weight:600; padding:2px 8px; border-radius:4px; background:#EDF4FB; color:#14213D; margin:6px 0; }
+    .mc-text { font-size: 15px; color: var(--ink); white-space: pre-line; line-height: 1.6; }
     .mc-thread { margin-top: 14px; border-top: 1px solid var(--border-soft); padding-top: 10px; }
-    .mc-comment { padding: 8px 10px; border-radius: 8px; margin-bottom: 8px; font-size: 13.5px; }
+    .mc-comment { padding: 8px 10px; border-radius: 8px; margin-bottom: 8px; font-size: 15px; }
     .mc-comment span { white-space: pre-line; }
     .mc-comment.student { background: #F5F6FF; }
     .mc-comment.teacher { background: #E9F9F1; margin-left: 24px; }
-    .mc-comment b { display:block; font-size:12px; margin-bottom:2px; }
+    .mc-comment b { display:block; font-size:13.5px; margin-bottom:2px; }
     .mc-comment small { color: var(--text-muted); font-weight:400; margin-left:6px; }
     .mc-row { display:block; text-decoration:none; color:inherit; }
     .mc-row:hover .mc-card { border-color:#14213D; }
@@ -124,7 +124,7 @@ include __DIR__ . '/../../includes/header.php';
             <form method="POST" class="mt-2">
                 <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
                 <input type="hidden" name="message_id" value="<?php echo (int) $message_id; ?>">
-                <textarea name="reply" class="form-control" rows="3" maxlength="<?php echo MC_MAX_LENGTH; ?>" placeholder="Reply to <?php echo htmlspecialchars($message['student_name']); ?>..." required style="font-size:13.5px;"></textarea>
+                <textarea name="reply" class="form-control" rows="3" maxlength="<?php echo MC_MAX_LENGTH; ?>" placeholder="Reply to <?php echo htmlspecialchars($message['student_name']); ?>..." required style="font-size:15px;"></textarea>
                 <div class="d-flex justify-content-end mt-2">
                     <button type="submit" class="btn btn-sm" style="background:#14213D;color:#fff;font-weight:600;"><i class="fas fa-reply me-1"></i>Send Reply</button>
                 </div>

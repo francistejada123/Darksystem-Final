@@ -380,37 +380,37 @@ $page_title = $class['subject_name'];
         .sidebar .logo { padding: 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; gap: 10px; }
         .sidebar .logo img { height: 36px; width: 36px; border-radius: 8px; object-fit: contain; }
         .sidebar .logo span { color: #fff; font-size: 15px; font-weight: 700; letter-spacing: 0.02em; line-height: 1.3; }
-        .sidebar .logo small { display: block; font-size: 9px; font-weight: 500; letter-spacing: 0.1em; color: rgba(255,255,255,0.4); }
+        .sidebar .logo small { display: block; font-size: 11px; font-weight: 500; letter-spacing: 0.1em; color: rgba(255,255,255,0.4); }
         .sidebar .nav { padding: 12px 0; flex: 1; }
-        .sidebar .nav-link { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: rgba(255,255,255,0.55); font-size: 13px; font-weight: 500; text-decoration: none; transition: all 0.15s ease; border-left: 3px solid transparent; }
-        .sidebar .nav-link i { width: 18px; text-align: center; font-size: 14px; }
+        .sidebar .nav-link { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: rgba(255,255,255,0.55); font-size: 14.5px; font-weight: 500; text-decoration: none; transition: all 0.15s ease; border-left: 3px solid transparent; }
+        .sidebar .nav-link i { width: 18px; text-align: center; font-size: 15px; }
         .sidebar .nav-link:hover { color: #fff; background: rgba(255,255,255,0.06); }
         .sidebar .nav-link.active { color: #fff; background: rgba(255,255,255,0.08); border-left-color: #fff; }
         .sidebar .nav-link.text-danger { color: rgba(201,74,74,0.7); }
         .sidebar .nav-link.text-danger:hover { color: #C94A4A; background: rgba(201,74,74,0.08); }
         .sidebar-footer { padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.08); }
-        .sidebar-footer small { color: rgba(255,255,255,0.3); font-size: 11px; }
+        .sidebar-footer small { color: rgba(255,255,255,0.3); font-size: 12.5px; }
 
         .main-content { padding: 24px 32px; min-height: 100vh; }
         .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
         .topbar-left { display: flex; align-items: center; gap: 14px; }
         .topbar-right { display: flex; align-items: center; gap: 10px; }
-        .btn-portal-logout { padding: 7px 16px; border-radius: 6px; font-size: 12px; font-weight: 500; border: 1px solid var(--portal-border); background: var(--portal-card); color: var(--portal-gray); text-decoration: none; transition: all 0.15s; }
+        .btn-portal-logout { padding: 7px 16px; border-radius: 6px; font-size: 13.5px; font-weight: 500; border: 1px solid var(--portal-border); background: var(--portal-card); color: var(--portal-gray); text-decoration: none; transition: all 0.15s; }
 
         /* Subject banner — colored per-subject, matching that subject's
            class card on dashboard.php (see includes/student_portal_ui.php). */
         .subject-banner { background-color: #123B6D; background-image: linear-gradient(110deg, rgba(8,31,61,0.92), rgba(18,59,109,0.72)), url('../../../static/images/school%20bldg%20bg.png'); background-size: cover; background-position: center 42%; color: #fff; border-radius: 10px; padding: 22px 26px 26px; margin-bottom: 22px; position: relative; overflow: hidden; text-shadow: 0 1px 3px rgba(0,0,0,0.55); }
         .subject-banner h2 { margin: 0 0 6px; font-size: 24px; font-weight: 700; }
-        .subject-banner-meta { font-size: 13px; opacity: 0.9; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .subject-banner-meta { font-size: 14.5px; opacity: 0.9; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
         .subject-avatar { width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; }
 
         .msg-card { background: var(--portal-card); border: 1px solid var(--portal-border); border-radius: 8px; margin-bottom: 14px; padding: 18px 20px; }
         .msg-card.unread { border-left: 3px solid var(--portal-primary); }
         .msg-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
-        .msg-teacher { font-size: 12.5px; font-weight: 600; color: var(--portal-primary); }
-        .msg-date { font-size: 11px; color: var(--portal-gray); white-space: nowrap; }
-        .msg-type { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; background: rgba(20,33,61,0.06); color: var(--portal-primary); margin-bottom: 8px; }
-        .msg-text { font-size: 14px; color: #374151; line-height: 1.6; white-space: pre-line; }
+        .msg-teacher { font-size: 14px; font-weight: 600; color: var(--portal-primary); }
+        .msg-date { font-size: 12.5px; color: var(--portal-gray); white-space: nowrap; }
+        .msg-type { display: inline-block; font-size: 12.5px; font-weight: 600; padding: 2px 8px; border-radius: 4px; background: rgba(20,33,61,0.06); color: var(--portal-primary); margin-bottom: 8px; }
+        .msg-text { font-size: 15px; color: #374151; line-height: 1.6; white-space: pre-line; }
 
         .msg-attachment { display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 12px 14px; background: #F8FAFC; border: 1px solid var(--portal-border); border-radius: 8px; flex-wrap: wrap; }
         .msg-attachment-icon { font-size: 22px; flex-shrink: 0; }
@@ -418,18 +418,18 @@ $page_title = $class['subject_name'];
         .msg-attachment-icon.docx { color: #2563eb; }
         .msg-attachment-icon.pptx { color: #D24726; }
         .msg-attachment-info { flex: 1; min-width: 160px; }
-        .msg-attachment-name { font-size: 13px; font-weight: 600; color: var(--portal-primary); word-break: break-word; }
-        .msg-attachment-meta { font-size: 11.5px; color: var(--portal-gray); margin-top: 2px; }
+        .msg-attachment-name { font-size: 14.5px; font-weight: 600; color: var(--portal-primary); word-break: break-word; }
+        .msg-attachment-meta { font-size: 13px; color: var(--portal-gray); margin-top: 2px; }
         .msg-attachment-actions { display: flex; gap: 6px; }
-        .btn-attach-action { font-size: 12px; font-weight: 500; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--portal-border); background: #fff; color: var(--portal-primary); text-decoration: none; transition: all 0.15s; white-space: nowrap; cursor: pointer; }
+        .btn-attach-action { font-size: 13.5px; font-weight: 500; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--portal-border); background: #fff; color: var(--portal-primary); text-decoration: none; transition: all 0.15s; white-space: nowrap; cursor: pointer; }
         .btn-attach-action:hover { background: #f1f5f9; color: var(--portal-primary); }
 
-        .attach-status-pill { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 99px; margin-top: 4px; }
+        .attach-status-pill { display: inline-block; font-size: 12.5px; font-weight: 600; padding: 2px 9px; border-radius: 99px; margin-top: 4px; }
         .attach-status-pill.waiting { background: rgba(183,121,31,0.12); color: var(--portal-yellow); }
         .attach-status-pill.reviewed { background: rgba(35,136,99,0.12); color: var(--portal-green); }
         .quiz-question-block { border: 1px solid var(--portal-border); border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; }
-        .quiz-question-block .quiz-question-text { font-size: 13.5px; font-weight: 600; color: var(--portal-primary); margin-bottom: 8px; }
-        .quiz-choice-label { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 6px 4px; border-radius: 6px; cursor: pointer; }
+        .quiz-question-block .quiz-question-text { font-size: 15px; font-weight: 600; color: var(--portal-primary); margin-bottom: 8px; }
+        .quiz-choice-label { display: flex; align-items: center; gap: 8px; font-size: 14.5px; padding: 6px 4px; border-radius: 6px; cursor: pointer; }
         .quiz-choice-label:hover { background: #F8FAFC; }
         /* A <form> wraps header/body/footer in these modals, so it must pass the
            scrollable modal's height down -- otherwise the body is clipped and the
@@ -437,91 +437,91 @@ $page_title = $class['subject_name'];
         .modal-dialog-scrollable .modal-content > form { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; max-height: 100%; overflow: hidden; }
         .modal-dialog-scrollable .modal-content > form > .modal-body { overflow-y: auto; min-height: 0; }
         .quiz-question-block.is-missing { border-color: #e5484d; background: #fff5f5; }
-        .quiz-question-block.is-missing .quiz-question-text::after { content: " (not answered)"; color: #c62828; font-weight: 500; font-size: 12px; }
-        .quiz-missing-msg { color: #c62828; font-size: 12.5px; font-weight: 600; }
-        .manual-answer-box textarea { font-size: 13.5px; }
-        .flash-banner { border-radius: 8px; padding: 10px 16px; font-size: 13px; margin-bottom: 16px; }
+        .quiz-question-block.is-missing .quiz-question-text::after { content: " (not answered)"; color: #c62828; font-weight: 500; font-size: 13.5px; }
+        .quiz-missing-msg { color: #c62828; font-size: 14px; font-weight: 600; }
+        .manual-answer-box textarea { font-size: 15px; }
+        .flash-banner { border-radius: 8px; padding: 10px 16px; font-size: 14.5px; margin-bottom: 16px; }
         .flash-banner.success { background: rgba(35,136,99,0.10); color: var(--portal-green); border: 1px solid rgba(35,136,99,0.25); }
         .flash-banner.error { background: rgba(201,74,74,0.10); color: var(--portal-red); border: 1px solid rgba(201,74,74,0.25); }
 
-        .lm-section-title { font-size: 14px; font-weight: 700; color: var(--portal-primary); margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+        .lm-section-title { font-size: 15px; font-weight: 700; color: var(--portal-primary); margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
         .lm-card { background: var(--portal-card); border: 1px solid var(--portal-border); border-radius: 8px; margin-bottom: 12px; padding: 14px 18px; }
         .lm-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
-        .lm-card-title { font-size: 14px; font-weight: 700; color: var(--portal-primary); }
-        .lm-card-meta { font-size: 12px; color: var(--portal-gray); margin-top: 2px; }
-        .lm-status { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 99px; white-space: nowrap; }
+        .lm-card-title { font-size: 15px; font-weight: 700; color: var(--portal-primary); }
+        .lm-card-meta { font-size: 13.5px; color: var(--portal-gray); margin-top: 2px; }
+        .lm-status { font-size: 12.5px; font-weight: 700; padding: 3px 10px; border-radius: 99px; white-space: nowrap; }
         .lm-status.upcoming { background: rgba(29,78,216,0.10); color: #1D4ED8; }
         .lm-status.active { background: rgba(183,121,31,0.14); color: var(--portal-yellow); }
         .lm-status.completed { background: rgba(35,136,99,0.12); color: var(--portal-green); }
         .lm-status.missing { background: rgba(201,74,74,0.12); color: var(--portal-red); }
         .lm-files { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
-        .lm-file { display: flex; align-items: center; gap: 10px; font-size: 13px; padding: 8px 10px; border: 1px solid var(--portal-border); border-radius: 6px; background: #F8FAFC; text-decoration: none; color: var(--portal-primary); }
+        .lm-file { display: flex; align-items: center; gap: 10px; font-size: 14.5px; padding: 8px 10px; border: 1px solid var(--portal-border); border-radius: 6px; background: #F8FAFC; text-decoration: none; color: var(--portal-primary); }
         .lm-file:hover { background: #f1f5f9; color: var(--portal-primary); }
         .lm-file small { color: var(--portal-gray); margin-left: auto; white-space: nowrap; }
-        .lm-locked { font-size: 12px; color: var(--portal-gray); margin-top: 8px; }
+        .lm-locked { font-size: 13.5px; color: var(--portal-gray); margin-top: 8px; }
 
         /* Your Work (Classroom classwork) */
-        .yw-back { display: inline-block; font-size: 13.5px; font-weight: 700; color: #1a73e8; text-decoration: none; margin-bottom: 12px; }
+        .yw-back { display: inline-block; font-size: 15px; font-weight: 700; color: #1a73e8; text-decoration: none; margin-bottom: 12px; }
         .yw-row { display: flex; align-items: center; gap: 12px; background: var(--portal-card); border: 1px solid var(--portal-border); border-radius: 10px; padding: 12px 16px; margin-bottom: 8px; text-decoration: none; color: inherit; transition: box-shadow .15s; }
         .yw-row:hover { box-shadow: 0 1px 3px rgba(60,64,67,0.3), 0 4px 8px 3px rgba(60,64,67,0.12); color: inherit; }
         .yw-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-        .yw-row-title { font-size: 14.5px; font-weight: 700; color: var(--portal-primary); }
-        .yw-row-go { color: var(--portal-gray); font-size: 12px; }
+        .yw-row-title { font-size: 15.5px; font-weight: 700; color: var(--portal-primary); }
+        .yw-row-go { color: var(--portal-gray); font-size: 13.5px; }
         .yw-card { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 16px; background: var(--portal-card); border: 1px solid var(--portal-border); border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; }
         @media (max-width: 860px) { .yw-card { grid-template-columns: 1fr; } }
         .yw-head { display: flex; gap: 12px; align-items: flex-start; }
         .yw-icon { flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #fff; background: #1a73e8; }
         .yw-icon.yw-pt { background: #9334e6; } .yw-icon.yw-qa { background: #d93025; } .yw-icon.yw-none { background: #5f6368; }
         .yw-title { font-size: 16px; font-weight: 700; color: var(--portal-primary); }
-        .yw-meta { font-size: 12.5px; color: var(--portal-gray); }
-        .yw-instructions { font-size: 14px; line-height: 1.65; color: #374151; margin: 12px 0 8px; }
-        .yw-file { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 10px; border: 1px solid var(--portal-border); border-radius: 8px; background: #F8FAFC; margin-top: 6px; font-size: 13px; }
+        .yw-meta { font-size: 14px; color: var(--portal-gray); }
+        .yw-instructions { font-size: 15px; line-height: 1.65; color: #374151; margin: 12px 0 8px; }
+        .yw-file { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 10px; border: 1px solid var(--portal-border); border-radius: 8px; background: #F8FAFC; margin-top: 6px; font-size: 14.5px; }
         .yw-file span { flex: 1; min-width: 120px; font-weight: 600; color: var(--portal-primary); word-break: break-word; }
         .yw-work { border: 1px solid var(--portal-border); border-radius: 10px; padding: 14px; align-self: start; box-shadow: 0 1px 3px rgba(60,64,67,0.12); }
         .yw-work-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; }
         .yw-work-head strong { font-size: 15px; color: var(--portal-primary); }
-        .yw-status { font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 99px; background: #e8f0fe; color: #1967d2; text-align: right; }
+        .yw-status { font-size: 13px; font-weight: 700; padding: 3px 9px; border-radius: 99px; background: #e8f0fe; color: #1967d2; text-align: right; }
         .yw-s-turned_in { background: #e6f4ea; color: #137333; }
         .yw-s-graded { background: #e6f4ea; color: #137333; }
         .yw-s-missing { background: #fce8e6; color: #c5221f; }
         .yw-s-late { background: #fef7e0; color: #b06000; }
-        .yw-score { font-size: 26px; font-weight: 700; color: var(--portal-primary); } .yw-score small { font-size: 14px; color: var(--portal-gray); }
-        .yw-note { font-size: 12px; color: var(--portal-gray); margin-bottom: 8px; }
+        .yw-score { font-size: 26px; font-weight: 700; color: var(--portal-primary); } .yw-score small { font-size: 15px; color: var(--portal-gray); }
+        .yw-note { font-size: 13.5px; color: var(--portal-gray); margin-bottom: 8px; }
         .yw-warn { color: #c5221f; }
-        .yw-feedback { font-size: 13px; background: #F8FAFC; border-radius: 8px; padding: 8px; margin-bottom: 8px; }
-        .yw-myfile { display: flex; align-items: center; gap: 6px; border: 1px solid var(--portal-border); border-radius: 8px; padding: 6px 8px; margin-bottom: 6px; font-size: 12.5px; }
+        .yw-feedback { font-size: 14.5px; background: #F8FAFC; border-radius: 8px; padding: 8px; margin-bottom: 8px; }
+        .yw-myfile { display: flex; align-items: center; gap: 6px; border: 1px solid var(--portal-border); border-radius: 8px; padding: 6px 8px; margin-bottom: 6px; font-size: 14px; }
         .yw-myfile a { flex: 1; color: var(--portal-primary); text-decoration: none; word-break: break-word; }
         .yw-myfile button { border: 0; background: transparent; color: #c5221f; font-size: 16px; line-height: 1; }
-        .yw-btn { display: block; width: 100%; text-align: center; border-radius: 8px; padding: 8px 10px; font-size: 13.5px; font-weight: 700; margin-top: 6px; cursor: pointer; }
+        .yw-btn { display: block; width: 100%; text-align: center; border-radius: 8px; padding: 8px 10px; font-size: 15px; font-weight: 700; margin-top: 6px; cursor: pointer; }
         .yw-btn-outline { border: 1px solid var(--portal-border); background: #fff; color: #1a73e8; }
         .yw-btn-primary { border: 0; background: #1a73e8; color: #fff; }
         .yw-btn-primary:disabled { opacity: .6; }
 
-        .yw-msg { font-size: 14px; line-height: 1.65; color: #374151; margin: 12px 0 8px; white-space: pre-line; }
-        .yw-work textarea, .yw-work input[type=file] { width: 100%; font-size: 12.5px; margin-top: 6px; }
+        .yw-msg { font-size: 15px; line-height: 1.65; color: #374151; margin: 12px 0 8px; white-space: pre-line; }
+        .yw-work textarea, .yw-work input[type=file] { width: 100%; font-size: 14px; margin-top: 6px; }
         .yw-work textarea { border: 1px solid var(--portal-border); border-radius: 8px; padding: 6px 8px; }
         .yw-card .msg-comments { grid-column: 1 / -1; }
         .msg-anchor { display: block; position: relative; top: -80px; visibility: hidden; }
         .msg-comments { margin-top: 12px; border-top: 1px solid var(--portal-border); padding-top: 10px; }
-        .msg-comment { font-size: 13px; padding: 7px 10px; border-radius: 8px; margin-bottom: 6px; color: #374151; }
+        .msg-comment { font-size: 14.5px; padding: 7px 10px; border-radius: 8px; margin-bottom: 6px; color: #374151; }
         .msg-comment span { white-space: pre-line; }
         .msg-comment.student { background: #F5F6FF; margin-left: 24px; }
         .msg-comment.teacher { background: #E9F9F1; }
-        .msg-comment b { display: block; font-size: 12px; color: var(--portal-primary); }
+        .msg-comment b { display: block; font-size: 13.5px; color: var(--portal-primary); }
         .msg-comment small { font-weight: 400; color: var(--portal-gray); margin-left: 6px; }
         .msg-comment-form { display: flex; gap: 8px; align-items: flex-end; }
-        .msg-comment-form textarea { flex: 1; font-size: 13px; border: 1px solid var(--portal-border); border-radius: 18px; padding: 7px 14px; resize: vertical; min-height: 36px; }
+        .msg-comment-form textarea { flex: 1; font-size: 14.5px; border: 1px solid var(--portal-border); border-radius: 18px; padding: 7px 14px; resize: vertical; min-height: 36px; }
         .msg-comment-form button { border: none; background: var(--portal-primary); color: #fff; border-radius: 50%; width: 36px; height: 36px; flex-shrink: 0; }
         .ann-card { border: 1px solid var(--portal-border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; background: #fff; }
         .ann-head { display: flex; gap: 10px; align-items: center; margin-bottom: 6px; }
-        .ann-head strong { display: block; font-size: 13.5px; }
-        .ann-head small { color: var(--portal-gray); font-size: 12px; }
+        .ann-head strong { display: block; font-size: 15px; }
+        .ann-head small { color: var(--portal-gray); font-size: 13.5px; }
         .ann-icon { width: 34px; height: 34px; border-radius: 50%; background: #e8f0fe; color: #1a73e8; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
-        .ann-body { font-size: 14px; line-height: 1.6; color: #374151; }
-        .ann-file { display: inline-flex; gap: 6px; align-items: center; margin: 8px 8px 0 0; padding: 5px 10px; border: 1px solid var(--portal-border); border-radius: 8px; font-size: 12.5px; text-decoration: none; }
+        .ann-body { font-size: 15px; line-height: 1.6; color: #374151; }
+        .ann-file { display: inline-flex; gap: 6px; align-items: center; margin: 8px 8px 0 0; padding: 5px 10px; border: 1px solid var(--portal-border); border-radius: 8px; font-size: 14px; text-decoration: none; }
         .cw-cmts { margin-top: 16px; border-top: 1px solid var(--portal-border); padding-top: 12px; }
-        .cw-cmts-head { font-size: 13.5px; font-weight: 700; color: var(--portal-primary); margin-bottom: 8px; }
-        .cw-cmts-none { font-size: 12.5px; color: var(--portal-gray); margin-bottom: 8px; }
+        .cw-cmts-head { font-size: 15px; font-weight: 700; color: var(--portal-primary); margin-bottom: 8px; }
+        .cw-cmts-none { font-size: 14px; color: var(--portal-gray); margin-bottom: 8px; }
         .cw-cmts .msg-comment.student { margin-left: 0; }
         .cw-private .msg-comment-form textarea { min-width: 0; }
 
@@ -1062,9 +1062,9 @@ $page_title = $class['subject_name'];
                                     <?php if ($pq_submitted): ?>
                                         <span class="attach-status-pill reviewed"><i class="fas fa-check me-1"></i>Submitted</span>
                                         <div style="margin-top:4px;"><strong style="color:#238863;">Your score: <?php echo htmlspecialchars(spScoreText($m['ans_score'], $m['ans_max_score'])); ?></strong>
-                                            <span style="font-size:11.5px;color:var(--portal-gray);"> — submitted <?php echo htmlspecialchars(date('M d, Y g:i A', strtotime($m['ans_submitted_at']))); ?></span></div>
+                                            <span style="font-size:13px;color:var(--portal-gray);"> — submitted <?php echo htmlspecialchars(date('M d, Y g:i A', strtotime($m['ans_submitted_at']))); ?></span></div>
                                         <?php if (!empty($pq_flags['retake'])): ?>
-                                            <div style="font-size:12px;color:var(--portal-gray);margin-top:2px;">Your teacher allowed you to retake this quiz.</div>
+                                            <div style="font-size:13.5px;color:var(--portal-gray);margin-top:2px;">Your teacher allowed you to retake this quiz.</div>
                                         <?php endif; ?>
                                     <?php endif; ?>
                                 </div>
@@ -1140,9 +1140,9 @@ $page_title = $class['subject_name'];
                                     <?php if ($has_native_quiz && $has_submission): ?>
                                         <span class="attach-status-pill reviewed"><i class="fas fa-check me-1"></i>Submitted</span>
                                         <div><strong style="color:#238863;">Your score: <?php echo htmlspecialchars(spScoreText($m['ans_score'], $m['ans_max_score'])); ?></strong> — answered <?php echo htmlspecialchars(date('M d, Y g:i A', strtotime($m['ans_submitted_at']))); ?></div>
-                                        <?php if (!empty($q_flags['retake'])): ?><div style="font-size:12px;color:var(--portal-gray);">Your teacher allowed you to retake this quiz.</div><?php endif; ?>
+                                        <?php if (!empty($q_flags['retake'])): ?><div style="font-size:13.5px;color:var(--portal-gray);">Your teacher allowed you to retake this quiz.</div><?php endif; ?>
                                     <?php elseif (!$has_native_quiz && $has_submission): ?>
-                                        <div style="font-size:12px;color:var(--portal-gray);"><i class="fas fa-paperclip me-1"></i>You attached: <?php echo htmlspecialchars($m['ans_answer_filename'] ?: 'your answer'); ?></div>
+                                        <div style="font-size:13.5px;color:var(--portal-gray);"><i class="fas fa-paperclip me-1"></i>You attached: <?php echo htmlspecialchars($m['ans_answer_filename'] ?: 'your answer'); ?></div>
                                         <?php if ($ans_reviewed): ?>
                                             <span class="attach-status-pill reviewed"><i class="fas fa-check me-1"></i>Checked by your teacher</span>
                                         <?php else: ?>
@@ -1188,34 +1188,34 @@ $page_title = $class['subject_name'];
                                                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                                 </div>
                                                 <div class="modal-body manual-answer-box">
-                                                    <p style="font-size:12.5px;color:var(--portal-gray);">
+                                                    <p style="font-size:14px;color:var(--portal-gray);">
                                                         View or download the activity above, answer it in your own copy (Word doc, printed and written on, or a photo of your paper), then attach that answered file here. This kind of activity has no single correct answer to auto-check, so your teacher will open it and check it themselves.
                                                     </p>
 
                                                     <?php if ($prev_filename): ?>
-                                                        <div style="display:flex;align-items:center;gap:8px;background:#F8FAFC;border:1px solid var(--portal-border);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:13px;">
+                                                        <div style="display:flex;align-items:center;gap:8px;background:#F8FAFC;border:1px solid var(--portal-border);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:14.5px;">
                                                             <i class="fas fa-paperclip"></i>
                                                             <span style="flex:1;word-break:break-word;"><?php echo htmlspecialchars($prev_filename); ?></span>
-                                                            <a href="../../ai/view_submission_answer.php?id=<?php echo (int) $m['ans_submission_id']; ?>" target="_blank" rel="noopener" style="font-size:12px;">View</a>
-                                                            <a href="../../ai/download_submission_answer.php?id=<?php echo (int) $m['ans_submission_id']; ?>" style="font-size:12px;">Download</a>
+                                                            <a href="../../ai/view_submission_answer.php?id=<?php echo (int) $m['ans_submission_id']; ?>" target="_blank" rel="noopener" style="font-size:13.5px;">View</a>
+                                                            <a href="../../ai/download_submission_answer.php?id=<?php echo (int) $m['ans_submission_id']; ?>" style="font-size:13.5px;">Download</a>
                                                         </div>
                                                     <?php endif; ?>
 
                                                     <?php if (!$ans_reviewed): ?>
-                                                        <label class="form-label" style="font-size:12.5px;font-weight:600;"><?php echo $prev_filename ? 'Replace attached file (optional)' : 'Attach your answered file'; ?></label>
+                                                        <label class="form-label" style="font-size:14px;font-weight:600;"><?php echo $prev_filename ? 'Replace attached file (optional)' : 'Attach your answered file'; ?></label>
                                                         <input type="file" name="answer_file" class="form-control mb-2" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
-                                                        <label class="form-label" style="font-size:12.5px;font-weight:600;">Note for your teacher (optional)</label>
+                                                        <label class="form-label" style="font-size:14px;font-weight:600;">Note for your teacher (optional)</label>
                                                         <textarea name="answer_note" class="form-control" rows="3" placeholder="Anything you want your teacher to know..."><?php echo htmlspecialchars($prev_note); ?></textarea>
                                                     <?php elseif ($prev_note): ?>
-                                                        <p class="text-muted mb-1" style="font-size:12.5px;">Your note:</p>
-                                                        <div style="white-space:pre-wrap;font-size:13.5px;margin-bottom:10px;"><?php echo nl2br(htmlspecialchars($prev_note)); ?></div>
+                                                        <p class="text-muted mb-1" style="font-size:14px;">Your note:</p>
+                                                        <div style="white-space:pre-wrap;font-size:15px;margin-bottom:10px;"><?php echo nl2br(htmlspecialchars($prev_note)); ?></div>
                                                     <?php endif; ?>
 
                                                     <?php if ($ans_reviewed): ?>
                                                         <div class="mt-3">
                                                             <span class="attach-status-pill reviewed"><i class="fas fa-check me-1"></i>Checked by your teacher</span>
                                                             <?php if (!empty($m['ans_feedback'])): ?>
-                                                                <div class="mt-2" style="font-size:13px;background:#F8FAFC;border:1px solid var(--portal-border);border-radius:8px;padding:10px 12px;">
+                                                                <div class="mt-2" style="font-size:14.5px;background:#F8FAFC;border:1px solid var(--portal-border);border-radius:8px;padding:10px 12px;">
                                                                     <strong>Teacher's feedback:</strong><br><?php echo nl2br(htmlspecialchars($m['ans_feedback'])); ?>
                                                                 </div>
                                                             <?php endif; ?>

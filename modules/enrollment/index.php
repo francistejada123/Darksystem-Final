@@ -366,7 +366,7 @@ include '../../includes/header.php';
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <table class="table table-sm mb-3" style="font-size:14px;">
+                <table class="table table-sm mb-3" style="font-size:15px;">
                     <tbody>
                         <tr><th style="width:110px;">Student</th><td id="dsName"></td></tr>
                         <tr><th>LRN</th><td id="dsLrn"></td></tr>
@@ -376,7 +376,7 @@ include '../../includes/header.php';
                 </table>
                 <div class="alert alert-danger mb-0" role="alert">
                     <strong>This action will permanently delete this student and related records.</strong>
-                    <div style="font-size:13px; margin-top:4px;">
+                    <div style="font-size:14.5px; margin-top:4px;">
                         Enrollment, requirements, grades, attendance, assignments and other data linked to this student are removed. This cannot be undone.
                     </div>
                 </div>

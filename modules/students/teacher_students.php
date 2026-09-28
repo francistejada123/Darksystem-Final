@@ -110,7 +110,7 @@ include '../../includes/header.php';
         font-weight: 700;
     }
     .my-students-page .ts-section-card .card-header .section-count {
-        font-size: 13px;
+        font-size: 14.5px;
         opacity: 0.8;
     }
     .my-students-page .student-row {
@@ -124,7 +124,7 @@ include '../../includes/header.php';
         color: var(--primary);
         padding: 3px 10px;
         border-radius: 20px;
-        font-size: 11px;
+        font-size: 12.5px;
     }
     .my-students-page .filter-badge {
         cursor: pointer;
@@ -132,7 +132,7 @@ include '../../includes/header.php';
         padding: 8px 16px;
         border-radius: 20px;
         font-weight: 600;
-        font-size: 13px;
+        font-size: 14.5px;
         background: var(--bg);
         color: var(--text-secondary, var(--text-muted));
         border: 1px solid var(--border);
@@ -158,7 +158,7 @@ include '../../includes/header.php';
         padding: 1px 8px;
         border-radius: 12px;
         margin-left: 5px;
-        font-size: 11px;
+        font-size: 12.5px;
     }
     .my-students-page .filter-badge.active .count {
         background: rgba(255,255,255,0.25);

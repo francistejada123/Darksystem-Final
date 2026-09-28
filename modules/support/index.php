@@ -73,18 +73,18 @@ include '../../includes/header.php';
 .support-center .subject-pick { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .support-center .subject-pick label { cursor: pointer; }
 .support-center .subject-pick input { position: absolute; opacity: 0; width: 0; height: 0; }
-.support-center .subject-pick span { display: inline-block; padding: 8px 14px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--text); }
+.support-center .subject-pick span { display: inline-block; padding: 8px 14px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14.5px; font-weight: 600; color: var(--text); }
 .support-center .subject-pick input:checked + span { border-color: var(--ink); background: #14213D; color: #fff; }
 .support-center .type-pick { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 16px; }
-.support-center .type-pick button { padding: 8px 14px; border-radius: 8px; border: 2px solid #e5e7eb; background: var(--surface); font-size: 13px; font-weight: 600; color: var(--text); cursor: pointer; }
+.support-center .type-pick button { padding: 8px 14px; border-radius: 8px; border: 2px solid #e5e7eb; background: var(--surface); font-size: 14.5px; font-weight: 600; color: var(--text); cursor: pointer; }
 .support-center .type-pick button.active { border-color: var(--ink); background: #14213D; color: #fff; }
-.support-center textarea#draftArea { width: 100%; min-height: 140px; border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-size: 14px; }
-.support-center .ai-note { font-size: 12px; color: #6b7085; margin-top: 6px; }
-.support-center .draft-error { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 10px 12px; font-size: 13px; color: #991b1b; margin-top: 10px; display: none; }
-.support-center .btn-generate { background: #14213D; color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 13px; }
+.support-center textarea#draftArea { width: 100%; min-height: 140px; border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-size: 15px; }
+.support-center .ai-note { font-size: 13.5px; color: #6b7085; margin-top: 6px; }
+.support-center .draft-error { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 10px 12px; font-size: 14.5px; color: #991b1b; margin-top: 10px; display: none; }
+.support-center .btn-generate { background: #14213D; color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 14.5px; }
 .support-center .btn-generate:disabled { opacity: .6; cursor: not-allowed; }
-.support-center .btn-send { background: #238863; color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 13px; }
-.support-center .btn-write-own { background: var(--surface); border: 1px solid var(--border); padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 13px; color: var(--text); }
+.support-center .btn-send { background: #238863; color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 14.5px; }
+.support-center .btn-write-own { background: var(--surface); border: 1px solid var(--border); padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 14.5px; color: var(--text); }
 </style>
 
 <div class="support-center" style="padding: 24px; max-width: 760px;">

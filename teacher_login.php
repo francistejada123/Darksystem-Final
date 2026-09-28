@@ -145,7 +145,7 @@ $csrf_token = generateCSRFToken();
 
         .login-header p {
             color: #ffffff;
-            font-size: 12px;
+            font-size: 13.5px;
             margin-top: 2px;
             font-weight: 600;
             text-shadow: 0 2px 8px rgba(0,0,0,0.7);
@@ -157,7 +157,7 @@ $csrf_token = generateCSRFToken();
             gap: 6px;
             background: rgba(30, 142, 90, 0.88);
             color: #ffffff;
-            font-size: 11.5px;
+            font-size: 13px;
             font-weight: 700;
             padding: 4px 12px;
             border-radius: 20px;
@@ -166,7 +166,7 @@ $csrf_token = generateCSRFToken();
         }
 
         .form-label {
-            font-size: 13px;
+            font-size: 14.5px;
             margin-bottom: 4px;
             font-weight: 700;
             color: #ffffff;
@@ -178,7 +178,7 @@ $csrf_token = generateCSRFToken();
             padding: 9px 12px;
             border: 1.5px solid rgba(255, 255, 255, 0.6);
             background: rgba(255, 255, 255, 0.7);
-            font-size: 14px;
+            font-size: 15px;
             color: #1a1a2e;
         }
 
@@ -197,7 +197,7 @@ $csrf_token = generateCSRFToken();
             border-radius: 9px;
             padding: 10px;
             font-weight: 700;
-            font-size: 14px;
+            font-size: 15px;
             width: 100%;
             transition: all 0.25s;
         }
@@ -220,7 +220,7 @@ $csrf_token = generateCSRFToken();
 
         .alert {
             border-radius: 9px;
-            font-size: 13px;
+            font-size: 14.5px;
             padding: 10px 12px;
         }
 
@@ -247,7 +247,7 @@ $csrf_token = generateCSRFToken();
             color: #ffffff;
             text-decoration: none;
             font-weight: 700;
-            font-size: 12.5px;
+            font-size: 14px;
             background: rgba(0, 0, 0, 0.3);
             transition: all 0.2s;
             text-shadow: 0 2px 6px rgba(0,0,0,0.6);
@@ -266,7 +266,7 @@ $csrf_token = generateCSRFToken();
 
         .footer-text {
             color: #ffffff;
-            font-size: 11px;
+            font-size: 12.5px;
             text-shadow: 0 2px 8px rgba(0,0,0,0.7);
         }
 
@@ -278,7 +278,7 @@ $csrf_token = generateCSRFToken();
             text-shadow: 0 2px 6px rgba(0,0,0,0.7);
             text-decoration: none !important;
             font-weight: 700;
-            font-size: 12px;
+            font-size: 13.5px;
             transition: all 0.2s;
         }
 

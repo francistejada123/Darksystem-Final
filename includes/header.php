@@ -83,7 +83,7 @@
                     <img src="<?php echo BASE_URL; ?>static/images/logo.png" alt="School Logo" class="sidebar-logo-img"
                         style="width:32px;height:32px;" onerror="this.style.display='none';">
                     <span>EGRADEPRO<br><small
-                            style="font-size:10px;font-weight:500;letter-spacing:0.08em;color:rgba(255,255,255,0.5);">GRADING
+                            style="font-size:12px;font-weight:500;letter-spacing:0.08em;color:rgba(255,255,255,0.5);">GRADING
                             &amp; ENROLLMENT</small></span>
                 </div>
                 <nav class="nav flex-column">

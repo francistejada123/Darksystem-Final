@@ -228,7 +228,7 @@ function aiContentBlocksToHtml($text) {
         $flushBullets();
         $inner = aiInlineRunsToHtml($b['text']);
         if ($b['type'] === 'heading') {
-            $html .= '<p style="margin:16px 0 6px 0; font-size:11.5px; font-weight:bold; color:#14213D;">' . $inner . '</p>';
+            $html .= '<p style="margin:16px 0 6px 0; font-size:13px; font-weight:bold; color:#14213D;">' . $inner . '</p>';
         } elseif ($b['type'] === 'choice') {
             $html .= '<p style="margin:0 0 6px 0; padding-left:18px;">' . $inner . '</p>';
         } elseif ($b['type'] === 'numbered') {
@@ -276,7 +276,7 @@ function aiRenderResourcePdf(array $resource, array $context, $audience = 'stude
     if ($audience === 'teacher' && !empty($resource['teacher_answer_key'])) {
         $body .= '<div style="page-break-before: always;"></div>';
         $body .= pdfSectionTitle('Answer Key / Teacher Notes');
-        $body .= '<div style="background:#FFF7E6;border:1px solid #F0DFAE;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:9.5px;color:#8a6d1f;">For teacher use only — do not distribute to the student.</div>';
+        $body .= '<div style="background:#FFF7E6;border:1px solid #F0DFAE;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:11.5px;color:#8a6d1f;">For teacher use only — do not distribute to the student.</div>';
         $body .= aiContentBlocksToHtml($resource['teacher_answer_key']);
     }
 

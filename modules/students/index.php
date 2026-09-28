@@ -272,7 +272,7 @@ include '../../includes/header.php';
         padding: 14px 16px;
     }
     .students-page .table thead th {
-        font-size: 12px;
+        font-size: 13.5px;
         text-transform: uppercase;
         letter-spacing: 0.04em;
         font-weight: 600;
@@ -292,7 +292,7 @@ include '../../includes/header.php';
     .students-page td .badge {
         padding: 5px 14px;
         border-radius: 20px;
-        font-size: 13px;
+        font-size: 14.5px;
         font-weight: 600;
     }
 
@@ -335,7 +335,7 @@ include '../../includes/header.php';
         margin: 4px 0 4px 0;
     }
     .students-page .sp-header p {
-        font-size: 14px;
+        font-size: 15px;
         color: var(--text-muted);
         margin: 0;
         max-width: 480px;
@@ -379,7 +379,7 @@ include '../../includes/header.php';
         margin-bottom: 12px;
     }
     .students-page .sp-stat-label {
-        font-size: 12.5px;
+        font-size: 14px;
         color: var(--text-muted);
         text-transform: uppercase;
         letter-spacing: 0.03em;
@@ -393,7 +393,7 @@ include '../../includes/header.php';
         line-height: 1.2;
     }
     .students-page .sp-stat-note {
-        font-size: 12px;
+        font-size: 13.5px;
         color: var(--text-muted-2);
         margin-top: 2px;
     }
@@ -410,7 +410,7 @@ include '../../includes/header.php';
         margin-bottom: 20px;
     }
     .students-page .sp-filter-label {
-        font-size: 12px;
+        font-size: 13.5px;
         font-weight: 600;
         color: var(--text-muted);
         text-transform: uppercase;
@@ -445,7 +445,7 @@ include '../../includes/header.php';
         border: none;
         border-radius: 14px;
         padding: 14px 16px;
-        font-size: 13.5px;
+        font-size: 15px;
         font-weight: 600;
         text-align: left;
         text-decoration: none;
@@ -468,17 +468,17 @@ include '../../includes/header.php';
 /* ---- Bigger, easier-to-read text: header, grade cards, section cards ---- */
 .sp-header h2 { font-size: 28px !important; }
 .sp-header p { font-size: 15.5px !important; }
-.sp-header .btn-sm { font-size: 14.5px; padding: 8px 16px; border-radius: 9px; }
+.sp-header .btn-sm { font-size: 15.5px; padding: 8px 16px; border-radius: 9px; }
 .grade-card .grade-num { font-size: 36px !important; }
 .grade-card .grade-label { font-size: 18px !important; }
 .grade-card .section-count { font-size: 15px !important; }
-.grade-card .grade-selected-pill { font-size: 13px !important; padding: 4px 14px !important; }
+.grade-card .grade-selected-pill { font-size: 14.5px !important; padding: 4px 14px !important; }
 .card-header h5 { font-size: 19px; }
-.card-header .btn-sm { font-size: 14.5px; padding: 7px 14px; }
-.card-header .badge { font-size: 13px; }
+.card-header .btn-sm { font-size: 15.5px; padding: 7px 14px; }
+.card-header .badge { font-size: 14.5px; }
 .section-card .section-name { font-size: 19px !important; font-weight: 700; }
-.section-card .badge { font-size: 13.5px !important; padding: 5px 10px; }
-.section-card .text-muted.small { font-size: 14.5px !important; }
+.section-card .badge { font-size: 15px !important; padding: 5px 10px; }
+.section-card .text-muted.small { font-size: 15.5px !important; }
 .section-card .card-body { padding-top: 20px !important; padding-bottom: 20px !important; }
 .strand-card .strand-sub { font-size: 15px !important; }
 </style>
@@ -776,7 +776,7 @@ include '../../includes/header.php';
                 <?php endif; ?>
             </div>
             <div class="card-footer bg-white border-0 text-center pb-3">
-                <a href="<?php echo BASE_URL; ?>modules/enrollment/index.php" class="text-decoration-none fw-semibold" style="font-size:13.5px;">
+                <a href="<?php echo BASE_URL; ?>modules/enrollment/index.php" class="text-decoration-none fw-semibold" style="font-size:15px;">
                     View All Enrollments <i class="fas fa-arrow-right ms-1"></i>
                 </a>
             </div>
@@ -801,7 +801,7 @@ include '../../includes/header.php';
                     $bar_color = $grade_palette[$g]['accent'] ?? '#356EA8';
                 ?>
                     <div class="mb-3">
-                        <div class="d-flex justify-content-between mb-1" style="font-size:14px;">
+                        <div class="d-flex justify-content-between mb-1" style="font-size:15px;">
                             <span class="fw-semibold"><?php echo $g; ?></span>
                             <span class="text-muted"><?php echo $val; ?> student<?php echo $val == 1 ? '' : 's'; ?></span>
                         </div>
@@ -990,7 +990,7 @@ include '../../includes/header.php';
                 <i class="fas fa-users text-primary me-2"></i>
                 Students in <?php echo htmlspecialchars($section_info['section_name']); ?>
                 <span class="badge bg-secondary ms-2"><?php echo count($section_students); ?> students</span>
-                <div class="mt-1" style="font-size: 13px; font-weight: 400; color: #888;">
+                <div class="mt-1" style="font-size: 14.5px; font-weight: 400; color: #888;">
                     <i class="fas fa-chalkboard-teacher me-1"></i> Adviser:
                     <?php echo htmlspecialchars($section_info['adviser_name'] ?? 'Not yet assigned'); ?>
                 </div>
@@ -1135,7 +1135,7 @@ include '../../includes/header.php';
     .student-details-modal .modal-body { position: relative; min-height: 0; overflow: hidden; background: #f3f6fa; }
     .student-details-modal iframe { display: block; width: 100%; height: 100%; min-height: 580px; border: 0; opacity: 0; transition: opacity .2s ease; }
     .student-details-modal iframe.is-loaded { opacity: 1; }
-    .student-details-loading { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; color: #607795; font-size: 13px; background: #f3f6fa; transition: opacity .2s ease; }
+    .student-details-loading { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; color: #607795; font-size: 14.5px; background: #f3f6fa; transition: opacity .2s ease; }
     .student-details-loading.is-hidden { opacity: 0; pointer-events: none; }
     @media (max-width: 600px) {
         .student-details-modal .modal-dialog { width: calc(100vw - 12px); margin: .375rem auto; }
@@ -1152,7 +1152,7 @@ include '../../includes/header.php';
     .student-edit-modal .modal-body { position:relative; min-height:0; overflow:hidden; background:#f3f6fa; }
     .student-edit-modal iframe { display:block; width:100%; height:100%; min-height:620px; border:0; opacity:0; transition:opacity .2s ease; }
     .student-edit-modal iframe.is-loaded { opacity:1; }
-    .student-edit-loading { position:absolute; inset:0; z-index:1; display:grid; place-items:center; color:#607795; font-size:13px; background:#f3f6fa; transition:opacity .2s ease; }
+    .student-edit-loading { position:absolute; inset:0; z-index:1; display:grid; place-items:center; color:#607795; font-size:14.5px; background:#f3f6fa; transition:opacity .2s ease; }
     .student-edit-loading.is-hidden { opacity:0; pointer-events:none; }
     @media (max-width:600px) {
         .student-edit-modal .modal-dialog { width:calc(100vw - 12px); margin:.375rem auto; }
@@ -1269,24 +1269,24 @@ include '../../includes/header.php';
     }
     .del-btn-cancel {
         background: #eef2f8; color: #71829d; border: 0;
-        border-radius: 11px; padding: 11px 22px; font-weight: 700; font-size: 13.5px;
+        border-radius: 11px; padding: 11px 22px; font-weight: 700; font-size: 15px;
     }
     .del-btn-cancel:hover { background: #e5ebf4; color: #526783; }
     .del-btn-soft {
         background: #263650; border-color: #263650; color: #fff;
-        border-radius: 11px; padding: 11px 22px; font-weight: 700; font-size: 13.5px;
+        border-radius: 11px; padding: 11px 22px; font-weight: 700; font-size: 15px;
     }
     .del-btn-soft:hover { background: #1b2840; color: #fff; }
     .del-btn-danger {
         background: #B3261E; border-color: #B3261E; color: #fff;
-        border-radius: 11px; padding: 11px 22px; font-weight: 700; font-size: 13.5px;
+        border-radius: 11px; padding: 11px 22px; font-weight: 700; font-size: 15px;
     }
     .del-btn-danger:hover { background: #93201A; color: #fff; }
     .del-warning-box {
         background: #FDEEEE; border: 1px solid #F5C6C6; border-radius: 10px; padding: 12px 14px; margin-top: 14px;
     }
     .del-warning-box ul { list-style: none; padding-left: 0; margin: 8px 0 0 0; }
-    .del-warning-box li { font-size: 13px; color: var(--ink, #0F1A3C); padding: 2px 0; }
+    .del-warning-box li { font-size: 14.5px; color: var(--ink, #0F1A3C); padding: 2px 0; }
     .delete-choice-list { display:grid; gap:12px; margin-top:24px; }
     .delete-choice {
         width:100%; display:flex; align-items:center; gap:14px; text-align:left;
@@ -1300,7 +1300,7 @@ include '../../includes/header.php';
     .delete-choice.danger .delete-choice-icon { background:#fff0f0; color:#e3343f; }
     .delete-choice-copy { flex:1; min-width:0; }
     .delete-choice-title { display:block; font-size:15px; font-weight:700; margin-bottom:3px; }
-    .delete-choice-description { display:block; color:#71829d; font-size:12.5px; line-height:1.45; max-width:390px; }
+    .delete-choice-description { display:block; color:#71829d; font-size:14px; line-height:1.45; max-width:390px; }
     .delete-choice-arrow { color:#8495ae; font-size:17px; }
     .delete-choice-radio { width:20px; height:20px; flex:0 0 20px; accent-color:#1976ff; }
     @media (max-width:600px) {

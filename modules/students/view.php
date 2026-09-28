@@ -130,7 +130,7 @@ if (!$is_embedded) {
             body.student-details-embedded .student-profile-card .fa-user-graduate { width:84px !important; height:84px !important; font-size:34px !important; }
             body.student-details-embedded .student-profile-card h5 { margin:8px 0 5px; font-size:16px; }
             body.student-details-embedded .student-profile-card hr { margin:12px 0 8px; }
-            body.student-details-embedded .student-profile-card table { margin:0; font-size:12px; }
+            body.student-details-embedded .student-profile-card table { margin:0; font-size:13.5px; }
             body.student-details-embedded .student-profile-card table td { padding:6px 4px; border-bottom:1px solid #edf1f6; }
             body.student-details-embedded .student-profile-card table tr:last-child td { border-bottom:0; }
             body.student-details-embedded .student-profile-card table td:first-child { width:42%; color:#405875; }
@@ -140,12 +140,12 @@ if (!$is_embedded) {
             body.student-details-embedded .student-right-column .card-header h5 { font-size:15px; }
             body.student-details-embedded .student-right-column .card-body { padding:13px 15px; }
             body.student-details-embedded .student-risk-metric { padding:10px !important; }
-            body.student-details-embedded .student-risk-metric h6 { margin-bottom:4px; font-size:11px; }
+            body.student-details-embedded .student-risk-metric h6 { margin-bottom:4px; font-size:12.5px; }
             body.student-details-embedded .student-risk-metric h3 { margin:0; font-size:21px; }
-            body.student-details-embedded .student-risk-alert { margin-top:10px !important; padding:9px 11px; font-size:11px; }
+            body.student-details-embedded .student-risk-alert { margin-top:10px !important; padding:9px 11px; font-size:12.5px; }
             body.student-details-embedded .student-grades-card .table th,
-            body.student-details-embedded .student-grades-card .table td { padding:8px 10px; font-size:11px; white-space:nowrap; }
-            body.student-details-embedded .student-grades-card .table th { color:#637894; font-size:10px; text-transform:uppercase; letter-spacing:.03em; }
+            body.student-details-embedded .student-grades-card .table td { padding:8px 10px; font-size:12.5px; white-space:nowrap; }
+            body.student-details-embedded .student-grades-card .table th { color:#637894; font-size:12px; text-transform:uppercase; letter-spacing:.03em; }
             @media (max-width: 700px) {
                 body.student-details-embedded .student-details-layout > .col-md-4,
                 body.student-details-embedded .student-details-layout > .col-md-8 { width:100%; }
@@ -234,7 +234,7 @@ if (!$is_embedded) {
                         $pp_csrf = generateCSRFToken();
                         $pp_back = 'view.php?id=' . (int) $student['student_id'] . ($is_embedded ? '&embed=1' : '');
                 ?>
-                    <div class="text-start border rounded-3 p-2 mb-3" style="font-size:14px">
+                    <div class="text-start border rounded-3 p-2 mb-3" style="font-size:15px">
                         <div class="fw-bold mb-1"><i class="fas fa-people-roof me-1"></i> Parent Portal</div>
                         <?php if (!empty($_SESSION['pp_flash'])): $ppf = $_SESSION['pp_flash']; unset($_SESSION['pp_flash']); ?>
                             <div class="alert alert-<?php echo $ppf[0]; ?> py-2 small mb-2"><?php echo htmlspecialchars($ppf[1]); ?>
@@ -297,7 +297,7 @@ if (!$is_embedded) {
                                     data-bs-placement="top"
                                     title="<?php echo htmlspecialchars(getRiskLevelDescription($risk['risk_level'], $risk['pass_mark'])); ?>">
                                     <?php echo htmlspecialchars($risk['risk_level']); ?>
-                                    <i class="fas fa-info-circle ms-1" style="font-size: 12px;"></i>
+                                    <i class="fas fa-info-circle ms-1" style="font-size: 13.5px;"></i>
                                 </span>
                             </h3>
                         </div>

@@ -41,10 +41,10 @@ include '../../includes/header.php';
 <style>
     .del-page h4, .del-page h6 { font-family: var(--font-primary, 'Inter', sans-serif); }
     .del-row-name { font-weight: 600; color: var(--ink, #0F1A3C); }
-    .del-row-lrn { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--text-muted, #6b7280); }
+    .del-row-lrn { font-family: 'IBM Plex Mono', monospace; font-size: 13.5px; color: var(--text-muted, #6b7280); }
     .del-action-btn {
         display: inline-flex; align-items: center; gap: 6px;
-        font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 8px;
+        font-size: 14px; font-weight: 600; padding: 6px 12px; border-radius: 8px;
         margin-bottom: 4px; text-decoration: none;
     }
     .del-action-restore { background: #EAF7F1; color: #1E8E5A; border: 1px solid #BEE3CE; }

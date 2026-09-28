@@ -186,7 +186,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         .login-header p {
             color: #ffffff;
-            font-size: 13px;
+            font-size: 14.5px;
             margin-top: 4px;
             text-shadow: 0 2px 8px rgba(0,0,0,0.7);
         }
@@ -221,7 +221,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .input-group .pw-toggle:hover { background: #fff; }
         .input-group #pwInput { border-radius: 0; }
         .field-note { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 5px; min-height: 16px; }
-        .forgot-link { color: #fff; font-size: 14px; font-weight: 600; text-decoration: underline; text-shadow: 0 2px 6px rgba(0,0,0,0.6); white-space: nowrap; }
+        .forgot-link { color: #fff; font-size: 15px; font-weight: 600; text-decoration: underline; text-shadow: 0 2px 6px rgba(0,0,0,0.6); white-space: nowrap; }
         .forgot-link:hover { color: #90caf9; }
         .form-control:focus {
             border-color: #1565c0;
@@ -266,13 +266,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         .login-error-link { color: #fff; font-weight: 700; text-decoration: underline; }
         .login-error-link:hover { color: #fff; }
-        .lrn-help { font-size: 12px; color: rgba(255,255,255,0.85); margin-top: 6px; }
+        .lrn-help { font-size: 13.5px; color: rgba(255,255,255,0.85); margin-top: 6px; }
         .lrn-help.is-bad { color: #ffd166; font-weight: 600; }
         .alert .btn-close {
             filter: brightness(0) invert(1);
         }
         .info-text {
-            font-size: 12.5px;
+            font-size: 14px;
             color: #ffffff;
             text-align: center;
             margin-top: 14px;
@@ -293,7 +293,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: rgba(0, 0, 0, 0.3);
             color: #ffffff;
             font-weight: 600;
-            font-size: 13.5px;
+            font-size: 15px;
             text-decoration: none;
             transition: all 0.25s;
             text-shadow: 0 2px 6px rgba(0,0,0,0.6);
@@ -315,7 +315,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             margin-top: 10px;
             color: #ffffff;
             text-decoration: none;
-            font-size: 13px;
+            font-size: 14.5px;
             font-weight: 600;
             text-shadow: 0 2px 6px rgba(0,0,0,0.6);
         }

@@ -125,15 +125,15 @@ include '../../includes/header.php';
         box-shadow: 0 6px 14px rgba(22, 104, 227, 0.20);
     }
     .nt-title { margin: 0 0 1px; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; color: var(--ink); }
-    .nt-sub { margin: 0; font-size: 13px; color: var(--text-muted); }
+    .nt-sub { margin: 0; font-size: 14.5px; color: var(--text-muted); }
     .nt-head-r { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-    .nt-date { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+    .nt-date { font-size: 13.5px; color: var(--text-muted); white-space: nowrap; }
     .nt-date .nt-sep { margin: 0 6px; }
     .nt-markall {
         display: inline-flex; align-items: center; gap: 9px;
         padding: 7px 14px; border-radius: 8px;
         border: 1.5px solid var(--nt-blue); background: var(--surface); color: var(--nt-blue);
-        font-size: 12.5px; font-weight: 600; cursor: pointer;
+        font-size: 14px; font-weight: 600; cursor: pointer;
         transition: background-color .15s ease, color .15s ease;
     }
     .nt-markall:hover { background: var(--nt-blue-soft); }
@@ -145,7 +145,7 @@ include '../../includes/header.php';
     .nt-tab {
         display: inline-flex; align-items: center; gap: 8px;
         height: 34px; padding: 0 14px; border: 0; border-radius: 8px;
-        background: transparent; color: var(--ink); font-size: 13px; font-weight: 500; cursor: pointer;
+        background: transparent; color: var(--ink); font-size: 14.5px; font-weight: 500; cursor: pointer;
         transition: background-color .15s ease, color .15s ease;
     }
     .nt-tab:hover { background: var(--surface-hover); }
@@ -153,7 +153,7 @@ include '../../includes/header.php';
     .nt-count {
         min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px;
         display: inline-flex; align-items: center; justify-content: center;
-        background: rgba(20, 33, 61, 0.08); color: var(--ink); font-size: 11.5px; font-weight: 600;
+        background: rgba(20, 33, 61, 0.08); color: var(--ink); font-size: 13px; font-weight: 600;
     }
     .nt-tab.active .nt-count { background: #fff; color: #1349A8; }
     html[data-theme="dark"] .nt-count { background: rgba(255, 255, 255, 0.10); }
@@ -164,12 +164,12 @@ include '../../includes/header.php';
         height: 36px; min-width: 170px; border: 1px solid var(--border); border-radius: 8px;
         background: var(--surface); color: var(--ink);
     }
-    .nt-sort .nt-sort-lead { position: absolute; left: 12px; font-size: 12.5px; color: var(--ink); pointer-events: none; }
-    .nt-sort .nt-sort-caret { position: absolute; right: 12px; font-size: 10px; color: var(--ink); pointer-events: none; }
+    .nt-sort .nt-sort-lead { position: absolute; left: 12px; font-size: 14px; color: var(--ink); pointer-events: none; }
+    .nt-sort .nt-sort-caret { position: absolute; right: 12px; font-size: 12px; color: var(--ink); pointer-events: none; }
     .nt-sort select {
         appearance: none; -webkit-appearance: none; width: 100%; height: 100%;
         padding: 0 30px 0 34px; border: 0; border-radius: 8px; background: transparent; color: var(--ink);
-        font-size: 13px; font-weight: 500; cursor: pointer;
+        font-size: 14.5px; font-weight: 500; cursor: pointer;
     }
     .nt-sort select:focus-visible { outline: 2px solid var(--nt-blue); outline-offset: 2px; }
 
@@ -207,10 +207,10 @@ include '../../includes/header.php';
     .nt-main { display: block; color: inherit; text-decoration: none; }
     a.nt-main:hover .nt-item-title { text-decoration: underline; }
     .nt-titlerow { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 2px; }
-    .nt-item-title { font-size: 14px; font-weight: 700; color: var(--ink); line-height: 1.3; }
-    .nt-msg { font-size: 12.5px; color: var(--text-muted); line-height: 1.45; overflow-wrap: anywhere; }
+    .nt-item-title { font-size: 15px; font-weight: 700; color: var(--ink); line-height: 1.3; }
+    .nt-msg { font-size: 14px; color: var(--text-muted); line-height: 1.45; overflow-wrap: anywhere; }
 
-    .nt-pill { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; line-height: 1.6; }
+    .nt-pill { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: 12.5px; font-weight: 600; line-height: 1.6; }
     .nt-pill-academic   { background: #DFF4E9; color: #1C8A5B; }
     .nt-pill-tutorial   { background: #FFEBD3; color: #C86A0A; }
     .nt-pill-enrollment { background: #E3EEFD; color: #1668E3; }
@@ -220,27 +220,27 @@ include '../../includes/header.php';
     html[data-theme="dark"] .nt-pill-enrollment { background: rgba(111, 163, 255, 0.16); color: #9CC3FF; }
     html[data-theme="dark"] .nt-pill-system     { background: rgba(147, 160, 184, 0.16); color: #C4CEE0; }
 
-    .nt-when { flex: 0 0 auto; min-width: 96px; font-size: 12px; line-height: 1.5; color: var(--text-muted); white-space: nowrap; }
+    .nt-when { flex: 0 0 auto; min-width: 96px; font-size: 13.5px; line-height: 1.5; color: var(--text-muted); white-space: nowrap; }
     .nt-more { flex: 0 0 auto; }
     .nt-kebab {
         width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent;
-        color: var(--ink); font-size: 14px; cursor: pointer;
+        color: var(--ink); font-size: 15px; cursor: pointer;
     }
     .nt-kebab:hover { background: var(--surface-hover); }
-    .nt-more .dropdown-menu { font-size: 13.5px; }
+    .nt-more .dropdown-menu { font-size: 15px; }
 
-    .nt-empty { text-align: center; padding: 36px 16px; color: var(--text-muted); font-size: 13px; background: var(--surface); border: 1px solid var(--border-soft); border-radius: 14px; }
+    .nt-empty { text-align: center; padding: 36px 16px; color: var(--text-muted); font-size: 14.5px; background: var(--surface); border: 1px solid var(--border-soft); border-radius: 14px; }
     .nt-empty i { display: block; font-size: 24px; margin-bottom: 10px; color: var(--text-muted-2); }
 
     /* ---- footer: count + pagination ---- */
     .nt-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
-    .nt-showing { font-size: 12.5px; color: var(--text-muted); }
+    .nt-showing { font-size: 14px; color: var(--text-muted); }
     .nt-pager { display: flex; gap: 6px; }
     .nt-pager a, .nt-pager span {
         min-width: 32px; height: 32px; padding: 0 8px; border-radius: 6px;
         display: inline-flex; align-items: center; justify-content: center;
         border: 1px solid var(--border); background: var(--surface); color: var(--ink);
-        font-size: 12.5px; font-weight: 500; text-decoration: none;
+        font-size: 14px; font-weight: 500; text-decoration: none;
     }
     .nt-pager a:hover { background: var(--surface-hover); }
     .nt-pager .active { background: var(--nt-fill); border-color: var(--nt-fill); color: #fff; font-weight: 600; }

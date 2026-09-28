@@ -382,19 +382,19 @@ include '../../includes/header.php';
 <style>
     .cat-panel { border-radius: 8px; border: 1px solid var(--border); background: var(--surface); }
     .cat-panel .cat-head { padding: 14px 18px; border-bottom: 1px solid var(--border); display:flex; justify-content: space-between; align-items:center; }
-    .cat-panel .cat-head h6 { margin:0; font-weight:600; color: var(--ink); font-size:14px; }
+    .cat-panel .cat-head h6 { margin:0; font-weight:600; color: var(--ink); font-size:15px; }
     .item-row { display:flex; align-items:center; justify-content: space-between; padding: 10px 18px; border-bottom: 1px solid var(--border-soft); }
     .item-row:last-child { border-bottom: none; }
-    .item-row .item-name { font-weight: 600; color: var(--ink); font-size:13px; }
-    .item-row .item-hps { font-family: 'IBM Plex Mono', monospace; color: var(--text-muted); font-size: 13px; }
+    .item-row .item-name { font-weight: 600; color: var(--ink); font-size:14.5px; }
+    .item-row .item-hps { font-family: 'IBM Plex Mono', monospace; color: var(--text-muted); font-size: 14.5px; }
     .add-item-form { padding: 12px 18px; background: var(--surface-hover); border-top: 1px solid var(--border); }
-    .empty-items { padding: 20px 18px; text-align:center; color: var(--text-muted); font-size: 13px; }
+    .empty-items { padding: 20px 18px; text-align:center; color: var(--text-muted); font-size: 14.5px; }
     /* ===== Manage Assessment Items (layout) ===== */
     .mai-page { --mai-line: var(--border, #e3e8ef); --mai-card: var(--surface, #fff); --mai-soft: var(--surface-hover, #f6f8fb); --mai-ink: var(--ink, #14213d); --mai-muted: var(--text-muted, #667085); --mai-teal: #0f766e; padding-top: 6px; }
-    .mai-crumbs { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 13px; color: var(--mai-muted); margin: 6px 0 8px; }
+    .mai-crumbs { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 14.5px; color: var(--mai-muted); margin: 6px 0 8px; }
     .mai-crumbs a { color: var(--mai-muted); text-decoration: none; }
     .mai-crumbs a:hover { color: var(--mai-ink); }
-    .mai-crumbs i { font-size: 9px; opacity: .7; }
+    .mai-crumbs i { font-size: 11px; opacity: .7; }
     .mai-crumbs span { color: var(--mai-ink); font-weight: 600; }
     .mai-title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
     .mai-title-row h1 { font-size: 30px; font-weight: 800; color: var(--mai-ink); margin: 0 0 4px; letter-spacing: -.01em; }
@@ -411,17 +411,17 @@ include '../../includes/header.php';
     .mai-info-ic { flex-shrink: 0; width: 42px; height: 42px; border-radius: 50%; background: #2f7fe0; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; }
     .mai-info-text { flex: 1; min-width: 0; }
     .mai-info-text strong { font-size: 17px; color: var(--mai-ink); }
-    .mai-info-text p { margin: 4px 0 0; font-size: 14.5px; color: #475569; line-height: 1.55; }
+    .mai-info-text p { margin: 4px 0 0; font-size: 15.5px; color: #475569; line-height: 1.55; }
     .mai-info-text a { color: #1d6fd6; }
-    .mai-learn { flex-shrink: 0; align-self: center; display: inline-flex; align-items: center; gap: 8px; border: 1px solid #b9d3f3; background: var(--mai-card); color: #1d6fd6; border-radius: 10px; padding: 8px 14px; font-size: 14px; font-weight: 700; }
+    .mai-learn { flex-shrink: 0; align-self: center; display: inline-flex; align-items: center; gap: 8px; border: 1px solid #b9d3f3; background: var(--mai-card); color: #1d6fd6; border-radius: 10px; padding: 8px 14px; font-size: 15px; font-weight: 700; }
 
     .mai-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; align-items: start; }
     @media (max-width: 1200px) { .mai-grid { grid-template-columns: 1fr; } }
     .mai-col { background: var(--mai-card); border: 1px solid var(--mai-line); border-radius: 14px; padding: 16px; box-shadow: 0 1px 3px rgba(16,24,40,.04); }
     .mai-col-head { display: flex; gap: 14px; align-items: flex-start; padding: 2px 2px 14px; }
     .mai-col-head h2 { font-size: 21px; font-weight: 800; color: var(--mai-ink); margin: 2px 0 4px; display: flex; align-items: center; gap: 10px; }
-    .mai-col-head p { margin: 0; font-size: 14px; color: var(--mai-muted); line-height: 1.45; }
-    .mai-count { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 24px; padding: 0 8px; border-radius: 6px; background: #6b7280; color: #fff; font-size: 13px; font-weight: 700; }
+    .mai-col-head p { margin: 0; font-size: 15px; color: var(--mai-muted); line-height: 1.45; }
+    .mai-count { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 24px; padding: 0 8px; border-radius: 6px; background: #6b7280; color: #fff; font-size: 14.5px; font-weight: 700; }
     .mai-col-ic { flex-shrink: 0; width: 54px; height: 54px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; }
     .mai-ww { background: #e7f0fc; color: #2f7fe0; }
     .mai-pt { background: #e4f5ec; color: #1f9d55; }
@@ -431,16 +431,16 @@ include '../../includes/header.php';
     .mai-empty { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; border: 1px solid var(--mai-line); border-radius: 12px; background: var(--mai-soft); padding: 18px 14px; }
     .mai-empty-ic { width: 52px; height: 52px; border-radius: 50%; border: 1px solid var(--mai-line); background: var(--mai-card); display: flex; align-items: center; justify-content: center; color: var(--mai-ink); font-size: 20px; margin-bottom: 6px; }
     .mai-empty strong { font-size: 15px; color: var(--mai-ink); }
-    .mai-empty span { font-size: 14px; color: var(--mai-muted); }
+    .mai-empty span { font-size: 15px; color: var(--mai-muted); }
 
     .mai-col .item-row { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--mai-line); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; background: var(--mai-card); }
     .mai-col .item-row:hover { border-color: #b9d3f3; }
     .mai-row-form { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
     .mai-row-top, .mai-row-bottom { display: flex; gap: 6px; align-items: center; }
-    .mai-in { width: 100%; height: 40px; border: 1px solid var(--mai-line); border-radius: 8px; padding: 0 12px; font-size: 14px; color: var(--mai-ink); background: var(--mai-card); }
+    .mai-in { width: 100%; height: 40px; border: 1px solid var(--mai-line); border-radius: 8px; padding: 0 12px; font-size: 15px; color: var(--mai-ink); background: var(--mai-card); }
     .mai-in:focus { outline: none; border-color: #2f7fe0; box-shadow: 0 0 0 3px rgba(47,127,224,.12); }
     .mai-in::placeholder { color: #98a2b3; }
-    .mai-row-form .mai-in { height: 34px; font-size: 13.5px; }
+    .mai-row-form .mai-in { height: 34px; font-size: 15px; }
     .mai-in-name { font-weight: 700; }
     .mai-in-topic { color: var(--mai-muted); }
     .mai-in-topic.mai-topic-missing { border-color: #F5D3A6; background: #FFFBF3; }
@@ -448,7 +448,7 @@ include '../../includes/header.php';
     .mai-in-small { width: auto; flex-shrink: 0; }
     .mai-hps-in { display: flex; align-items: center; gap: 4px; flex-shrink: 0; margin: 0; }
     .mai-hps-in .mai-in { width: 72px; text-align: right; font-family: 'IBM Plex Mono', monospace; }
-    .mai-hps-in span { font-size: 12px; color: var(--mai-muted); }
+    .mai-hps-in span { font-size: 13.5px; color: var(--mai-muted); }
     .mai-row-actions { display: flex; flex-direction: column; gap: 6px; }
     .mai-icon-btn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--mai-line); background: var(--mai-card); color: var(--mai-muted); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; position: relative; }
     .mai-icon-btn:hover { background: var(--mai-soft); color: var(--mai-ink); }
@@ -458,19 +458,19 @@ include '../../includes/header.php';
     .mai-add { background: #f3f7fc; border: 1px solid #e1eaf5; border-radius: 12px; padding: 16px; }
     .mai-add h3 { font-size: 16.5px; font-weight: 700; color: var(--mai-ink); margin: 0 0 12px; }
     .mai-field { margin-bottom: 12px; }
-    .mai-field > label { display: block; font-size: 14px; font-weight: 500; color: var(--mai-ink); margin-bottom: 6px; }
+    .mai-field > label { display: block; font-size: 15px; font-weight: 500; color: var(--mai-ink); margin-bottom: 6px; }
     .mai-field > label b { color: #e0405a; font-weight: 700; }
     .mai-field > label span { color: var(--mai-muted); }
     .mai-inline { display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 10px; }
     .mai-inline > label { margin: 0; }
     .mai-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .mai-attach { display: flex !important; align-items: center; justify-content: center; gap: 10px; height: 40px; border: 1px solid var(--mai-line); border-radius: 8px; background: var(--mai-card); color: var(--mai-ink); font-size: 14px; font-weight: 500; cursor: pointer; margin: 0 !important; overflow: hidden; padding: 0 10px; }
+    .mai-attach { display: flex !important; align-items: center; justify-content: center; gap: 10px; height: 40px; border: 1px solid var(--mai-line); border-radius: 8px; background: var(--mai-card); color: var(--mai-ink); font-size: 15px; font-weight: 500; cursor: pointer; margin: 0 !important; overflow: hidden; padding: 0 10px; }
     .mai-attach:hover { background: var(--mai-soft); }
     .mai-attach-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .mai-note { font-size: 12.5px; color: var(--mai-muted); margin: -2px 0 10px; }
+    .mai-note { font-size: 14px; color: var(--mai-muted); margin: -2px 0 10px; }
     .mai-add-btn { width: 100%; height: 46px; border: 0; border-radius: 8px; background: var(--mai-teal); color: #fff; font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; }
     .mai-add-btn:hover { filter: brightness(1.08); }
-    .mai-foot { margin-top: 16px; background: #eef5fd; border: 1px solid #d7e6f8; border-radius: 10px; padding: 10px 16px; font-size: 14px; color: #475569; }
+    .mai-foot { margin-top: 16px; background: #eef5fd; border: 1px solid #d7e6f8; border-radius: 10px; padding: 10px 16px; font-size: 15px; color: #475569; }
     .mai-foot i { color: #2f7fe0; margin-right: 6px; }
     .mai-foot a { color: var(--mai-ink); font-weight: 600; text-decoration: underline; }
 
@@ -488,60 +488,60 @@ include '../../includes/header.php';
     .aim-material-btn { position:relative; border:1px solid var(--border); color:#14213D; background:transparent; }
     .aim-material-btn .aim-badge {
         position:absolute; top:-6px; right:-6px; min-width:16px; height:16px; padding:0 3px;
-        border-radius:8px; background:#14213D; color:#fff; font-size:10px; font-weight:700;
+        border-radius:8px; background:#14213D; color:#fff; font-size:12px; font-weight:700;
         line-height:16px; text-align:center;
     }
     /* Learning Materials modal */
     .aim-modal-tabs { display:flex; gap:8px; margin-bottom:16px; }
     .aim-modal-tabs button {
         flex:1; padding:8px 12px; border-radius:6px; border:1px solid var(--border); background: var(--surface);
-        color: var(--text-muted); font-size:13px; font-weight:600; cursor:pointer;
+        color: var(--text-muted); font-size:14.5px; font-weight:600; cursor:pointer;
     }
     .aim-modal-tabs button.active { border-color:#14213D; background:#EDF4FB; color:#14213D; }
-    .aim-modal-form label { font-weight:600; font-size:13px; color: var(--ink); margin-bottom:4px; display:block; }
-    .aim-modal-form .form-control, .aim-modal-form .form-select { margin-bottom:14px; font-size:13px; }
+    .aim-modal-form label { font-weight:600; font-size:14.5px; color: var(--ink); margin-bottom:4px; display:block; }
+    .aim-modal-form .form-control, .aim-modal-form .form-select { margin-bottom:14px; font-size:14.5px; }
     .aim-materials-list { margin-bottom:16px; }
-    .aim-materials-list .aim-empty { color: var(--text-muted); font-size:13px; padding:8px 0; }
+    .aim-materials-list .aim-empty { color: var(--text-muted); font-size:14.5px; padding:8px 0; }
     .aim-material-item {
         display:flex; align-items:center; gap:10px; padding:8px 10px; border:1px solid var(--border-soft);
-        border-radius:8px; margin-bottom:8px; font-size:13px;
+        border-radius:8px; margin-bottom:8px; font-size:14.5px;
     }
     .aim-material-item i.aim-material-icon { color:#14213D; width:16px; text-align:center; }
     .aim-material-item a { color: var(--ink); font-weight:600; text-decoration:none; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .aim-material-item a:hover { text-decoration:underline; }
-    .aim-material-item .aim-material-type { color: var(--text-muted); font-size:11px; white-space:nowrap; }
+    .aim-material-item .aim-material-type { color: var(--text-muted); font-size:12.5px; white-space:nowrap; }
     .aim-material-item .aim-remove-btn {
         border:none; background:transparent; color:#C94A4A; font-size:16px; line-height:1; cursor:pointer; padding:0 2px;
     }
-    .aim-locked-note { font-size:12px; color: var(--text-muted); background: var(--surface-hover); border-radius:6px; padding:8px 10px; }
+    .aim-locked-note { font-size:13.5px; color: var(--text-muted); background: var(--surface-hover); border-radius:6px; padding:8px 10px; }
 
-    .aim-material-item .aim-material-topic { display:block; color: var(--text-muted); font-size:11px; font-weight:400; }
+    .aim-material-item .aim-material-topic { display:block; color: var(--text-muted); font-size:12.5px; font-weight:400; }
     .aim-material-item .aim-material-main { flex:1; min-width:0; }
     .aim-material-item .aim-material-main a { display:block; }
     .aim-material-btn.aim-sent { border-color:#238863; color:#238863; }
 
     /* Lesson material setup */
-    .aim-class-line { font-size:12.5px; color: var(--text-muted); background: var(--surface-hover); border-radius:6px; padding:7px 10px; margin-bottom:14px; }
+    .aim-class-line { font-size:14px; color: var(--text-muted); background: var(--surface-hover); border-radius:6px; padding:7px 10px; margin-bottom:14px; }
     .aim-class-line strong { color: var(--ink); }
-    .aim-task-status { font-size:12px; border:1px solid var(--border-soft); border-radius:8px; padding:8px 10px; margin-bottom:14px; }
-    .aim-task-status .aim-pill { display:inline-block; border-radius:99px; padding:1px 8px; margin:2px 4px 2px 0; font-weight:600; font-size:11px; }
+    .aim-task-status { font-size:13.5px; border:1px solid var(--border-soft); border-radius:8px; padding:8px 10px; margin-bottom:14px; }
+    .aim-task-status .aim-pill { display:inline-block; border-radius:99px; padding:1px 8px; margin:2px 4px 2px 0; font-weight:600; font-size:12.5px; }
     .aim-pill.upcoming { background:#EAF2FE; color:#1D4ED8; }
     .aim-pill.active { background:#FEF3E6; color:#B54708; }
     .aim-pill.completed { background:#E9F9F1; color:#0F7B4E; }
     .aim-pill.missing { background:#FDEEEE; color:#B42318; }
-    .aim-help { font-size:11.5px; color: var(--text-muted); margin:-10px 0 12px; }
+    .aim-help { font-size:13px; color: var(--text-muted); margin:-10px 0 12px; }
     .aim-file-row { display:flex; gap:8px; align-items:flex-start; }
     .aim-file-row .form-control { margin-bottom:8px; }
     .aim-file-row .aim-file-topic { max-width:45%; }
     .aim-file-row .aim-row-remove { border:none; background:transparent; color:#C94A4A; font-size:18px; line-height:1; padding:6px 2px; }
-    .aim-add-file-btn { border:1px dashed var(--border); background:transparent; color:#14213D; font-size:12px; font-weight:600; border-radius:6px; padding:5px 10px; margin-bottom:12px; }
+    .aim-add-file-btn { border:1px dashed var(--border); background:transparent; color:#14213D; font-size:13.5px; font-weight:600; border-radius:6px; padding:5px 10px; margin-bottom:12px; }
     .aim-info { display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap:6px 12px; background: var(--surface-hover); border-radius:8px; padding:10px 12px; margin-bottom:14px; }
-    .aim-info span { display:block; font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color: var(--text-muted); }
-    .aim-info strong { font-size:13px; color: var(--ink); }
+    .aim-info span { display:block; font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color: var(--text-muted); }
+    .aim-info strong { font-size:14.5px; color: var(--ink); }
     .aim-detect-btn { border:1px solid var(--border); color:#5B5FEF; background:transparent; height:38px; }
-    .aim-open-ai-btn { margin-top:6px; border:1px solid #14213D; background:transparent; color:#14213D; border-radius:6px; padding:3px 10px; font-size:12px; font-weight:600; }
+    .aim-open-ai-btn { margin-top:6px; border:1px solid #14213D; background:transparent; color:#14213D; border-radius:6px; padding:3px 10px; font-size:13.5px; font-weight:600; }
     .aim-open-ai-btn:hover { background:#14213D; color:#fff; }
-    .aim-section-label { font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color: var(--text-muted); margin:4px 0 8px; }
+    .aim-section-label { font-size:12.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color: var(--text-muted); margin:4px 0 8px; }
 </style>
 
 <?php
@@ -602,7 +602,7 @@ $encode_url = 'index.php?step=5&section_id=' . $section_id . '&subject_code=' . 
 <?php endif; ?>
 
 <?php if ($term_readonly): ?>
-    <div class="alert" style="border-radius:10px;font-size:13px;background:#EEF2F7;color:#26364F;border:1px solid #D3DBE7;">
+    <div class="alert" style="border-radius:10px;font-size:14.5px;background:#EEF2F7;color:#26364F;border:1px solid #D3DBE7;">
         <i class="fas fa-lock me-1"></i><strong><?php echo htmlspecialchars($term); ?> is Completed</strong> for this section. Its assessment items and scores are kept as locked, read-only records and cannot be added, edited or removed.
         <?php if (!$section_term_state['all_completed']): ?>This class is now on <strong><?php echo htmlspecialchars($section_term_state['current']); ?></strong>.<?php endif; ?>
     </div>
@@ -635,15 +635,15 @@ $encode_url = 'index.php?step=5&section_id=' . $section_id . '&subject_code=' . 
           <input type="hidden" name="save_term_window" value="1">
           <div class="d-flex flex-wrap gap-2 mb-2">
             <div>
-              <label style="font-size:11px;color: var(--text-muted);display:block;margin-bottom:3px;">Start Date</label>
-              <input type="date" name="window_start_date" class="form-control form-control-sm" style="font-size:13px;border: 1px solid var(--border);border-radius:6px;" value="<?php echo htmlspecialchars($term_window['start_date'] ?? ''); ?>">
+              <label style="font-size:12.5px;color: var(--text-muted);display:block;margin-bottom:3px;">Start Date</label>
+              <input type="date" name="window_start_date" class="form-control form-control-sm" style="font-size:14.5px;border: 1px solid var(--border);border-radius:6px;" value="<?php echo htmlspecialchars($term_window['start_date'] ?? ''); ?>">
             </div>
             <div>
-              <label style="font-size:11px;color: var(--text-muted);display:block;margin-bottom:3px;">End Date</label>
-              <input type="date" name="window_end_date" class="form-control form-control-sm" style="font-size:13px;border: 1px solid var(--border);border-radius:6px;" value="<?php echo htmlspecialchars($term_window['end_date'] ?? ''); ?>">
+              <label style="font-size:12.5px;color: var(--text-muted);display:block;margin-bottom:3px;">End Date</label>
+              <input type="date" name="window_end_date" class="form-control form-control-sm" style="font-size:14.5px;border: 1px solid var(--border);border-radius:6px;" value="<?php echo htmlspecialchars($term_window['end_date'] ?? ''); ?>">
             </div>
           </div>
-          <div style="font-size:11.5px;color: var(--text-muted);">
+          <div style="font-size:13px;color: var(--text-muted);">
             These dates apply to <?php echo htmlspecialchars($term); ?> for the whole school. Once the End Date passes, this term shows "Ready for Finalization" here and in Encode Grades — you still click Finalize yourself when you're ready; scores keep saving normally either way.
           </div>
         </div>

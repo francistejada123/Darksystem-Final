@@ -95,7 +95,7 @@ $csrf = generateCSRFToken();
     <h4>Create My Password</h4>
     <p class="sub">Welcome, <?php echo htmlspecialchars($student['first_name']); ?>! To make sure it is you, enter your birthday.</p>
     <div class="lrn-pill">Your username is your LRN: <b><?php echo htmlspecialchars($student['lrn']); ?></b></div>
-    <?php if ($error): ?><div class="alert alert-danger py-2" style="font-size:14.5px;"><i class="fas fa-circle-exclamation me-1"></i><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
+    <?php if ($error): ?><div class="alert alert-danger py-2" style="font-size:15.5px;"><i class="fas fa-circle-exclamation me-1"></i><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
     <form method="POST" autocomplete="off">
         <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
         <input type="hidden" name="ref" value="<?php echo htmlspecialchars($ref); ?>">

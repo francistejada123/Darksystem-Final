@@ -70,7 +70,7 @@ include '../../includes/header.php';
             <div class="text-center text-muted py-5"><i class="fas fa-check-circle fa-2x text-success d-block mb-2"></i>No <?php echo $show_all ? '' : 'pending '; ?>correction requests.</div>
         <?php else: ?>
             <div class="table-responsive">
-                <table class="table table-hover mb-0" style="font-size:13.5px;">
+                <table class="table table-hover mb-0" style="font-size:15px;">
                     <thead><tr><th>Student</th><th>Information</th><th>Current</th><th>Requested</th><th>Reason</th><th>Requested by</th><th style="min-width:260px;">Decision</th></tr></thead>
                     <tbody>
                     <?php foreach ($requests as $rq): ?>

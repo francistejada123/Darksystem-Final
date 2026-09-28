@@ -50,23 +50,23 @@ include '../../includes/header.php';
 .rep-page .card-header h5 { font-size: 19px; font-weight: 600; color: var(--ink); }
 .rep-page .rep-card-title { font-size: 19px; font-weight: 600; color: var(--ink); }
 .rep-page .rep-updated { color: var(--ink); font-size: 15px; font-weight: 700; }
-.rep-page .rep-pill { font-size: 13px; font-weight: 600; padding: 5px 12px; border-radius: 20px; }
+.rep-page .rep-pill { font-size: 14.5px; font-weight: 600; padding: 5px 12px; border-radius: 20px; }
 
-.rep-page .rep-label { font-size: 14px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px; }
-.rep-page .rep-input { border-radius: 8px; border: 1px solid var(--border); font-size: 14px; padding: 9px 12px; height: 40px; }
+.rep-page .rep-label { font-size: 15px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 6px; }
+.rep-page .rep-input { border-radius: 8px; border: 1px solid var(--border); font-size: 15px; padding: 9px 12px; height: 40px; }
 .rep-page select.rep-input { padding-right: 38px; }
 .rep-page .rep-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(91,95,239,0.12); }
-.rep-page .rep-hint { color: var(--text-muted); font-size: 13px; }
+.rep-page .rep-hint { color: var(--text-muted); font-size: 14.5px; }
 /* Generate/report actions are the page's primary buttons, so they use the
    shared primary indigo like every other "Generate/Save/Apply" button in
    the system instead of navy. */
-.rep-page .rep-btn { background: var(--primary); color: #fff; border: 1px solid var(--primary); padding: 0 26px; height: 40px; border-radius: 8px; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; }
+.rep-page .rep-btn { background: var(--primary); color: #fff; border: 1px solid var(--primary); padding: 0 26px; height: 40px; border-radius: 8px; font-weight: 600; font-size: 14.5px; display: inline-flex; align-items: center; }
 .rep-page .rep-btn:hover { background: #4A4EDB; border-color: #4A4EDB; color: #fff; }
 .rep-page .rep-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .rep-page .rep-btn-green { background: #238863; border-color: #238863; }
 
 .rep-page .list-group-item { font-size: 15px; border-color: var(--border-soft); padding: 14px 16px; }
-.rep-page .rep-tag { background: var(--primary-soft); color: var(--primary); padding: 5px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; }
+.rep-page .rep-tag { background: var(--primary-soft); color: var(--primary); padding: 5px 12px; border-radius: 6px; font-size: 14.5px; font-weight: 600; }
 
 /* Accordion headers get the same "soft muted surface" treatment as the
    filter panels, and the expanded body gets a slightly more elevated
@@ -78,7 +78,7 @@ include '../../includes/header.php';
 .rep-page .accordion-button:focus { box-shadow: 0 0 0 2px rgba(91,95,239,0.12); }
 .rep-page .accordion-body { background: var(--surface-elevated, var(--surface)); }
 .rep-page .table > :not(caption) > * > * { padding: 14px 16px; }
-.rep-page .table thead th { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600; color: var(--text-muted); vertical-align: middle; }
+.rep-page .table thead th { font-size: 13px; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600; color: var(--text-muted); vertical-align: middle; }
 .rep-page .table tbody td { font-size: 15px; vertical-align: middle; }
 .rep-page .table tbody td strong,
 .rep-page .table tfoot td { font-weight: 700; }
@@ -88,14 +88,14 @@ include '../../includes/header.php';
 .rep-page h5.mb-3, .rep-page h5.mb-0 { font-size: 18px !important; }
 .rep-page .rep-label { font-size: 15px !important; color: var(--ink) !important; }
 .rep-page .rep-input { font-size: 15.5px !important; height: 46px !important; }
-.rep-page .rep-hint { font-size: 14px !important; }
+.rep-page .rep-hint { font-size: 15px !important; }
 .rep-page .rep-btn { font-size: 15.5px !important; height: 46px !important; }
 .rep-page .accordion-button { font-size: 17.5px !important; }
-.rep-page .table thead th { font-size: 12.5px !important; }
+.rep-page .table thead th { font-size: 14px !important; }
 .rep-page .table tbody td, .rep-page .table tfoot td { font-size: 15.5px !important; }
-.rep-page .table .badge { font-size: 14px !important; padding: 5px 10px; min-width: 30px; }
+.rep-page .table .badge { font-size: 15px !important; padding: 5px 10px; min-width: 30px; }
 .rep-page .list-group-item { font-size: 16px !important; }
-.rep-page .rep-tag, .rep-page .rep-pill { font-size: 14px !important; }
+.rep-page .rep-tag, .rep-page .rep-pill { font-size: 15px !important; }
 .rep-page .rep-updated { font-size: 16px !important; }
 .rep-page .accordion-body p, .rep-page .accordion-body .text-muted { font-size: 15px; }
 .rep-page #reportSection optgroup { font-weight: 700; font-style: normal; color: #14213D; }
@@ -103,12 +103,12 @@ include '../../includes/header.php';
 .rep-page .sec-pick { position: relative; }
 .rep-page .sec-pick select { display: none; }
 .rep-page .sec-pick-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--surface); color: var(--ink); text-align: left; cursor: pointer; }
-.rep-page .sec-pick-btn i { font-size: 12px; color: var(--text-muted); transition: transform .15s; }
+.rep-page .sec-pick-btn i { font-size: 13.5px; color: var(--text-muted); transition: transform .15s; }
 .rep-page .sec-pick.open .sec-pick-btn { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(91,95,239,0.12); }
 .rep-page .sec-pick.open .sec-pick-btn i { transform: rotate(180deg); }
 .rep-page .sec-pick-list { display: none; position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 1060; max-height: 320px; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 12px 28px rgba(16,24,40,.16); padding: 6px 0; }
 .rep-page .sec-pick.open .sec-pick-list { display: block; }
-.rep-page .sec-pick-group { padding: 8px 14px 4px; font-size: 13px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; color: var(--text-muted); position: sticky; top: -6px; background: var(--surface); }
+.rep-page .sec-pick-group { padding: 8px 14px 4px; font-size: 14.5px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; color: var(--text-muted); position: sticky; top: -6px; background: var(--surface); }
 .rep-page .sec-pick-opt { display: block; width: 100%; border: 0; background: transparent; text-align: left; padding: 9px 14px 9px 26px; font-size: 15.5px; color: var(--ink); cursor: pointer; }
 .rep-page .sec-pick-opt.all { padding-left: 14px; font-weight: 600; }
 .rep-page .sec-pick-opt:hover, .rep-page .sec-pick-opt.focus { background: var(--primary-soft, #EEF1FE); }
@@ -136,7 +136,7 @@ include '../../includes/header.php';
         </h5>
         <div class="d-flex align-items-center gap-2">
             <span class="badge rep-pill d-none align-items-center gap-1" id="gradeFilterPill" style="cursor:pointer;background:#EDF4FB;color: var(--ink);" title="Click to clear the grade filter">
-                <i class="fas fa-filter" style="font-size:12px;"></i> <span id="gradeFilterPillText"></span> <i class="fas fa-times ms-1" style="font-size:12px;"></i>
+                <i class="fas fa-filter" style="font-size:13.5px;"></i> <span id="gradeFilterPillText"></span> <i class="fas fa-times ms-1" style="font-size:13.5px;"></i>
             </span>
             <span class="rep-updated" id="liveUpdatedAt">Loading...</span>
         </div>
@@ -204,7 +204,7 @@ include '../../includes/header.php';
                 <h2 class="accordion-header">
                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGradeTracker">
                         <i class="fas fa-tasks text-primary me-2"></i>Grade Submission Tracker
-                        <span class="text-muted ms-2 grade-scope-label" style="display:none;font-size:14px;"></span>
+                        <span class="text-muted ms-2 grade-scope-label" style="display:none;font-size:15px;"></span>
                     </button>
                 </h2>
                 <div id="collapseGradeTracker" class="accordion-collapse collapse">
@@ -242,7 +242,7 @@ include '../../includes/header.php';
                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAtRisk">
                         <i class="fas fa-exclamation-triangle text-primary me-2"></i>At-Risk &amp; Failing Students
                         <span class="badge bg-warning text-dark ms-2" id="atRiskCountBadge">0</span>
-                        <span class="text-muted ms-2 grade-scope-label" style="display:none;font-size:14px;"></span>
+                        <span class="text-muted ms-2 grade-scope-label" style="display:none;font-size:15px;"></span>
                     </button>
                 </h2>
                 <div id="collapseAtRisk" class="accordion-collapse collapse">
@@ -540,7 +540,7 @@ function exportTable() {
                     '<div class="progress" style="height:8px;">' +
                         '<div class="progress-bar ' + barColor + '" style="width:' + s.percent_full + '%"></div>' +
                     '</div>' +
-                    '<span class="text-muted" style="font-size:14px;">' + s.percent_full + '%</span>' +
+                    '<span class="text-muted" style="font-size:15px;">' + s.percent_full + '%</span>' +
                 '</td>' +
                 '</tr>';
         }).join('');

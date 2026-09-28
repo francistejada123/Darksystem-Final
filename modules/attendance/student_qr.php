@@ -43,7 +43,7 @@ $fail = function ($message, $status = 403) use ($is_student_portal, $is_public, 
     echo '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Student QR Code</title>'
         . '<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#eef1f5;font-family:system-ui,Segoe UI,Roboto,sans-serif;color:#243447}'
         . '.c{max-width:380px;margin:20px;padding:30px;background:#fff;border-radius:16px;box-shadow:0 8px 28px rgba(20,33,61,.1);text-align:center}'
-        . 'a{display:inline-block;margin-top:14px;padding:9px 18px;border-radius:8px;background:#14213d;color:#fff;text-decoration:none;font-size:14px}</style></head>'
+        . 'a{display:inline-block;margin-top:14px;padding:9px 18px;border-radius:8px;background:#14213d;color:#fff;text-decoration:none;font-size:15px}</style></head>'
         . '<body><div class="c"><p style="margin:0;font-size:15px;line-height:1.5">' . htmlspecialchars($message) . '</p><a href="' . htmlspecialchars($home) . '">Go back</a></div></body></html>';
     exit;
 };
@@ -121,13 +121,13 @@ $fallback = $is_public
         .qr-card { width: min(360px, calc(100vw - 32px)); margin: 24px 16px; padding: 30px 26px 24px; background: #fff; border-radius: 18px; box-shadow: 0 10px 34px rgba(20,33,61,.12); text-align: center; }
         .qr-card canvas { display: block; width: 100%; max-width: 260px; height: auto; margin: 0 auto; image-rendering: pixelated; }
         .qr-lrn { margin: 16px 0 4px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 22px; font-weight: 700; letter-spacing: .06em; }
-        .qr-name { margin: 0 0 20px; font-size: 14px; font-weight: 700; color: #3a4b63; }
-        .qr-note { margin: -8px 0 18px; font-size: 11.5px; color: #8593a6; line-height: 1.45; }
+        .qr-name { margin: 0 0 20px; font-size: 15px; font-weight: 700; color: #3a4b63; }
+        .qr-note { margin: -8px 0 18px; font-size: 13px; color: #8593a6; line-height: 1.45; }
         .qr-actions { display: flex; gap: 10px; justify-content: center; }
-        .qr-actions button, .qr-actions a { flex: 1; padding: 10px 12px; border-radius: 9px; border: 1px solid #c9d3e0; background: #f6f8fb; color: #14213d; font-size: 14px; font-weight: 650; cursor: pointer; text-decoration: none; font-family: inherit; }
+        .qr-actions button, .qr-actions a { flex: 1; padding: 10px 12px; border-radius: 9px; border: 1px solid #c9d3e0; background: #f6f8fb; color: #14213d; font-size: 15px; font-weight: 650; cursor: pointer; text-decoration: none; font-family: inherit; }
         .qr-actions button.primary { background: #14213d; border-color: #14213d; color: #fff; }
         .qr-actions button:hover, .qr-actions a:hover { filter: brightness(.96); }
-        .qr-err { color: #c0303f; font-size: 13px; }
+        .qr-err { color: #c0303f; font-size: 14.5px; }
     </style>
 </head>
 <body>

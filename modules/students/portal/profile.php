@@ -216,27 +216,27 @@ $page_title = 'My Profile';
         .sidebar .logo { padding: 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; gap: 10px; }
         .sidebar .logo img { height: 36px; width: 36px; border-radius: 8px; object-fit: contain; }
         .sidebar .logo span { color: #fff; font-size: 15px; font-weight: 700; letter-spacing: 0.02em; line-height: 1.3; }
-        .sidebar .logo small { display: block; font-size: 9px; font-weight: 500; letter-spacing: 0.1em; color: rgba(255,255,255,0.4); }
+        .sidebar .logo small { display: block; font-size: 11px; font-weight: 500; letter-spacing: 0.1em; color: rgba(255,255,255,0.4); }
         .sidebar .nav { padding: 12px 0; flex: 1; }
-        .sidebar .nav-link { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: rgba(255,255,255,0.55); font-size: 13px; font-weight: 500; text-decoration: none; transition: all 0.15s ease; border-left: 3px solid transparent; }
-        .sidebar .nav-link i { width: 18px; text-align: center; font-size: 14px; }
+        .sidebar .nav-link { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: rgba(255,255,255,0.55); font-size: 14.5px; font-weight: 500; text-decoration: none; transition: all 0.15s ease; border-left: 3px solid transparent; }
+        .sidebar .nav-link i { width: 18px; text-align: center; font-size: 15px; }
         .sidebar .nav-link:hover { color: #fff; background: rgba(255,255,255,0.06); }
         .sidebar .nav-link.active { color: #fff; background: rgba(255,255,255,0.08); border-left-color: #fff; }
         .sidebar .nav-link.text-danger { color: rgba(201,74,74,0.7); }
         .sidebar .nav-link.text-danger:hover { color: #C94A4A; background: rgba(201,74,74,0.08); }
         .sidebar .nav-divider { height: 1px; background: rgba(255,255,255,0.08); margin: 8px 20px; }
         .sidebar-footer { padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.08); }
-        .sidebar-footer small { color: rgba(255,255,255,0.3); font-size: 11px; }
+        .sidebar-footer small { color: rgba(255,255,255,0.3); font-size: 12.5px; }
 
         .main-content { padding: 24px 32px; min-height: 100vh; }
         .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
         .topbar-left { display: flex; align-items: center; gap: 14px; }
         .topbar-right { display: flex; align-items: center; gap: 10px; }
         .topbar h4 { margin: 0; font-size: 20px; font-weight: 700; color: var(--portal-primary); }
-        .topbar small { color: var(--portal-gray); font-size: 12px; }
+        .topbar small { color: var(--portal-gray); font-size: 13.5px; }
 
         .card-portal { background: var(--portal-card); border: 1px solid var(--portal-border); border-radius: 8px; margin-bottom: 20px; }
-        .card-portal-header { padding: 16px 20px; border-bottom: 1px solid var(--portal-border); font-size: 14px; font-weight: 600; color: var(--portal-primary); display: flex; align-items: center; justify-content: space-between; }
+        .card-portal-header { padding: 16px 20px; border-bottom: 1px solid var(--portal-border); font-size: 15px; font-weight: 600; color: var(--portal-primary); display: flex; align-items: center; justify-content: space-between; }
         .card-portal-body { padding: 20px; }
 
         .profile-card { text-align: center; padding: 24px 20px; }
@@ -245,37 +245,37 @@ $page_title = 'My Profile';
         .profile-avatar i { font-size: 48px; color: var(--portal-gray); }
         .upload-overlay { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.5); padding: 6px; text-align: center; cursor: pointer; }
         .upload-overlay:hover { background: rgba(0,0,0,0.65); }
-        .upload-overlay i { color: #fff; font-size: 14px; }
+        .upload-overlay i { color: #fff; font-size: 15px; }
         .upload-overlay input { position: absolute; opacity: 0; width: 100%; height: 100%; top: 0; left: 0; cursor: pointer; }
         .profile-name { font-size: 18px; font-weight: 700; color: var(--portal-primary); margin-bottom: 4px; }
-        .profile-lrn { font-size: 13px; color: var(--portal-gray); margin-bottom: 12px; }
-        .profile-status { display: inline-block; padding: 3px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+        .profile-lrn { font-size: 14.5px; color: var(--portal-gray); margin-bottom: 12px; }
+        .profile-status { display: inline-block; padding: 3px 12px; border-radius: 4px; font-size: 13.5px; font-weight: 600; }
         .profile-status.enrolled { background: rgba(35,136,99,0.08); color: var(--portal-green); }
         .profile-status.pending { background: rgba(183,121,31,0.1); color: var(--portal-yellow); }
-        .profile-strand { display: inline-block; padding: 3px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; background: #F2F4F7; color: #344054; border: 1px solid #E4E7EC; margin-top: 6px; }
-        .profile-hint { font-size: 11px; color: var(--portal-gray); margin-top: 16px; }
+        .profile-strand { display: inline-block; padding: 3px 12px; border-radius: 4px; font-size: 13.5px; font-weight: 600; background: #F2F4F7; color: #344054; border: 1px solid #E4E7EC; margin-top: 6px; }
+        .profile-hint { font-size: 12.5px; color: var(--portal-gray); margin-top: 16px; }
 
         .info-row { display: flex; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
         .info-row:last-child { border-bottom: none; }
-        .info-label { width: 140px; font-size: 13px; font-weight: 500; color: var(--portal-gray); flex-shrink: 0; }
-        .info-value { font-size: 13px; color: #374151; font-weight: 500; }
+        .info-label { width: 140px; font-size: 14.5px; font-weight: 500; color: var(--portal-gray); flex-shrink: 0; }
+        .info-value { font-size: 14.5px; color: #374151; font-weight: 500; }
 
         .section-label { font-size: 16px; font-weight: 600; color: var(--portal-primary); margin: 24px 0 10px; padding-bottom: 8px; border-bottom: 1px solid var(--portal-border); display: flex; align-items: center; gap: 6px; }
         .section-label:first-of-type { margin-top: 0; }
 
-        .btn-edit { padding: 7px 16px; border-radius: 6px; font-size: 12px; font-weight: 500; border: none; background: var(--portal-primary); color: #fff; cursor: pointer; transition: all 0.15s; }
+        .btn-edit { padding: 7px 16px; border-radius: 6px; font-size: 13.5px; font-weight: 500; border: none; background: var(--portal-primary); color: #fff; cursor: pointer; transition: all 0.15s; }
         .btn-edit:hover { background: #1a2f54; }
-        .btn-cancel { padding: 7px 16px; border-radius: 6px; font-size: 12px; font-weight: 500; border: 1px solid var(--portal-border); background: #fff; color: var(--portal-gray); cursor: pointer; transition: all 0.15s; }
+        .btn-cancel { padding: 7px 16px; border-radius: 6px; font-size: 13.5px; font-weight: 500; border: 1px solid var(--portal-border); background: #fff; color: var(--portal-gray); cursor: pointer; transition: all 0.15s; }
         .btn-cancel:hover { background: #f1f5f9; }
 
-        .edit-notice { padding: 12px 16px; background: rgba(183,121,31,0.06); border-left: 3px solid var(--portal-yellow); border-radius: 0 6px 6px 0; font-size: 13px; color: #92700c; margin-bottom: 20px; }
+        .edit-notice { padding: 12px 16px; background: rgba(183,121,31,0.06); border-left: 3px solid var(--portal-yellow); border-radius: 0 6px 6px 0; font-size: 14.5px; color: #92700c; margin-bottom: 20px; }
 
-        .form-label-custom { font-size: 12px; font-weight: 500; color: var(--portal-gray); margin-bottom: 4px; display: block; }
-        .form-input-custom { width: 100%; padding: 8px 12px; border: 1px solid var(--portal-border); border-radius: 6px; font-size: 13px; color: #374151; background: #fff; transition: border-color 0.15s; }
+        .form-label-custom { font-size: 13.5px; font-weight: 500; color: var(--portal-gray); margin-bottom: 4px; display: block; }
+        .form-input-custom { width: 100%; padding: 8px 12px; border: 1px solid var(--portal-border); border-radius: 6px; font-size: 14.5px; color: #374151; background: #fff; transition: border-color 0.15s; }
         .form-input-custom:focus { outline: none; border-color: var(--portal-primary); box-shadow: 0 0 0 2px rgba(20,33,61,0.06); }
         textarea.form-input-custom { resize: vertical; min-height: 60px; }
 
-        .alert-portal { padding: 12px 16px; border-radius: 6px; font-size: 13px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .alert-portal { padding: 12px 16px; border-radius: 6px; font-size: 14.5px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
         .alert-portal.success { background: rgba(35,136,99,0.06); color: var(--portal-green); border: 1px solid rgba(35,136,99,0.15); }
         .alert-portal.danger { background: rgba(201,74,74,0.06); color: var(--portal-red); border: 1px solid rgba(201,74,74,0.15); }
 
@@ -283,13 +283,13 @@ $page_title = 'My Profile';
         .profile-row-cards { display: flex; align-items: flex-start; gap: 20px; }
         .profile-row-cards > .card-portal { flex: 1; min-width: 0; margin-bottom: 20px; }
         .profile-summary-divider { height: 1px; background: var(--portal-border); margin: 16px 0; }
-        .profile-summary-id-label { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--portal-gray); margin-bottom: 4px; }
+        .profile-summary-id-label { font-size: 12.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--portal-gray); margin-bottom: 4px; }
         .profile-summary-id-value { font-size: 16px; font-weight: 700; color: var(--portal-primary); margin-bottom: 14px; }
-        .info-row .info-icon { width: 18px; display: inline-flex; justify-content: center; color: var(--portal-gray); font-size: 12px; margin-right: 8px; }
-        .btn-edit-outline { padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1px solid #356EA8; background: #fff; color: #356EA8; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+        .info-row .info-icon { width: 18px; display: inline-flex; justify-content: center; color: var(--portal-gray); font-size: 13.5px; margin-right: 8px; }
+        .btn-edit-outline { padding: 6px 16px; border-radius: 20px; font-size: 13.5px; font-weight: 600; border: 1px solid #356EA8; background: #fff; color: #356EA8; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
         .btn-edit-outline:hover { background: rgba(53,110,168,0.08); }
         .account-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; }
-        .profile-empty-note { font-size: 13px; color: var(--portal-gray); font-style: italic; padding: 10px 0; }
+        .profile-empty-note { font-size: 14.5px; color: var(--portal-gray); font-style: italic; padding: 10px 0; }
 
         @media (max-width: 900px) {
             .profile-row-cards { flex-direction: column; }
@@ -479,7 +479,7 @@ $page_title = 'My Profile';
             <div class="card-portal">
                 <div class="card-portal-header"><span><i class="fas fa-people-roof me-1"></i> Parent Portal</span></div>
                 <div class="card-portal-body">
-                    <p class="text-muted" style="font-size:14px">Your parent or guardian can see your grades, attendance and tasks (view only). Only the school can remove a linked parent.</p>
+                    <p class="text-muted" style="font-size:15px">Your parent or guardian can see your grades, attendance and tasks (view only). Only the school can remove a linked parent.</p>
                     <?php if ($pp_linked): ?>
                         <?php foreach ($pp_linked as $pl): ?>
                             <div class="info-row"><span class="info-label"><i class="fas fa-user-shield info-icon"></i><?php echo htmlspecialchars($pl['full_name'] ?: 'Parent'); ?><?php echo $pl['relationship'] ? ' (' . htmlspecialchars($pl['relationship']) . ')' : ''; ?></span><span class="info-value"><?php echo htmlspecialchars(smsMask($pl['mobile'])); ?></span></div>
@@ -490,11 +490,11 @@ $page_title = 'My Profile';
                     <?php if ($pp_code): $pp_link = ppSetupLink($pp_code); ?>
                         <div style="margin-top:12px;background:#F1F5F9;border-radius:12px;padding:14px;text-align:center">
                             <div id="ppQr" data-link="<?php echo htmlspecialchars($pp_link); ?>" style="width:150px;height:150px;margin:0 auto 8px"></div>
-                            <div style="font-size:13px;color:#64748b">Code</div>
+                            <div style="font-size:14.5px;color:#64748b">Code</div>
                             <div style="font-size:24px;font-weight:800;letter-spacing:3px"><?php echo htmlspecialchars(ppFormatCode($pp_code)); ?></div>
-                            <div style="font-size:12.5px;word-break:break-all"><?php echo htmlspecialchars($pp_link); ?></div>
+                            <div style="font-size:14px;word-break:break-all"><?php echo htmlspecialchars($pp_link); ?></div>
                             <button type="button" class="btn btn-sm btn-primary mt-2" id="ppShare"><i class="fas fa-share me-1"></i> Share to parent</button>
-                            <div style="font-size:12.5px;color:#64748b;margin-top:6px">Let your parent scan this, or send it by Messenger. They enter your birthday and make a PIN. Works once, expires in <?php echo PP_CODE_DAYS; ?> days.</div>
+                            <div style="font-size:14px;color:#64748b;margin-top:6px">Let your parent scan this, or send it by Messenger. They enter your birthday and make a PIN. Works once, expires in <?php echo PP_CODE_DAYS; ?> days.</div>
                         </div>
                         <script src="../../../static/js/vendor/qrcode.min.js"></script>
                         <script>
@@ -583,7 +583,7 @@ $page_title = 'My Profile';
             <div class="card-portal" id="corrections">
                 <div class="card-portal-header"><span><i class="fas fa-pen-to-square me-1"></i> Request a correction</span></div>
                 <div class="card-portal-body">
-                    <p style="font-size:13px;color:var(--portal-gray);margin-bottom:10px;">
+                    <p style="font-size:14.5px;color:var(--portal-gray);margin-bottom:10px;">
                         Is your name, birth date or gender wrong? Send a request with the correct value and the basis (e.g. your PSA birth certificate).
                         The Registrar reviews it, and your record changes once it is approved. (Contact, address and guardian details you can edit yourself above.)
                     </p>
@@ -591,7 +591,7 @@ $page_title = 'My Profile';
                         <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
                         <input type="hidden" name="request_correction" value="1">
                         <div class="col-md-3">
-                            <label class="form-label" style="font-size:12.5px;font-weight:600;">Information</label>
+                            <label class="form-label" style="font-size:14px;font-weight:600;">Information</label>
                             <select name="field_name" class="form-select form-select-sm" required>
                                 <option value="">Choose...</option>
                                 <?php foreach ($sr_student_fields as $fk => $fl): ?>
@@ -600,11 +600,11 @@ $page_title = 'My Profile';
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label" style="font-size:12.5px;font-weight:600;">Correct value</label>
+                            <label class="form-label" style="font-size:14px;font-weight:600;">Correct value</label>
                             <input type="text" name="new_value" class="form-control form-control-sm" maxlength="255" placeholder="e.g. Maria / 2013-05-14 / Female" required>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label" style="font-size:12.5px;font-weight:600;">Reason / basis</label>
+                            <label class="form-label" style="font-size:14px;font-weight:600;">Reason / basis</label>
                             <input type="text" name="reason" class="form-control form-control-sm" maxlength="500" placeholder="e.g. Per my PSA birth certificate" required>
                         </div>
                         <div class="col-md-2">
@@ -613,7 +613,7 @@ $page_title = 'My Profile';
                     </form>
                     <?php if (!empty($sr_requests)): ?>
                         <div class="table-responsive mt-3">
-                            <table class="table table-sm mb-0" style="font-size:12.5px;">
+                            <table class="table table-sm mb-0" style="font-size:14px;">
                                 <thead><tr><th>Information</th><th>Requested</th><th>Date</th><th>Status</th></tr></thead>
                                 <tbody>
                                 <?php foreach ($sr_requests as $rq): ?>

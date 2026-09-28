@@ -64,7 +64,7 @@ function devEnforceDesktopOnly()
         . '<title>Desktop only - EGradePro</title>'
         . '<style>body{margin:0;background:#eef2f7;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#1f2937}'
         . '.box{max-width:440px;margin:40px auto;background:#fff;border-radius:16px;box-shadow:0 10px 40px rgba(13,71,161,.12);padding:28px 22px;text-align:center}'
-        . 'h1{font-size:20px;margin:12px 0 8px}p{color:#64748b;font-size:14px;line-height:1.5}'
+        . 'h1{font-size:20px;margin:12px 0 8px}p{color:#64748b;font-size:15px;line-height:1.5}'
         . 'a.btn{display:block;margin:10px 0;padding:12px;border-radius:10px;background:#1565c0;color:#fff;text-decoration:none;font-weight:700}'
         . 'a.btn.alt{background:#fff;color:#1565c0;border:1px solid #cbd5e1}.ic{font-size:44px}</style></head><body>'
         . '<div class="box"><div class="ic">&#128421;&#65039;</div>'

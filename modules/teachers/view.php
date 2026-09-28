@@ -86,61 +86,61 @@ $qs_class = match($qs) { 'Qualified' => 'qualified', 'Not Qualified' => 'not-qua
 .tprofile .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
 .tprofile .page-header h4 { font-size: 20px; font-weight: 700; color: var(--ink); margin: 0; }
 .tprofile .page-header-actions { display: flex; gap: 8px; }
-.tprofile .btn-primary-action { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; color: #fff; background: #14213D; border: none; text-decoration: none; transition: all 0.15s; }
+.tprofile .btn-primary-action { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 6px; font-size: 14.5px; font-weight: 500; color: #fff; background: #14213D; border: none; text-decoration: none; transition: all 0.15s; }
 .tprofile .btn-primary-action:hover { filter: brightness(0.9); }
-.tprofile .btn-back { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; color: var(--text-muted); background: var(--surface); border: 1px solid var(--border); text-decoration: none; transition: all 0.15s; }
+.tprofile .btn-back { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 6px; font-size: 14.5px; font-weight: 500; color: var(--text-muted); background: var(--surface); border: 1px solid var(--border); text-decoration: none; transition: all 0.15s; }
 .tprofile .btn-back:hover { background: var(--surface-hover); color: var(--ink); }
 .tprofile .content-grid { display: grid; grid-template-columns: 1fr 340px; gap: 24px; }
 .tprofile .info-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 20px; }
 .tprofile .info-card-header { padding: 14px 20px; border-bottom: 1px solid var(--border-soft); display: flex; align-items: center; justify-content: space-between; }
-.tprofile .info-card-header h5 { font-size: 14px; font-weight: 600; color: var(--ink); margin: 0; display: flex; align-items: center; gap: 8px; }
-.tprofile .info-card-header i { font-size: 13px; color: var(--ink); }
+.tprofile .info-card-header h5 { font-size: 15px; font-weight: 600; color: var(--ink); margin: 0; display: flex; align-items: center; gap: 8px; }
+.tprofile .info-card-header i { font-size: 14.5px; color: var(--ink); }
 .tprofile .info-card-body { padding: 20px; }
 .tprofile .detail-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
 .tprofile .detail-item { display: flex; flex-direction: column; gap: 2px; }
-.tprofile .detail-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
-.tprofile .detail-value { font-size: 14px; color: var(--ink); }
-.tprofile .status-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.tprofile .detail-label { font-size: 12.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+.tprofile .detail-value { font-size: 15px; color: var(--ink); }
+.tprofile .status-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12.5px; font-weight: 600; }
 .tprofile .status-active { background: #EAF7F1; color: #238863; }
 .tprofile .status-inactive { background: #FDEEEE; color: #C94A4A; }
 .tprofile .qs-qualified { background: #EAF7F1; color: #238863; }
 .tprofile .qs-not-qualified { background: #FDEEEE; color: #C94A4A; }
 .tprofile .qs-pending-qs { background: var(--surface-hover); color: var(--text-muted); }
 .tprofile .data-table { width: 100%; border-collapse: collapse; }
-.tprofile .data-table thead th { background: var(--surface-hover); border-bottom: 1px solid var(--border); padding: 10px 16px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); text-align: left; }
-.tprofile .data-table tbody td { padding: 12px 16px; font-size: 13px; color: var(--ink); border-bottom: 1px solid var(--border-soft); vertical-align: middle; }
+.tprofile .data-table thead th { background: var(--surface-hover); border-bottom: 1px solid var(--border); padding: 10px 16px; font-size: 12.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); text-align: left; }
+.tprofile .data-table tbody td { padding: 12px 16px; font-size: 14.5px; color: var(--ink); border-bottom: 1px solid var(--border-soft); vertical-align: middle; }
 .tprofile .data-table tbody tr:hover { background: var(--surface-hover); }
 .tprofile .data-table tbody tr:last-child td { border-bottom: none; }
-.tprofile .grade-level-tag { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #F2F4F7; color: #344054; }
+.tprofile .grade-level-tag { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 12.5px; font-weight: 600; background: #F2F4F7; color: #344054; }
 .tprofile .empty-state { text-align: center; padding: 32px 20px; color: var(--text-muted); }
 .tprofile .empty-state i { font-size: 28px; margin-bottom: 8px; opacity: 0.4; display: block; }
-.tprofile .empty-state p { font-size: 13px; margin: 0; }
+.tprofile .empty-state p { font-size: 14.5px; margin: 0; }
 
 /* Sidebar */
 .tprofile .sidebar-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 20px; text-align: center; }
 .tprofile .sidebar-card .card-body { padding: 24px 20px; }
 .tprofile .avatar { width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; color: #fff; background: #14213D; margin: 0 auto 12px auto; }
 .tprofile .sidebar-card h5 { font-size: 16px; font-weight: 600; color: var(--ink); margin: 0 0 4px 0; }
-.tprofile .sidebar-card .sub { font-size: 12px; color: var(--text-muted); }
+.tprofile .sidebar-card .sub { font-size: 13.5px; color: var(--text-muted); }
 .tprofile .sidebar-header { padding: 14px 20px; border-bottom: 1px solid var(--border-soft); text-align: left; }
-.tprofile .sidebar-header h6 { font-size: 13px; font-weight: 600; color: var(--ink); margin: 0; display: flex; align-items: center; gap: 6px; }
-.tprofile .sidebar-header i { font-size: 12px; color: var(--ink); }
+.tprofile .sidebar-header h6 { font-size: 14.5px; font-weight: 600; color: var(--ink); margin: 0; display: flex; align-items: center; gap: 6px; }
+.tprofile .sidebar-header i { font-size: 13.5px; color: var(--ink); }
 .tprofile .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; border-bottom: 1px solid var(--border-soft); }
 .tprofile .stat-row:last-child { border-bottom: none; }
-.tprofile .stat-row .label { font-size: 12px; color: var(--text-muted); }
-.tprofile .stat-row .value { font-size: 14px; font-weight: 600; color: var(--ink); }
+.tprofile .stat-row .label { font-size: 13.5px; color: var(--text-muted); }
+.tprofile .stat-row .value { font-size: 15px; font-weight: 600; color: var(--ink); }
 /* Empty fields + incomplete-profile notice */
-.tprofile .not-set { color: #B45309; font-style: italic; font-size: 13.5px; }
-.tprofile .not-set i { font-size: 12px; margin-right: 3px; }
-.tprofile .tp-incomplete { display: flex; align-items: flex-start; gap: 12px; padding: 14px 18px; margin-bottom: 20px; border: 1px solid #F5D9A8; border-left: 4px solid #D97706; border-radius: 8px; background: #FFF8EB; color: #7A4A06; font-size: 14px; }
+.tprofile .not-set { color: #B45309; font-style: italic; font-size: 15px; }
+.tprofile .not-set i { font-size: 13.5px; margin-right: 3px; }
+.tprofile .tp-incomplete { display: flex; align-items: flex-start; gap: 12px; padding: 14px 18px; margin-bottom: 20px; border: 1px solid #F5D9A8; border-left: 4px solid #D97706; border-radius: 8px; background: #FFF8EB; color: #7A4A06; font-size: 15px; }
 .tprofile .tp-incomplete i { color: #D97706; font-size: 18px; margin-top: 2px; }
 .tprofile .tp-incomplete strong { display: block; color: #7A4A06; margin-bottom: 2px; }
-.tprofile .tp-incomplete a { margin-left: auto; align-self: center; white-space: nowrap; padding: 8px 14px; border-radius: 6px; background: #D97706; color: #fff; font-weight: 600; font-size: 13px; text-decoration: none; }
+.tprofile .tp-incomplete a { margin-left: auto; align-self: center; white-space: nowrap; padding: 8px 14px; border-radius: 6px; background: #D97706; color: #fff; font-weight: 600; font-size: 14.5px; text-decoration: none; }
 .tprofile .tp-incomplete a:hover { background: #B45309; }
 /* Grade level filter above Subject Assignments */
 .tprofile .tp-grade-filter { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 20px; border-bottom: 1px solid var(--border-soft); }
-.tprofile .tp-grade-filter button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--ink); font-size: 13px; font-weight: 600; cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
-.tprofile .tp-grade-filter button span { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--surface-hover); color: var(--text-muted); font-size: 11.5px; }
+.tprofile .tp-grade-filter button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--ink); font-size: 14.5px; font-weight: 600; cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
+.tprofile .tp-grade-filter button span { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--surface-hover); color: var(--text-muted); font-size: 13px; }
 .tprofile .tp-grade-filter button:hover { border-color: #14213D; }
 .tprofile .tp-grade-filter button.active { background: #14213D; border-color: #14213D; color: #fff; }
 .tprofile .tp-grade-filter button.active span { background: rgba(255,255,255,.2); color: #fff; }
@@ -274,7 +274,7 @@ html[data-theme="dark"] .tprofile .tp-grade-filter button.active { background: #
             <div class="info-card">
                 <div class="info-card-header">
                     <h5><i class="fas fa-book"></i> Subject Assignments</h5>
-                    <span id="tpAssignCount" style="display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; border-radius: 11px; background: var(--surface-hover); font-size: 11px; font-weight: 600; color: var(--text-muted); padding: 0 6px;"><?php echo count($assignments); ?></span>
+                    <span id="tpAssignCount" style="display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; border-radius: 11px; background: var(--surface-hover); font-size: 12.5px; font-weight: 600; color: var(--text-muted); padding: 0 6px;"><?php echo count($assignments); ?></span>
                 </div>
                 <?php if (count($grade_counts) > 1): ?>
                     <div class="tp-grade-filter" role="group" aria-label="Filter by grade level">

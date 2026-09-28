@@ -56,7 +56,7 @@ $csrf = generateCSRFToken();
         .box .icon { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto 12px; font-size: 26px; background: #EEF4FF; color: #1D4ED8; }
         .box h4 { font-weight: 800; text-align: center; }
         .box .sub { text-align: center; color: #52607A; font-size: 15px; }
-        label { font-weight: 600; font-size: 14.5px; }
+        label { font-weight: 600; font-size: 15.5px; }
         .form-control { height: 48px; font-size: 16px; }
         .btn-go { height: 50px; font-weight: 700; font-size: 16px; }
         @media (max-width: 500px) { .box { margin: 16px; } }
@@ -69,12 +69,12 @@ $csrf = generateCSRFToken();
 <?php if ($done): ?>
     <h4>Check your email</h4>
     <p class="sub">If the LRN and birthday match an approved student with an email on file, we sent a <strong>Create / Set New Password</strong> link to that email. It works once and expires in <?php echo SPT_VALID_DAYS; ?> days.</p>
-    <p class="sub" style="font-size:14px;">No email arrived after a few minutes? Check Spam, or ask the registrar to send you a new link.</p>
+    <p class="sub" style="font-size:15px;">No email arrived after a few minutes? Check Spam, or ask the registrar to send you a new link.</p>
     <a href="../student_login.php" class="btn btn-primary w-100 btn-go mt-2">Back to Student Login</a>
 <?php else: ?>
     <h4>Create / Forgot Password</h4>
     <p class="sub">Enter your LRN and birthday. We will email you a link to create or reset your password.</p>
-    <?php if ($error): ?><div class="alert alert-danger py-2" style="font-size:14.5px;"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
+    <?php if ($error): ?><div class="alert alert-danger py-2" style="font-size:15.5px;"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
     <form method="POST" autocomplete="off">
         <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
         <div class="mb-3">

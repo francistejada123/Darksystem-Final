@@ -654,7 +654,7 @@ include '../../includes/header.php';
         gap: 8px;
         padding: 10px 20px;
         border-radius: 10px;
-        font-size: 13.5px;
+        font-size: 15px;
         font-weight: 600;
         color: #fff;
         background: var(--primary);
@@ -688,13 +688,13 @@ include '../../includes/header.php';
         gap: 16px;
     }
     .tm-page .page-header p {
-        font-size: 14px;
+        font-size: 15px;
         color: var(--text-muted);
         margin: 4px 0 0 0;
     }
 
     .tm-page .section-title {
-        font-size: 14px;
+        font-size: 15px;
         font-weight: 600;
         color: var(--text-muted);
         text-transform: uppercase;
@@ -706,7 +706,7 @@ include '../../includes/header.php';
     }
 
     .tm-page .section-title i {
-        font-size: 13px;
+        font-size: 14.5px;
     }
 
     .tm-page .grade-grid {
@@ -766,7 +766,7 @@ include '../../includes/header.php';
         gap: 6px;
         padding: 8px 14px;
         border-radius: 5px;
-        font-size: 13px;
+        font-size: 14.5px;
         font-weight: 500;
         color: var(--text-muted);
         background: var(--surface-hover);
@@ -789,7 +789,7 @@ include '../../includes/header.php';
         height: 26px;
         border-radius: 13px;
         background: var(--surface-hover);
-        font-size: 13px;
+        font-size: 14.5px;
         font-weight: 600;
         color: var(--text-muted);
         padding: 0 8px;
@@ -821,7 +821,7 @@ include '../../includes/header.php';
     }
 
     .tm-page .adviser-bar .current-label {
-        font-size: 14px;
+        font-size: 15px;
         color: var(--text-muted);
     }
 
@@ -831,7 +831,7 @@ include '../../includes/header.php';
         gap: 6px;
         padding: 6px 14px;
         border-radius: 20px;
-        font-size: 14px;
+        font-size: 15px;
         font-weight: 500;
     }
 
@@ -855,7 +855,7 @@ include '../../includes/header.php';
         border: 1px solid var(--border);
         border-radius: 6px;
         padding: 7px 12px;
-        font-size: 13px;
+        font-size: 14.5px;
         color: var(--ink);
         background: var(--surface);
         width: 240px;
@@ -873,7 +873,7 @@ include '../../includes/header.php';
         gap: 4px;
         padding: 7px 14px;
         border-radius: 6px;
-        font-size: 13px;
+        font-size: 14.5px;
         font-weight: 500;
         color: #fff;
         background: #14213D;
@@ -990,7 +990,7 @@ include '../../includes/header.php';
 
     .assign-taken-note {
         margin-left: auto;
-        font-size: 13px;
+        font-size: 14.5px;
         color: var(--text-muted-2);
         white-space: nowrap;
     }
@@ -1004,7 +1004,7 @@ include '../../includes/header.php';
         margin: 16px 20px 0 20px;
     }
     .tm-page .tm-filter-label {
-        font-size: 11.5px;
+        font-size: 13px;
         font-weight: 600;
         color: var(--text-muted);
         text-transform: uppercase;
@@ -1021,7 +1021,7 @@ include '../../includes/header.php';
         width: 30px;
         height: 30px;
         border-radius: 50%;
-        font-size: 12px;
+        font-size: 13.5px;
         font-weight: 700;
         margin-right: 8px;
         vertical-align: middle;
@@ -1038,7 +1038,7 @@ include '../../includes/header.php';
         border-top: 1px solid #EEF0F3;
     }
     .tm-page .tm-pagination-info {
-        font-size: 13px;
+        font-size: 14.5px;
         color: var(--text-muted);
     }
     .tm-page .tm-pagination-btns {
@@ -1055,7 +1055,7 @@ include '../../includes/header.php';
         border-radius: 8px;
         border: 1px solid var(--border);
         color: var(--ink);
-        font-size: 13px;
+        font-size: 14.5px;
         font-weight: 600;
         text-decoration: none;
         background: var(--surface);
@@ -1083,7 +1083,7 @@ include '../../includes/header.php';
         background: var(--surface-hover);
         border-bottom: 1px solid var(--border);
         padding: 14px 16px;
-        font-size: 12px;
+        font-size: 13.5px;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.04em;
@@ -1121,7 +1121,7 @@ include '../../includes/header.php';
         gap: 4px;
         padding: 5px 14px;
         border-radius: 999px;
-        font-size: 13px;
+        font-size: 14.5px;
         font-weight: 600;
     }
 
@@ -1139,7 +1139,7 @@ include '../../includes/header.php';
         display: inline-block;
         padding: 5px 12px;
         border-radius: 6px;
-        font-size: 13px;
+        font-size: 14.5px;
         font-weight: 500;
         background: #F2F4F7;
         color: #344054;
@@ -1153,7 +1153,7 @@ include '../../includes/header.php';
         display: inline-block;
         padding: 5px 14px;
         border-radius: 999px;
-        font-size: 13px;
+        font-size: 14.5px;
         font-weight: 600;
     }
 
@@ -1173,7 +1173,7 @@ include '../../includes/header.php';
         gap: 6px;
         padding: 8px 14px;
         border-radius: 6px;
-        font-size: 13px;
+        font-size: 14.5px;
         font-weight: 500;
         color: var(--ink);
         background: var(--surface);
@@ -1200,7 +1200,7 @@ include '../../includes/header.php';
         gap: 6px;
         padding: 8px 14px;
         border-radius: 6px;
-        font-size: 13px;
+        font-size: 14.5px;
         font-weight: 500;
         color: #C94A4A;
         background: var(--surface);
@@ -1296,7 +1296,7 @@ include '../../includes/header.php';
         display: inline-block;
         padding: 5px 14px;
         border-radius: 999px;
-        font-size: 13px;
+        font-size: 14.5px;
         font-weight: 600;
     }
 
@@ -1314,7 +1314,7 @@ include '../../includes/header.php';
         display: inline-block;
         padding: 4px 10px;
         border-radius: 6px;
-        font-size: 13px;
+        font-size: 14.5px;
         font-weight: 500;
         background: var(--surface-hover);
         color: var(--ink);
@@ -1350,23 +1350,23 @@ include '../../includes/header.php';
     .tm-page .page-header h4 { font-size: 32px !important; }
     .tm-page .page-header p { font-size: 16px !important; }
     .tm-page .page-header .btn-sm-link, .tm-page .page-header .btn-primary-action { font-size: 15.5px !important; padding: 11px 18px !important; }
-    .tm-page .section-title { font-size: 14.5px !important; }
+    .tm-page .section-title { font-size: 15.5px !important; }
     .tm-page .grade-card .grade-num { font-size: 36px !important; }
     .tm-page .grade-card .grade-label { font-size: 18px !important; }
     .tm-page .grade-card .section-count { font-size: 15px !important; }
-    .tm-page .grade-card .grade-selected-pill { font-size: 13px !important; padding: 4px 14px !important; }
+    .tm-page .grade-card .grade-selected-pill { font-size: 14.5px !important; padding: 4px 14px !important; }
     .tm-page .card-header-bar h5 { font-size: 19px !important; }
-    .tm-page .card-header-bar .badge-count { font-size: 13.5px !important; }
-    .tm-page .card-header-bar .btn-sm-link { font-size: 14.5px !important; padding: 8px 14px !important; }
+    .tm-page .card-header-bar .badge-count { font-size: 15px !important; }
+    .tm-page .card-header-bar .btn-sm-link { font-size: 15.5px !important; padding: 8px 14px !important; }
     .tm-page .section-card .sec-name { font-size: 19px !important; }
-    .tm-page .section-card .sec-meta { font-size: 14.5px !important; }
+    .tm-page .section-card .sec-meta { font-size: 15.5px !important; }
     .tm-page .section-card { padding: 16px 18px !important; }
-    .tm-page .tm-filter-label { font-size: 14px !important; }
+    .tm-page .tm-filter-label { font-size: 15px !important; }
     .tm-page .tm-filter-bar .form-control, .tm-page .tm-filter-bar .form-select { font-size: 15px; min-height: 44px; }
-    .tm-page .data-table th { font-size: 12.5px !important; }
+    .tm-page .data-table th { font-size: 14px !important; }
     .tm-page .data-table td { font-size: 15px !important; }
-    .tm-page .data-table .spec-tag, .tm-page .data-table .section-tag, .tm-page .data-table .active-tag { font-size: 13.5px !important; }
-    .tm-page .content-card p, .tm-page .content-card label { font-size: 14.5px; }
+    .tm-page .data-table .spec-tag, .tm-page .data-table .section-tag, .tm-page .data-table .active-tag { font-size: 15px !important; }
+    .tm-page .content-card p, .tm-page .content-card label { font-size: 15.5px; }
 </style>
 <div class="tm-page" style="padding: 24px;">
 
@@ -1379,7 +1379,7 @@ include '../../includes/header.php';
             </div>
         </div>
         <div style="display: flex; align-items: center; gap: 10px;">
-            <button type="button" class="btn-sm-link" style="padding: 10px 16px; font-size: 14px;" data-bs-toggle="modal" data-bs-target="#editTermDatesModal">
+            <button type="button" class="btn-sm-link" style="padding: 10px 16px; font-size: 15px;" data-bs-toggle="modal" data-bs-target="#editTermDatesModal">
                 <i class="fas fa-calendar-alt"></i> Term Dates
             </button>
             <a href="add.php" class="btn-primary-action">
@@ -1532,21 +1532,21 @@ include '../../includes/header.php';
                     <i class="fas fa-user-lock" style="font-size:18px;margin-top:2px;"></i>
                     <div>
                         <strong style="display:block;font-size:15px;">Adviser Conflict</strong>
-                        <span style="font-size:14.5px;"><?php echo htmlspecialchars($_SESSION['adviser_conflict']); ?></span>
+                        <span style="font-size:15.5px;"><?php echo htmlspecialchars($_SESSION['adviser_conflict']); ?></span>
                     </div>
                 </div>
                 <?php unset($_SESSION['adviser_conflict']); ?>
             <?php endif; ?>
             <?php if (isset($_SESSION['success_message'])): ?>
                 <div
-                    style="padding: 12px 20px; background: #EAF7F1; color: #238863; font-size: 13px; border-bottom: 1px solid var(--border-soft);">
+                    style="padding: 12px 20px; background: #EAF7F1; color: #238863; font-size: 14.5px; border-bottom: 1px solid var(--border-soft);">
                     <i class="fas fa-check-circle" style="margin-right: 4px;"></i> <?php echo $_SESSION['success_message']; ?>
                 </div>
                 <?php unset($_SESSION['success_message']); ?>
             <?php endif; ?>
             <?php if (isset($_SESSION['error_message'])): ?>
                 <div
-                    style="padding: 12px 20px; background: #FDEEEE; color: #C94A4A; font-size: 13px; border-bottom: 1px solid var(--border-soft);">
+                    style="padding: 12px 20px; background: #FDEEEE; color: #C94A4A; font-size: 14.5px; border-bottom: 1px solid var(--border-soft);">
                     <i class="fas fa-exclamation-circle" style="margin-right: 4px;"></i>
                     <?php echo $_SESSION['error_message']; ?>
                 </div>
@@ -1577,7 +1577,7 @@ include '../../includes/header.php';
                     </select>
                     <button type="submit" class="btn-save"><i class="fas fa-save"></i> Save</button>
                 </form>
-                <div style="flex-basis:100%;font-size:13px;color:var(--text-muted);margin-top:6px;"><i class="fas fa-circle-info me-1"></i>A teacher can be adviser of one section only. Teachers who already advise another section are shown but cannot be selected; remove them from that section first.</div>
+                <div style="flex-basis:100%;font-size:14.5px;color:var(--text-muted);margin-top:6px;"><i class="fas fa-circle-info me-1"></i>A teacher can be adviser of one section only. Teachers who already advise another section are shown but cannot be selected; remove them from that section first.</div>
             </div>
         </div>
     <?php endif; ?>
@@ -1594,7 +1594,7 @@ include '../../includes/header.php';
                     <a href="?grade=<?php echo urlencode($selected_grade); ?>&strand=<?php echo urlencode($selected_strand); ?>&section=0&subject=0"
                         class="btn-sm-link"><i class="fas fa-arrow-left"></i> Sections</a>
                     <?php $term_ready = !$is_shs || $selected_term !== ''; ?>
-                    <button class="btn-primary-action" style="padding: 8px 16px; font-size: 14px;"
+                    <button class="btn-primary-action" style="padding: 8px 16px; font-size: 15px;"
                         <?php echo $term_ready ? 'data-bs-toggle="modal" data-bs-target="#assignSubjectModal"' : 'disabled title="No term is active today -- set up Term Dates first"'; ?>><i
                             class="fas fa-plus"></i> Assign</button>
                 </div>
@@ -1602,17 +1602,17 @@ include '../../includes/header.php';
             <?php if ($is_shs): ?>
                 <div style="padding: 14px 20px; border-bottom: 1px solid var(--border-soft, #eee); display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                     <?php if ($selected_term !== '' && isset($term_windows_by_term[$selected_term])): ?>
-                        <span style="display:inline-flex; align-items:center; gap:6px; padding: 6px 14px; border-radius: 8px; background:#0F766E; color:#fff; font-weight:600; font-size: 13px;">
+                        <span style="display:inline-flex; align-items:center; gap:6px; padding: 6px 14px; border-radius: 8px; background:#0F766E; color:#fff; font-weight:600; font-size: 14.5px;">
                             <i class="fas fa-calendar-check"></i> Now showing: <?php echo htmlspecialchars($selected_term); ?>
                         </span>
-                        <span style="font-size: 12px; color: var(--text-muted);">
+                        <span style="font-size: 13.5px; color: var(--text-muted);">
                             (<?php echo formatDate($term_windows_by_term[$selected_term]['start_date']); ?> &ndash; <?php echo formatDate($term_windows_by_term[$selected_term]['end_date']); ?>) &mdash; switches automatically
                         </span>
                     <?php else: ?>
-                        <span style="display:inline-flex; align-items:center; gap:6px; padding: 6px 14px; border-radius: 8px; background:#FDECEA; color:#B3261E; font-weight:600; font-size: 13px;">
+                        <span style="display:inline-flex; align-items:center; gap:6px; padding: 6px 14px; border-radius: 8px; background:#FDECEA; color:#B3261E; font-weight:600; font-size: 14.5px;">
                             <i class="fas fa-calendar-times"></i> No term is active today
                         </span>
-                        <span style="font-size: 12px; color: var(--text-muted);">
+                        <span style="font-size: 13.5px; color: var(--text-muted);">
                             Set the Term 1/2/3 date ranges using "Term Dates" above.
                         </span>
                     <?php endif; ?>
@@ -1906,25 +1906,25 @@ include '../../includes/header.php';
                 <div class="modal-body" style="padding: 24px;">
                     <input type="hidden" name="csrf_token" value="<?php echo generateCSRFToken(); ?>">
                     <input type="hidden" name="action" value="save_term_schedule">
-                    <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 20px;">
+                    <p style="font-size: 15px; color: var(--text-muted); margin-bottom: 20px;">
                         Set when each term starts and ends for Grade 11 and Grade 12. Subjects under
                         "Assign Subject to Teacher" will switch automatically once today falls inside a
                         term's range -- there is no need to pick a term by hand.
                     </p>
-                    <p style="font-size: 12px; color: var(--text-muted); margin-top: -12px; margin-bottom: 20px;">
+                    <p style="font-size: 13.5px; color: var(--text-muted); margin-top: -12px; margin-bottom: 20px;">
                         It's fine to fill in just one term for now and leave the rest blank -- add the others later.
                     </p>
-                    <p style="font-size: 12px; color: var(--text-muted); margin-top: -12px; margin-bottom: 20px;">
+                    <p style="font-size: 13.5px; color: var(--text-muted); margin-top: -12px; margin-bottom: 20px;">
                         <i class="fas fa-bolt" style="color:#0F7B4E;"></i> Dates save automatically as soon as a term's start and end are both filled in,
                         and they show up right away in Encode Grades and Manage Assessment Items for teachers.
                     </p>
                     <?php foreach ($valid_terms as $t): $ts = $term_windows_by_term[$t] ?? null; ?>
                         <div style="margin-bottom: 18px;">
-                            <label style="display:block; font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 8px;"><?php echo htmlspecialchars($t); ?></label>
+                            <label style="display:block; font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 8px;"><?php echo htmlspecialchars($t); ?></label>
                             <div style="display:flex; gap: 10px; align-items:center; flex-wrap: wrap;">
-                                <input type="date" name="term_start[<?php echo htmlspecialchars($t); ?>]" data-term="<?php echo htmlspecialchars($t); ?>" class="form-control td-date" style="font-size: 14px; max-width: 170px;" value="<?php echo htmlspecialchars($ts['start_date'] ?? ''); ?>">
+                                <input type="date" name="term_start[<?php echo htmlspecialchars($t); ?>]" data-term="<?php echo htmlspecialchars($t); ?>" class="form-control td-date" style="font-size: 15px; max-width: 170px;" value="<?php echo htmlspecialchars($ts['start_date'] ?? ''); ?>">
                                 <span style="color: var(--text-muted);">to</span>
-                                <input type="date" name="term_end[<?php echo htmlspecialchars($t); ?>]" data-term="<?php echo htmlspecialchars($t); ?>" class="form-control td-date" style="font-size: 14px; max-width: 170px;" value="<?php echo htmlspecialchars($ts['end_date'] ?? ''); ?>">
+                                <input type="date" name="term_end[<?php echo htmlspecialchars($t); ?>]" data-term="<?php echo htmlspecialchars($t); ?>" class="form-control td-date" style="font-size: 15px; max-width: 170px;" value="<?php echo htmlspecialchars($ts['end_date'] ?? ''); ?>">
                             </div>
                             <div class="td-status" data-term="<?php echo htmlspecialchars($t); ?>" role="status" aria-live="polite"></div>
                         </div>
@@ -1940,7 +1940,7 @@ include '../../includes/header.php';
 </div>
 
 <style>
-    .td-status { font-size: 12px; font-weight: 600; margin-top: 6px; min-height: 0; }
+    .td-status { font-size: 13.5px; font-weight: 600; margin-top: 6px; min-height: 0; }
     .td-status:empty { display: none; }
     .td-status.ok { color: #0F7B4E; }
     .td-status.err { color: #B3261E; }
@@ -2044,7 +2044,7 @@ include '../../includes/header.php';
                         <label style="font-size: 15px; font-weight: 600; color: var(--text-muted); margin: 0;">Select Subjects</label>
                         <?php if (!empty($available_subjects)): ?>
                             <label
-                                style="display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink); cursor: pointer; margin: 0;">
+                                style="display: inline-flex; align-items: center; gap: 8px; font-size: 15px; color: var(--ink); cursor: pointer; margin: 0;">
                                 <input type="checkbox" id="assignSelectAll"
                                     style="width: 17px; height: 17px; cursor: pointer;">
                                 Select all available (<?php echo count($available_subjects); ?>)

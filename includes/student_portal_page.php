@@ -41,22 +41,22 @@ function spPageStart($title, $subtitle, array $student, $profileImage)
         .sidebar .logo { padding: 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; gap: 10px; }
         .sidebar .logo img { height: 36px; width: 36px; border-radius: 8px; object-fit: contain; }
         .sidebar .logo span { color: #fff; font-size: 15px; font-weight: 700; letter-spacing: 0.02em; line-height: 1.3; }
-        .sidebar .logo small { display: block; font-size: 9px; font-weight: 500; letter-spacing: 0.1em; color: rgba(255,255,255,0.4); }
+        .sidebar .logo small { display: block; font-size: 11px; font-weight: 500; letter-spacing: 0.1em; color: rgba(255,255,255,0.4); }
         .sidebar .nav { padding: 12px 0; flex: 1; }
-        .sidebar .nav-link { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: rgba(255,255,255,0.55); font-size: 13px; font-weight: 500; text-decoration: none; transition: all 0.15s ease; border-left: 3px solid transparent; }
-        .sidebar .nav-link i { width: 18px; text-align: center; font-size: 14px; }
+        .sidebar .nav-link { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: rgba(255,255,255,0.55); font-size: 14.5px; font-weight: 500; text-decoration: none; transition: all 0.15s ease; border-left: 3px solid transparent; }
+        .sidebar .nav-link i { width: 18px; text-align: center; font-size: 15px; }
         .sidebar .nav-link:hover { color: #fff; background: rgba(255,255,255,0.06); }
         .sidebar .nav-link.active { color: #fff; background: rgba(255,255,255,0.08); border-left-color: #fff; }
         .sidebar-footer { padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.08); }
-        .sidebar-footer small { color: rgba(255,255,255,0.3); font-size: 11px; }
+        .sidebar-footer small { color: rgba(255,255,255,0.3); font-size: 12.5px; }
         .main-content { padding: 24px 32px; min-height: 100vh; }
         .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
         .topbar-left { display: flex; align-items: center; gap: 14px; }
         .topbar-right { display: flex; align-items: center; gap: 10px; }
         .topbar h4 { margin: 0; font-size: 20px; font-weight: 700; color: var(--portal-primary); }
-        .topbar small { color: var(--portal-gray); font-size: 12px; }
+        .topbar small { color: var(--portal-gray); font-size: 13.5px; }
         .stat-card { background: var(--portal-card); border: 1px solid var(--portal-border); border-radius: 12px; padding: 16px; }
-        .stat-card h6 { margin: 0 0 6px; font-size: 12px; font-weight: 500; color: var(--portal-gray); text-transform: uppercase; letter-spacing: 0.04em; }
+        .stat-card h6 { margin: 0 0 6px; font-size: 13.5px; font-weight: 500; color: var(--portal-gray); text-transform: uppercase; letter-spacing: 0.04em; }
         .stat-card .stat-value { font-size: 24px; font-weight: 700; color: var(--portal-primary); line-height: 1.1; }
         .card-portal { background: var(--portal-card); border: 1px solid var(--portal-border); border-radius: 12px; margin-bottom: 16px; }
         .empty-state { text-align: center; padding: 36px 20px; color: var(--portal-gray); }
