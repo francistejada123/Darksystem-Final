@@ -92,8 +92,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ppMailReady()) {
             executeQuery("UPDATE parents SET pin_hash = ?, failed_logins = 0, locked_until = NULL WHERE parent_id = ?", [password_hash($_POST['pin'], PASSWORD_DEFAULT), (int) $p['parent_id']]);
             logActivity(null, 'parents', 'Parent PIN reset', 'New PIN set with an emailed code (' . smsMask($p['mobile']) . ')');
             ppMailPinChanged($p['email']);
-            ppStartSession($p);   // also clears pp_fp
-            header('Location: index.php?welcome=reset');
+            // Sign in again with the new PIN (no automatic sign-in).
+            $prefill = (string) ($fp['login'] ?? '');
+            unset($_SESSION['pp_fp'], $_SESSION['parent_id'], $_SESSION['pp_child']);
+            session_regenerate_id(true);
+            $_SESSION['pp_login_prefill'] = $prefill;
+            header('Location: login.php?pin_changed=1');
             exit;
         }
     }

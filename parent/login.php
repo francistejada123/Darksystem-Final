@@ -14,7 +14,8 @@ if (!empty($_SESSION['parent_id']) && ($_SESSION['role'] ?? '') === 'Parent') {
 }
 $en = ppLang() === 'en';
 $error = '';
-$login_v = '';
+$login_v = (string) ($_SESSION['pp_login_prefill'] ?? '');   // after a PIN change: the number/email they used
+unset($_SESSION['pp_login_prefill']);
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Mobile number or email (has "@") + PIN.
     $login_v = mb_substr(trim((string) ($_POST['login'] ?? '')), 0, 120);
@@ -40,6 +41,7 @@ $csrf = generateCSRFToken();
 ppHead(ppT('login'), true);
 ppAuthStart('fa-user-lock', ppT('login_title'), ppT('login_sub'));
 ?>
+                <?php if (!$error && isset($_GET['pin_changed'])): ?><div class="pp-alert t-ok"><i class="fas fa-circle-check me-1"></i><?php echo $en ? 'Your PIN was changed. Sign in with your new PIN.' : 'Napalitan na ang PIN. Mag-login gamit ang bagong PIN.'; ?></div><?php endif; ?>
                 <?php if ($error): ?><div class="pp-alert t-bad"><i class="fas fa-circle-exclamation me-1"></i><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
                 <form method="POST" autocomplete="on">
                     <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">

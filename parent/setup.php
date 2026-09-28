@@ -90,8 +90,11 @@ if ($c && !$pending && $_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['e
             executeQuery("UPDATE parents SET pin_hash = ?, failed_logins = 0, locked_until = NULL WHERE parent_id = ?", [password_hash($_POST['pin'], PASSWORD_DEFAULT), (int) $p['parent_id']]);
             executeQuery("UPDATE parent_setup_codes SET used_at = NOW(), used_by_parent = ? WHERE code_id = ?", [(int) $p['parent_id'], (int) $c['code_id']]);
             logActivity(null, 'parents', 'Parent PIN reset', 'Parent ' . smsMask($mobile));
-            ppStartSession($p);
-            header('Location: index.php?welcome=reset');
+            // Sign in again with the new PIN (no automatic sign-in).
+            unset($_SESSION['parent_id'], $_SESSION['pp_child']);
+            session_regenerate_id(true);
+            $_SESSION['pp_login_prefill'] = $mobile;
+            header('Location: login.php?pin_changed=1');
             exit;
         }
     } else {
