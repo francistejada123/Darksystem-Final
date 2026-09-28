@@ -4,6 +4,7 @@
 
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../../includes/eo_scope.php';   // Enrollment Officer: own grade level only
 require_once __DIR__ . '/../../includes/enrollment_helpers_online.php';
 require_once __DIR__ . '/../../includes/attendance_qr_helpers.php'; // attQrLrnLink()
 require_once __DIR__ . '/../../includes/enrollment_lrn_card.php'; // oeGradeLevelCheck() -- Form 138 grade vs grade applied for
@@ -26,6 +27,7 @@ if (!$application) {
     header('Location: applications.php');
     exit;
 }
+eoGuard($application['grade_level'], 'applications.php');
 
 // Mark as Under Review the first time a staff member opens it
 if ($application['status'] === 'Pending') {

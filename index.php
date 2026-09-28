@@ -214,30 +214,34 @@ $eo_recent_applications = [];
 $eo_recent_walkins = [];
 if (hasRole('Enrollment Officer')) {
     require_once 'includes/enrollment_helpers_online.php';
+    require_once 'includes/eo_scope.php';
+    // Own grade level only (nothing when none is assigned yet).
+    [$eo_e, $eo_p] = eoSql('e.grade_level');
+    [$eo_a, $eo_ap] = eoSql('grade_level');
     $stats['pending_applications'] = getPendingApplicationCount();
 
     $stats['online_enrolled'] = getCount(
         'enrollments e',
-        "e.enrollment_status = 'Approved' AND EXISTS (SELECT 1 FROM online_applications oa WHERE oa.enrollment_id = e.enrollment_id)"
+        "e.enrollment_status = 'Approved' AND EXISTS (SELECT 1 FROM online_applications oa WHERE oa.enrollment_id = e.enrollment_id)" . $eo_e, $eo_p
     );
     $stats['walkin_enrolled'] = getCount(
         'enrollments e',
-        "e.enrollment_status = 'Approved' AND NOT EXISTS (SELECT 1 FROM online_applications oa WHERE oa.enrollment_id = e.enrollment_id)"
+        "e.enrollment_status = 'Approved' AND NOT EXISTS (SELECT 1 FROM online_applications oa WHERE oa.enrollment_id = e.enrollment_id)" . $eo_e, $eo_p
     );
     $stats['total_enrolled'] = $stats['online_enrolled'] + $stats['walkin_enrolled'];
 
     $stats['todays_walkins'] = getCount(
         'enrollments e',
-        "e.enrollment_date = CURDATE() AND NOT EXISTS (SELECT 1 FROM online_applications oa WHERE oa.enrollment_id = e.enrollment_id)"
+        "e.enrollment_date = CURDATE() AND NOT EXISTS (SELECT 1 FROM online_applications oa WHERE oa.enrollment_id = e.enrollment_id)" . $eo_e, $eo_p
     );
 
     $eo_recent_applications = getRecords("
         SELECT application_id, reference_no, first_name, last_name, grade_level, status, created_at
         FROM online_applications
-        WHERE deleted_at IS NULL
+        WHERE deleted_at IS NULL" . $eo_a . "
         ORDER BY created_at DESC
         LIMIT 5
-    ");
+    ", $eo_ap);
 
     $eo_recent_walkins = getRecords("
         SELECT e.enrollment_id, e.enrollment_date, e.enrollment_status, e.grade_level, e.strand,
@@ -245,10 +249,10 @@ if (hasRole('Enrollment Officer')) {
         FROM enrollments e
         JOIN students s ON e.student_id = s.student_id
         LEFT JOIN sections sec ON sec.section_id = e.section_id
-        WHERE NOT EXISTS (SELECT 1 FROM online_applications oa WHERE oa.enrollment_id = e.enrollment_id)
+        WHERE NOT EXISTS (SELECT 1 FROM online_applications oa WHERE oa.enrollment_id = e.enrollment_id)" . $eo_e . "
         ORDER BY e.enrollment_date DESC, e.enrollment_id DESC
         LIMIT 5
-    ");
+    ", $eo_p);
 }
 
 // --- START: DATA FOR ANALYTICS (ADMIN ONLY) ---
@@ -1649,7 +1653,8 @@ document.addEventListener('click', function (e) {
 <!-- ============================================================ -->
 
 <div class="mb-3 dash-header-row">
-    <div class="section-label mb-0">School Year: <?php echo $active_sy ? htmlspecialchars($active_sy['sy_name']) : 'N/A'; ?></div>
+    <div class="section-label mb-0">School Year: <?php echo $active_sy ? htmlspecialchars($active_sy['sy_name']) : 'N/A'; ?>
+        · <?php echo eoGrade() ? 'Assigned: <strong>' . htmlspecialchars(eoGrade()) . '</strong>' : '<span style="color:#B91C1C">No grade level assigned yet — ask the Administrator</span>'; ?></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <a href="modules/enrollment/applications.php" class="dash-customize-btn" style="text-decoration:none;">
             <i class="fas fa-inbox"></i> Review Online Applications

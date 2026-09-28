@@ -281,7 +281,9 @@ function notifyStaffNewApplication($application)
 /** Count of applications still waiting for a decision (for the sidebar badge). */
 function getPendingApplicationCount()
 {
-    $row = getRecord("SELECT COUNT(*) AS cnt FROM online_applications WHERE status IN ('Pending','Under Review') AND deleted_at IS NULL");
+    require_once __DIR__ . '/eo_scope.php';
+    [$eo_where, $eo_params] = eoSql('grade_level');   // Enrollment Officer: own grade level only
+    $row = getRecord("SELECT COUNT(*) AS cnt FROM online_applications WHERE status IN ('Pending','Under Review') AND deleted_at IS NULL" . $eo_where, $eo_params);
     return intval($row['cnt'] ?? 0);
 }
 

@@ -87,6 +87,11 @@ if (!$is_public) {
     if (!$enrollment) {
         $fail('The QR code becomes available once this student\'s enrollment has been approved.');
     }
+    if (!$is_student_portal) {
+        require_once __DIR__ . '/../../includes/eo_scope.php';
+        $eo_row = getRecord("SELECT grade_level FROM enrollments WHERE student_id = ? AND school_year_id = ?", [$student_id, $active_sy['sy_id']]);
+        if (!eoCanGrade($eo_row['grade_level'] ?? '')) $fail('You can only open students of your assigned grade level.');
+    }
 
     // A teacher may only open the QR of a student in one of their own sections.
     if (!$is_student_portal && !hasAnyRole(['Administrator', 'Registrar', 'Enrollment Officer'])) {

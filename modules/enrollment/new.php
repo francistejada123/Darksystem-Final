@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../../includes/eo_scope.php';   // Enrollment Officer: own grade level only
 require_once __DIR__ . '/../../includes/enrollment_helpers_online.php';
 
 if (!defined('BASE_URL')) {
@@ -18,6 +19,7 @@ $base_url = BASE_URL;
 
 $active_sy = getRecord("SELECT * FROM school_years WHERE is_active = 1");
 $grade_levels = getOnlineGradeLevels();
+if (eoGrade() !== null) $grade_levels = array_values(array_filter([eoGrade()]));   // Enrollment Officer: own grade level only
 $valid_strands = ['GAS', 'ASSH'];
 $errors = [];
 $form = [

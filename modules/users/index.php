@@ -443,13 +443,29 @@ include '../../includes/header.php';
                     </div>
                     <div class="mb-1">
                         <label class="form-label">Role</label>
-                        <select name="role_id" class="form-select" required>
+                        <select name="role_id" id="addUserRole" class="form-select" required>
                             <option value="">Select Role</option>
                             <?php foreach ($addable_roles as $role): ?>
-                                <option value="<?php echo $role['role_id']; ?>"><?php echo htmlspecialchars($role['role_name']); ?></option>
+                                <option value="<?php echo $role['role_id']; ?>" <?php echo $role['role_name'] === 'Enrollment Officer' ? 'data-eo="1"' : ''; ?>><?php echo htmlspecialchars($role['role_name']); ?></option>
                             <?php endforeach; ?>
                         </select>
                         <div class="form-text">Teacher, Student, Parent, and Registrar accounts are created from their own sections (e.g. Teachers &gt; Add Teacher).</div>
+                    </div>
+                    <?php
+                        // Enrollment Officer: one grade level each, one officer per grade level.
+                        require_once __DIR__ . '/../../includes/eo_scope.php';
+                        eoEnsureSchema();
+                        $eo_taken = array_column(getRecords("SELECT assigned_grade_level FROM users WHERE assigned_grade_level IS NOT NULL"), 'assigned_grade_level');
+                    ?>
+                    <div class="mb-1 mt-3" id="addUserGradeWrap" style="display:none">
+                        <label class="form-label" for="addUserGrade">Grade Level Assignment</label>
+                        <select name="assigned_grade_level" id="addUserGrade" class="form-select">
+                            <option value="">Select Grade Level</option>
+                            <?php foreach (EO_GRADE_LEVELS as $gl): ?>
+                                <option value="<?php echo $gl; ?>" <?php echo in_array($gl, $eo_taken, true) ? 'disabled' : ''; ?>><?php echo $gl . (in_array($gl, $eo_taken, true) ? ' (already assigned)' : ''); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="form-text">One Enrollment Officer per grade level. They will only see this grade level's enrollment records.</div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -460,6 +476,22 @@ include '../../includes/header.php';
         </div>
     </div>
 </div>
+
+<script>
+// Grade Level Assignment shows (and is required) only for Enrollment Officer; any other role clears it.
+(function () {
+    var role = document.getElementById('addUserRole'), wrap = document.getElementById('addUserGradeWrap'), grade = document.getElementById('addUserGrade');
+    if (!role || !wrap || !grade) return;
+    function sync() {
+        var opt = role.options[role.selectedIndex], eo = !!(opt && opt.getAttribute('data-eo'));
+        wrap.style.display = eo ? '' : 'none';
+        grade.required = eo;
+        if (!eo) grade.value = '';
+    }
+    role.addEventListener('change', sync);
+    sync();
+})();
+</script>
 
 <!-- Edit User Modal -->
 <div class="modal fade" id="editUserModal" tabindex="-1">

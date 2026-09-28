@@ -9,6 +9,7 @@
 
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../../includes/eo_scope.php';   // Enrollment Officer: own grade level only
 require_once __DIR__ . '/../../includes/enrollment_helpers_online.php';
 
 if (file_exists(__DIR__ . '/../../config/email.php')) {
@@ -41,6 +42,7 @@ if (!$app) {
     header('Location: applications.php');
     exit;
 }
+eoGuard($app['grade_level'], 'applications.php');
 
 if (!empty($app['deleted_at'])) {
     $_SESSION['error_message'] = 'This application is in the Recycle Bin. Restore it first.';

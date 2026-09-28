@@ -8,6 +8,7 @@ if (!defined('BASE_URL')) {
     define('BASE_URL', '/watdahel/');
 }
 require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../../includes/eo_scope.php';   // Enrollment Officer: own grade level only
 require_once __DIR__ . '/../../includes/attendance_qr_helpers.php'; // attQrLrnLink()
 
 if (!hasAnyRole(['Administrator', 'Registrar', 'Enrollment Officer'])) {
@@ -50,6 +51,7 @@ if (!$enrollment) {
     header('Location: index.php');
     exit;
 }
+eoGuard($enrollment['grade_level']);
 
 // Requirements the learner uploaded through Online Enrollment (if this learner came in that way).
 // The application is linked to the student record on approval; older/edge cases fall back to the LRN.

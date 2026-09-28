@@ -4,6 +4,7 @@
 
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../../includes/eo_scope.php';   // Enrollment Officer: own grade level only
 require_once __DIR__ . '/../../includes/enrollment_helpers_online.php';
 oeEnsureCorrectionStatus(); // Rejected / For Correction -> Incomplete Requirements (once)
 require_once __DIR__ . '/../../includes/attendance_qr_helpers.php'; // attQrLrnLink()
@@ -34,6 +35,9 @@ if ($search) {
 }
 if ($status) { $where .= " AND a.status = ?"; $params[] = $status; }
 if ($grade_level) { $where .= " AND a.grade_level = ?"; $params[] = $grade_level; }
+[$eo_where, $eo_params] = eoSql('a.grade_level');   // Enrollment Officer: own grade level only
+$where .= $eo_where;
+$params = array_merge($params, $eo_params);
 
 $applications = getRecords("
     SELECT a.*, st.lrn AS student_lrn,
@@ -52,8 +56,8 @@ $counts = getRecord("
       SUM(status = 'Approved') AS approved,
       0 AS rejected
     FROM online_applications
-    WHERE deleted_at IS NULL
-");
+    WHERE deleted_at IS NULL" . eoSql('grade_level')[0] . "
+", eoSql('grade_level')[1]);
 $can_delete = hasAnyRole(['Administrator', 'Registrar']);
 $can_delete_forever = hasRole('Administrator');
 $trash_count = $can_delete ? (int) (getRecord("SELECT COUNT(*) AS c FROM online_applications WHERE deleted_at IS NOT NULL")['c'] ?? 0) : 0;
@@ -121,7 +125,7 @@ include '../../includes/header.php';
             </select>
             <select name="grade_level">
                 <option value="">All Grades</option>
-                <?php foreach (getOnlineGradeLevels() as $g): ?>
+                <?php foreach ((eoGrade() !== null ? array_filter([eoGrade()]) : getOnlineGradeLevels()) as $g): ?>
                     <option value="<?php echo $g; ?>" <?php echo $grade_level === $g ? 'selected' : ''; ?>><?php echo $g; ?></option>
                 <?php endforeach; ?>
             </select>

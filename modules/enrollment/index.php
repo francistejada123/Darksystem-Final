@@ -4,6 +4,7 @@
 
 require_once '../../config/database.php';
 require_once '../../includes/auth.php';
+require_once __DIR__ . '/../../includes/eo_scope.php';   // Enrollment Officer: own grade level only
 require_once '../../includes/attendance_qr_helpers.php'; // attQrLrnLink() -- approved students' LRN opens their QR code
 require_once '../../includes/grading_helpers.php'; // year status (Completed / Promoted) -- see Section 17c
 require_once __DIR__ . '/../../includes/enrollment_helpers_online.php';
@@ -59,6 +60,9 @@ $year_join = " LEFT JOIN student_year_status ys ON ys.student_id = e.student_id 
 // Build WHERE clause
 $where = "e.enrollment_status != 'Graduated'";
 $params = [];
+[$eo_where, $eo_params] = eoSql('e.grade_level');   // Enrollment Officer: own grade level only
+$where .= $eo_where;
+$params = array_merge($params, $eo_params);
 
 if ($search) {
     $where .= " AND (s.lrn LIKE ? OR s.first_name LIKE ? OR s.last_name LIKE ? OR CONCAT(s.last_name, ', ', s.first_name) LIKE ?)";
@@ -132,7 +136,7 @@ $enrollments = getRecords($sql, $params);
 
 // Get filter options
 $statuses = ['Pending', 'Approved', 'Incomplete Requirements', 'Transferred', $year_promoted_label];
-$grade_levels = ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
+$grade_levels = eoGrade() !== null ? array_filter([eoGrade()]) : ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
 
 // "Delete Student" (permanent delete of an enrolled student + related records).
 // Administrator only; keep this list in sync with delete_student.php.
@@ -147,8 +151,8 @@ $counts = getRecord("
         SUM(enrollment_status IN ('Incomplete Requirements', 'Rejected')) AS rejected,
         SUM(enrollment_status = 'Transferred') AS transferred
     FROM enrollments
-    WHERE enrollment_status != 'Graduated'
-");
+    WHERE enrollment_status != 'Graduated'" . eoSql('grade_level')[0] . "
+", eoSql('grade_level')[1]);
 
 include '../../includes/header.php';
 ?>
