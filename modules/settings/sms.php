@@ -26,9 +26,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         logActivity($_SESSION['user_id'], 'settings', 'Sent test SMS', $r['status']);
     } elseif (($_POST['action'] ?? '') === 'sender') {
         // Sender set-up (written to .env; secrets are never shown back -- blank keeps the saved one).
-        $prov = in_array($_POST['provider'] ?? '', ['', 'android_gateway', 'semaphore'], true) ? $_POST['provider'] : '';
+        $prov = in_array($_POST['provider'] ?? '', ['', 'traccar', 'android_gateway', 'semaphore'], true) ? $_POST['provider'] : '';
         $vals = ['SMS_PROVIDER' => $prov];
-        if ($prov === 'android_gateway') {
+        if ($prov === 'traccar') {
+            $url = trim((string) ($_POST['tc_url'] ?? ''));
+            if ($url !== '' && !preg_match('#^https?://#i', $url)) $url = 'http://' . $url;
+            if ($url !== '' && !preg_match('#:\d+$#', parse_url($url, PHP_URL_HOST) . (parse_url($url, PHP_URL_PORT) ? ':' . parse_url($url, PHP_URL_PORT) : ''))) $url .= ':8082';
+            $vals['SMS_GATEWAY_URL'] = rtrim($url, '/');
+            if (trim((string) ($_POST['tc_key'] ?? '')) !== '') $vals['SMS_GATEWAY_TOKEN'] = trim($_POST['tc_key']);
+        } elseif ($prov === 'android_gateway') {
             $url = trim((string) ($_POST['gw_url'] ?? ''));
             if ($url !== '' && !preg_match('#^https?://#i', $url)) $url = 'http://' . $url;
             $vals['SMS_GATEWAY_URL'] = rtrim($url, '/');
@@ -78,13 +84,18 @@ include __DIR__ . '/../../includes/header.php';
             <div class="col-md-4"><label class="form-label fw-semibold mb-1" style="font-size:14px">Send texts using</label>
                 <select class="form-select" name="provider" id="smsProv" onchange="document.querySelectorAll('.prov-f').forEach(function(e){e.style.display=e.dataset.p===this.value?'':'none'},this)">
                     <option value="" <?php echo $p['provider'] === '' ? 'selected' : ''; ?>>None (staff send from a phone)</option>
-                    <option value="android_gateway" <?php echo $p['provider'] === 'android_gateway' ? 'selected' : ''; ?>>Android phone (SMS Gateway app)</option>
+                    <option value="traccar" <?php echo $p['provider'] === 'traccar' ? 'selected' : ''; ?>>Android phone (Traccar SMS Gateway, Google Play)</option>
+                    <option value="android_gateway" <?php echo $p['provider'] === 'android_gateway' ? 'selected' : ''; ?>>Android phone (SMS Gateway for Android / SMSGate)</option>
                     <option value="semaphore" <?php echo $p['provider'] === 'semaphore' ? 'selected' : ''; ?>>Semaphore</option>
                 </select></div>
             <div class="col-md-8 prov-f" data-p="android_gateway" style="<?php echo $p['provider'] === 'android_gateway' ? '' : 'display:none'; ?>"><div class="row g-2">
                 <div class="col-md-5"><label class="form-label fw-semibold mb-1" style="font-size:14px">Address (from the app)</label><input class="form-control" name="gw_url" placeholder="192.168.1.5:8080" value="<?php echo htmlspecialchars((string) mailEnv('SMS_GATEWAY_URL')); ?>"></div>
                 <div class="col-md-3"><label class="form-label fw-semibold mb-1" style="font-size:14px">Username</label><input class="form-control" name="gw_user" value="<?php echo htmlspecialchars((string) mailEnv('SMS_GATEWAY_USER')); ?>"></div>
                 <div class="col-md-4"><label class="form-label fw-semibold mb-1" style="font-size:14px">Password</label><input class="form-control" type="password" name="gw_pass" placeholder="<?php echo mailEnv('SMS_GATEWAY_PASSWORD') ? '(saved — leave blank to keep)' : ''; ?>"></div>
+            </div></div>
+            <div class="col-md-8 prov-f" data-p="traccar" style="<?php echo $p['provider'] === 'traccar' ? '' : 'display:none'; ?>"><div class="row g-2">
+                <div class="col-md-6"><label class="form-label fw-semibold mb-1" style="font-size:14px">Phone address (from the app)</label><input class="form-control" name="tc_url" placeholder="192.168.1.5:8082" value="<?php echo htmlspecialchars((string) mailEnv('SMS_GATEWAY_URL')); ?>"></div>
+                <div class="col-md-6"><label class="form-label fw-semibold mb-1" style="font-size:14px">Key / token (from the app)</label><input class="form-control" type="password" name="tc_key" placeholder="<?php echo mailEnv('SMS_GATEWAY_TOKEN') ? '(saved — leave blank to keep)' : ''; ?>"></div>
             </div></div>
             <div class="col-md-8 prov-f" data-p="semaphore" style="<?php echo $p['provider'] === 'semaphore' ? '' : 'display:none'; ?>"><div class="row g-2">
                 <div class="col-md-7"><label class="form-label fw-semibold mb-1" style="font-size:14px">API key</label><input class="form-control" type="password" name="sem_key" placeholder="<?php echo mailEnv('SEMAPHORE_API_KEY') ? '(saved — leave blank to keep)' : ''; ?>"></div>

@@ -6,6 +6,8 @@
 //     SMS_GATEWAY_URL=http://192.168.1.20:8080         (Local mode: same Wi-Fi as this server)
 //                   or https://api.sms-gate.app/3rdparty/v1  (Cloud mode)
 //     SMS_GATEWAY_USER=...   SMS_GATEWAY_PASSWORD=...   (shown in the app)
+//   SMS_PROVIDER=traccar           "Traccar SMS Gateway" app (Google Play) on a phone
+//     SMS_GATEWAY_URL=http://192.168.1.20:8082   SMS_GATEWAY_TOKEN=...   (both shown in the app)
 //   SMS_PROVIDER=semaphore         Semaphore (deployment)
 //     SEMAPHORE_API_KEY=...   SEMAPHORE_SENDER=EGradePro (optional, once approved)
 //   (empty)                        no sender: the text is shown so staff can send it from a phone
@@ -81,6 +83,10 @@ function smsProvider()
         $ok = mailEnv('SMS_GATEWAY_URL') && mailEnv('SMS_GATEWAY_USER') && mailEnv('SMS_GATEWAY_PASSWORD');
         return ['provider' => $p, 'label' => 'Android phone (SMS Gateway app)', 'problem' => $ok ? '' : 'SMS_GATEWAY_URL, SMS_GATEWAY_USER and SMS_GATEWAY_PASSWORD must be set in .env.'];
     }
+    if ($p === 'traccar') {
+        $ok = mailEnv('SMS_GATEWAY_URL') && mailEnv('SMS_GATEWAY_TOKEN');
+        return ['provider' => $p, 'label' => 'Android phone (Traccar SMS Gateway app)', 'problem' => $ok ? '' : 'The address and the key from the Traccar SMS Gateway app must be saved.'];
+    }
     if ($p === 'semaphore') {
         return ['provider' => $p, 'label' => 'Semaphore', 'problem' => mailEnv('SEMAPHORE_API_KEY') ? '' : 'SEMAPHORE_API_KEY must be set in .env.'];
     }
@@ -155,6 +161,15 @@ function smsSend($to, $message, array $opts = [])
                 ['Content-Type: application/json'], (string) mailEnv('SMS_GATEWAY_USER'), (string) mailEnv('SMS_GATEWAY_PASSWORD'));
             if ($cerr !== '') $error = 'Could not reach the phone gateway (' . $cerr . '). Is the phone on, the app running, and on the same Wi-Fi?';
             elseif ($code === 401) $error = 'The phone gateway refused the username/password (check .env).';
+            elseif ($code >= 200 && $code < 300) { $status = 'Sent'; $error = null; }
+            else $error = 'Phone gateway error (HTTP ' . $code . '): ' . mb_substr(strip_tags($body), 0, 150);
+        } elseif ($p['provider'] === 'traccar') {
+            // Traccar SMS Gateway "local service": POST {to, message} with the key as Authorization.
+            [$code, $body, $cerr] = smsHttp(rtrim((string) mailEnv('SMS_GATEWAY_URL'), '/'),
+                json_encode(['to' => '+63' . substr($num, 1), 'message' => $message]),
+                ['Content-Type: application/json', 'Authorization: ' . (string) mailEnv('SMS_GATEWAY_TOKEN')]);
+            if ($cerr !== '') $error = 'Could not reach the phone (' . $cerr . '). Is the phone on, the Traccar SMS Gateway app running (service on), and on the same Wi-Fi?';
+            elseif ($code === 401 || $code === 403) $error = 'The phone refused the key (check the key saved in SMS Settings).';
             elseif ($code >= 200 && $code < 300) { $status = 'Sent'; $error = null; }
             else $error = 'Phone gateway error (HTTP ' . $code . '): ' . mb_substr(strip_tags($body), 0, 150);
         } else {
