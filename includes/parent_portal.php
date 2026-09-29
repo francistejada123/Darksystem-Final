@@ -157,6 +157,57 @@ function ppIssueCode($studentId, $channel, $mobileHint = null, $createdBy = null
     return $code;
 }
 
+/** A mobile number as typed: exactly 11 digits starting with 09 (spaces/dashes ignored), or ''. */
+function ppStrictMobile($raw)
+{
+    $d = preg_replace('/[\s-]/', '', (string) $raw);
+    return preg_match('/^09\d{9}$/', $d) ? $d : '';
+}
+
+function ppMobileFormatError()
+{
+    return ppLang() === 'en'
+        ? 'The mobile number must be exactly 11 digits and start with 09 (e.g. 09171234567).'
+        : 'Dapat 11 digits ang cellphone number at nagsisimula sa 09 (hal. 09171234567).';
+}
+
+/** Active learners whose guardian number on record is this number. */
+function ppStudentsByGuardian($mobile)
+{
+    $rows = getRecords(
+        "SELECT student_id, first_name, last_name, grade_level, guardian_contact FROM students
+          WHERE is_active = 1 AND guardian_contact LIKE ?", ['%' . substr($mobile, -7) . '%']) ?: [];
+    return array_values(array_filter($rows, function ($r) use ($mobile) { return smsNormalizeNumber($r['guardian_contact']) === $mobile; }));
+}
+
+/**
+ * "Create account" with the number only: when the number is the guardian
+ * number on record, a setup code is made for each such child right away
+ * (older self-made codes of that child and number stop working). The child's
+ * birthday and the email code on the next steps prove it is the parent.
+ * @return array{ok:bool, reason?:string, wait?:int, kids?:array}
+ */
+function ppSelfServeCodes($mobile, $exceptParentId = 0)
+{
+    ppEnsureSchema();
+    $kids = ppStudentsByGuardian($mobile);
+    if ($exceptParentId) {   // "Add a child": only children not linked to this account yet
+        $linked = array_column(getRecords("SELECT student_id FROM parent_students WHERE parent_id = ?", [(int) $exceptParentId]) ?: [], 'student_id');
+        $kids = array_values(array_filter($kids, function ($k) use ($linked) { return !in_array($k['student_id'], $linked); }));
+    }
+    if (!$kids) return ['ok' => false, 'reason' => 'none'];
+    $recent = getRecord("SELECT COUNT(*) AS n FROM parent_setup_codes WHERE channel = 'self' AND mobile_hint = ? AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)", [$mobile]);
+    if ((int) ($recent['n'] ?? 0) >= 3 * count($kids)) return ['ok' => false, 'reason' => 'limit'];
+    $out = [];
+    foreach ($kids as $k) {
+        executeQuery("UPDATE parent_setup_codes SET revoked_at = NOW() WHERE student_id = ? AND channel = 'self' AND mobile_hint = ? AND used_at IS NULL AND revoked_at IS NULL", [(int) $k['student_id'], $mobile]);
+        $k['code'] = ppIssueCode((int) $k['student_id'], 'self', $mobile);
+        $out[] = $k;
+    }
+    logActivity(null, 'parents', 'Parent setup code', 'Self-serve setup code for ' . smsMask($mobile) . ' (' . count($out) . ' child/children)');
+    return ['ok' => true, 'kids' => $out];
+}
+
 /** The short setup link printed on slips and sent by SMS. */
 function ppSetupLink($code)
 {

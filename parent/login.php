@@ -23,6 +23,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $p = $login_v !== '' ? ppFindParentByLogin($login_v) : null;
     if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
         $error = $en ? 'Your session expired. Please try again.' : 'Nag-expire ang session. Pakisubukan ulit.';
+    } elseif (strpos($login_v, '@') === false && ppStrictMobile($login_v) === '') {
+        $error = ppMobileFormatError();   // not a wrong sign-in: nothing is counted
     } elseif (isStudentIpRateLimited()) {
         $error = $en ? 'Too many attempts from this phone. Please wait a few minutes.' : 'Maraming subok mula sa phone na ito. Maghintay ng ilang minuto.';
     } elseif ($p && ($m = ppLockedMinutes($p)) > 0) {

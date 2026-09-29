@@ -249,7 +249,12 @@ function ppAuthEnd($under = '', $script = '')
         <path d="M0,95 C360,140 700,50 1040,85 C1240,105 1360,95 1440,80 L1440,120 L0,120 Z" fill="#0B1A3A"/>
     </svg></div>
 </main>
-<script>document.querySelectorAll('.pin, input[type=tel]').forEach(function (i) { i.addEventListener('input', function () { this.value = this.value.replace(/[^\d+]/g, ''); }); });</script>
+<script>
+// PIN and mobile boxes: digits only, never longer than allowed (a mobile number is 11 digits).
+document.querySelectorAll('.pin, input[type=tel]').forEach(function (i) { i.addEventListener('input', function () { this.value = this.value.replace(/\D/g, '').slice(0, this.type === 'tel' ? 11 : 6); }); });
+// "Mobile number or email": while it looks like a number, digits only and at most 11.
+document.querySelectorAll('input[name=login]').forEach(function (i) { i.addEventListener('input', function () { if (this.value.indexOf('@') < 0 && /^[\d\s+-]+$/.test(this.value)) this.value = this.value.replace(/\D/g, '').slice(0, 11); }); });
+</script>
 <?php echo $script; ?>
 <?php ppInstallScript(); ?>
 </body>

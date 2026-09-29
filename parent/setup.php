@@ -70,12 +70,51 @@ if ($pending && $_SERVER['REQUEST_METHOD'] === 'POST' && in_array($_POST['action
     }
 }
 
-if ($c && !$pending && $_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['enter_code']) && !in_array($_POST['action'] ?? '', ['verify_email', 'resend_email'], true)) {
+// Step 0 (no code yet): the parent types their number; when it is the guardian
+// number on record, the setup code appears right away (Print Slip stays as backup).
+$found = null;
+$find_mobile = '';
+$has_account = false;
+$have_code = isset($_GET['have_code']) || $code !== '';
+// Signed in ("Add a child"): their own number is used, and only children not linked yet are shown.
+$me = (!empty($_SESSION['parent_id']) && ($_SESSION['role'] ?? '') === 'Parent')
+    ? getRecord("SELECT parent_id, mobile FROM parents WHERE parent_id = ? AND is_active = 1", [(int) $_SESSION['parent_id']]) : null;
+if ($me) $find_mobile = $me['mobile'];
+if (!$c && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'find') {
+    $find_mobile = $me ? $me['mobile'] : preg_replace('/\D/', '', (string) ($_POST['mobile'] ?? ''));
+    if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
+        $error = $en ? 'Your session expired. Please try again.' : 'Nag-expire ang session. Pakisubukan ulit.';
+    } elseif (isStudentIpRateLimited()) {
+        $error = $en ? 'Too many attempts. Please wait a few minutes.' : 'Maraming subok. Maghintay ng ilang minuto.';
+    } elseif (ppStrictMobile($find_mobile) === '') {
+        $error = ppMobileFormatError();
+    } elseif (!$me && getRecord("SELECT 1 FROM parents WHERE mobile = ?", [$find_mobile])) {
+        $has_account = true;
+    } else {
+        $r = ppSelfServeCodes($find_mobile, $me ? (int) $me['parent_id'] : 0);
+        if ($r['ok']) {
+            $found = $r['kids'];
+        } elseif ($r['reason'] === 'limit') {
+            $error = $en ? 'Too many codes for this number. Please try again after an hour.' : 'Maraming code na para sa number na ito. Subukan ulit pagkalipas ng isang oras.';
+        } else {
+            logActivity(null, 'student', 'Failed login', 'Parent setup: number not on any student record (' . smsMask($find_mobile) . ')');
+            $error = $me
+                ? ($en ? 'No other student has your number as the guardian number on record. Ask the school for a Parent Access Slip for your other child.'
+                       : 'Walang ibang estudyanteng may number ninyo bilang guardian number sa record. Humingi ng Parent Access Slip sa school para sa isa pang anak.')
+                : ($en ? 'No student has this number as the guardian number on record. Check the number, or ask the school for a Parent Access Slip.'
+                       : 'Walang estudyanteng may ganitong guardian number sa record ng school. Tingnan kung tama ang number, o humingi ng Parent Access Slip sa school.');
+        }
+    }
+}
+
+if ($c && !$pending && $_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['enter_code']) && !in_array($_POST['action'] ?? '', ['verify_email', 'resend_email', 'find'], true)) {
     foreach ($v as $k => $_) if (isset($_POST[$k])) $v[$k] = trim((string) $_POST[$k]);
     if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
         $error = $en ? 'Your session expired. Please try again.' : 'Nag-expire ang session. Pakisubukan ulit.';
     } elseif (isStudentIpRateLimited()) {
         $error = $en ? 'Too many attempts. Please wait a few minutes.' : 'Maraming subok. Maghintay ng ilang minuto.';
+    } elseif (ppStrictMobile($v['mobile']) === '') {
+        $error = ppMobileFormatError();
     } elseif ($c['channel'] === 'reset') {
         // New PIN for a parent already linked to this child (code sent to their own number / given by the school).
         $mobile = smsNormalizeNumber($v['mobile']);
@@ -155,9 +194,15 @@ if ($pending) {
     ppAuthEnd('<i class="fas fa-shield-halved me-1"></i>' . ($en ? 'The school never asks for money, a code or your PIN.' : 'Hindi humihingi ng pera, code o PIN ang school.'));
     exit;
 }
-if (!$c) {
+if (!$c && $found) {
+    ppAuthStart('fa-circle-check', $en ? 'We found your child' : 'Nakita namin ang inyong anak',
+        $en ? 'Here is your setup code. Tap Continue to finish your account.' : 'Ito ang inyong setup code. Pindutin ang Tuloy para tapusin ang account.');
+} elseif (!$c && $have_code) {
     ppAuthStart('fa-key', $en ? 'Enter your setup code' : 'Ilagay ang setup code',
-        $en ? 'The 8-character code is on the text message or the Parent Access Slip from the school.' : 'Ang 8-character na code ay nasa text message o sa Parent Access Slip mula sa school.');
+        $en ? 'The 8-character code is on the Parent Access Slip or the text message from the school.' : 'Ang 8-character na code ay nasa Parent Access Slip o text message mula sa school.');
+} elseif (!$c) {
+    ppAuthStart('fa-user-plus', $en ? 'Create your account' : 'Gumawa ng account',
+        $en ? 'Enter the mobile number you gave the school when your child enrolled.' : 'Ilagay ang cellphone number na ibinigay sa school noong nag-enroll ang inyong anak.');
 } else {
     ppAuthStart($c['channel'] === 'reset' ? 'fa-lock' : 'fa-user-plus',
         $c['channel'] === 'reset' ? ($en ? 'Choose a new PIN' : 'Gumawa ng bagong PIN') : ($en ? 'Parent Portal setup' : 'Setup ng Parent Portal'),
@@ -172,13 +217,42 @@ if (!$c) {
     .su .code { text-transform: uppercase; letter-spacing: 4px; text-align: center; font-weight: 800; font-size: 20px; height: 56px; }
 </style>
 <div class="su">
-<?php if (!$c): ?>
+<?php if (!$c && $found): ?>
+    <?php foreach ($found as $i => $k): ?>
+        <div style="border:1px solid var(--pp-line);border-radius:16px;padding:14px 16px;margin-bottom:12px;background:#F8FAFC">
+            <div style="font-weight:800;font-size:16px"><i class="fas fa-user-graduate me-1" style="color:var(--pp-blue)"></i>
+                <?php echo htmlspecialchars(mb_substr($k['first_name'], 0, 1) . '. ' . mb_substr($k['last_name'], 0, 1) . '.'); ?> &middot; <?php echo htmlspecialchars($k['grade_level']); ?></div>
+            <div style="font-size:14.5px;color:var(--pp-muted);margin-top:6px"><?php echo $en ? 'Your setup code' : 'Ang inyong setup code'; ?></div>
+            <div style="font-size:26px;font-weight:800;letter-spacing:4px;margin:2px 0 10px"><?php echo htmlspecialchars(ppFormatCode($k['code'])); ?></div>
+            <a href="setup.php?c=<?php echo rawurlencode($k['code']); ?>" class="btn btn-primary w-100 btn-go d-flex align-items-center justify-content-center"><?php echo $en ? 'Continue' : 'Tuloy'; ?> <i class="fas fa-arrow-right ms-2"></i></a>
+        </div>
+    <?php endforeach; ?>
+    <?php if (count($found) > 1): ?><p class="pp-note" style="text-align:left"><?php echo $en ? 'Set up with one child first. After signing in, add the others with "Add a child".' : 'Unahin ang isang anak. Pagka-login, idagdag ang iba gamit ang "Magdagdag ng anak".'; ?></p><?php endif; ?>
+    <p class="pp-note" style="text-align:left"><?php echo sprintf($en ? 'The code works once and expires in %d days. Next you confirm your child\'s birthday and your email.' : 'Isang beses lang magagamit ang code at mag-e-expire sa loob ng %d araw. Susunod: kumpirmahin ang birthday ng anak at ang inyong email.', PP_CODE_DAYS); ?></p>
+<?php elseif (!$c && !$have_code): ?>
+    <?php if ($has_account): ?>
+        <div class="pp-alert t-info"><i class="fas fa-circle-info me-1"></i><?php echo $en ? 'This number already has a Parent Portal account.' : 'May Parent Portal account na ang number na ito.'; ?> <a href="login.php"><b><?php echo ppT('login'); ?> →</b></a></div>
+    <?php endif; ?>
+    <?php if ($error): ?><div class="pp-alert t-bad"><i class="fas fa-circle-exclamation me-1"></i><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
+    <form method="POST" autocomplete="off">
+        <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
+        <input type="hidden" name="action" value="find">
+        <label class="pp-lbl" for="fm"><?php echo ppT('mobile'); ?></label>
+        <div class="pp-field"><i class="fas fa-mobile-screen-button"></i>
+            <input type="tel" id="fm" class="form-control" name="mobile" inputmode="numeric" maxlength="11" pattern="09[0-9]{9}" placeholder="09XXXXXXXXX" value="<?php echo htmlspecialchars($find_mobile); ?>" required <?php echo $me ? 'readonly' : ''; ?>
+                   title="<?php echo htmlspecialchars(ppMobileFormatError()); ?>"></div>
+        <p class="pp-note pp-mcount" style="text-align:left;margin:4px 0 16px"><?php echo $en ? '11 digits, starts with 09' : '11 digits, nagsisimula sa 09'; ?></p>
+        <button class="btn btn-primary w-100 btn-go"><?php echo $en ? 'Continue' : 'Tuloy'; ?> <i class="fas fa-arrow-right ms-1"></i></button>
+    </form>
+    <p class="pp-note mt-3" style="text-align:left"><i class="fas fa-ticket me-1"></i><?php echo $en ? 'Have a setup code from the school (Parent Access Slip)?' : 'May setup code mula sa school (Parent Access Slip)?'; ?> <a href="setup.php?have_code=1"><b><?php echo $en ? 'Enter it here' : 'Ilagay dito'; ?></b></a></p>
+<?php elseif (!$c): ?>
     <?php if ($code !== ''): ?><div class="pp-alert t-bad"><i class="fas fa-circle-exclamation me-1"></i><?php echo $en ? 'This code is invalid, already used, or expired. Ask the adviser or registrar for a new one.' : 'Hindi valid, nagamit na, o expired ang code na ito. Humingi ng bago sa adviser o registrar.'; ?></div><?php endif; ?>
     <form method="GET">
         <label class="pp-lbl" for="sc">Setup code</label>
         <input class="form-control code mb-4" id="sc" name="c" maxlength="9" autocapitalize="characters" autocomplete="off" placeholder="K7P4-Q2XZ" required>
         <button class="btn btn-primary w-100 btn-go"><?php echo $en ? 'Continue' : 'Tuloy'; ?> <i class="fas fa-arrow-right ms-1"></i></button>
     </form>
+    <p class="pp-note mt-3" style="text-align:left"><a href="setup.php"><i class="fas fa-arrow-left me-1"></i><?php echo $en ? 'No code? Use your mobile number instead' : 'Walang code? Gamitin ang cellphone number'; ?></a></p>
 <?php else: ?>
     <?php if ($error): ?><div class="pp-alert t-bad"><i class="fas fa-circle-exclamation me-1"></i><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
     <form method="POST" autocomplete="off">
@@ -187,7 +261,7 @@ if (!$c) {
         <div class="step"><span>1</span><?php echo $en ? "Your child's birthday" : 'Birthday ng inyong anak'; ?></div>
         <div class="pp-field"><i class="fas fa-cake-candles"></i><input type="date" class="form-control" name="birth_date" required max="<?php echo date('Y-m-d'); ?>"></div>
         <div class="step"><span>2</span><?php $new_acc = $c['channel'] !== 'reset' && !$existing && empty($v['existing']); echo $new_acc ? ($en ? 'Your mobile number and email' : 'Inyong cellphone number at email') : ($en ? 'Your mobile number' : 'Inyong cellphone number'); ?></div>
-        <div class="pp-field"><i class="fas fa-mobile-screen-button"></i><input type="tel" class="form-control" name="mobile" inputmode="numeric" maxlength="13" placeholder="09XXXXXXXXX" value="<?php echo htmlspecialchars($v['mobile']); ?>" required></div>
+        <div class="pp-field"><i class="fas fa-mobile-screen-button"></i><input type="tel" class="form-control" name="mobile" inputmode="numeric" maxlength="11" pattern="09[0-9]{9}" title="<?php echo htmlspecialchars(ppMobileFormatError()); ?>" placeholder="09XXXXXXXXX" value="<?php echo htmlspecialchars($v['mobile']); ?>" required></div>
         <?php if ($c['channel'] !== 'reset' && !$existing && empty($v['existing'])): ?>
             <div class="pp-field mt-2"><i class="fas fa-envelope"></i><input type="email" class="form-control" name="email" maxlength="100" placeholder="<?php echo $en ? 'Email (e.g. name@gmail.com)' : 'Email (hal. pangalan@gmail.com)'; ?>" value="<?php echo htmlspecialchars($v['email']); ?>" required autocapitalize="none" spellcheck="false"></div>
             <p class="pp-note" style="text-align:left;margin:4px 0 0"><?php echo $en ? 'You can sign in with it, and a code is sent here if you forget your PIN. We will send a code to confirm it.' : 'Puwede itong gamitin sa pag-login, at dito ipapadala ang code kapag nakalimutan ang PIN. Magpapadala kami ng code para kumpirmahin ito.'; ?></p>

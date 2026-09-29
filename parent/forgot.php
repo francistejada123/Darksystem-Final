@@ -54,9 +54,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ppMailReady()) {
         $error = $en ? 'Too many attempts. Please wait a few minutes.' : 'Maraming subok. Maghintay ng ilang minuto.';
     } elseif ($action === 'send' || $action === 'resend') {
         $login = $action === 'resend' ? (string) ($fp['login'] ?? '') : mb_substr(trim((string) ($_POST['login'] ?? '')), 0, 120);
-        $valid = strpos($login, '@') !== false ? ppNormEmail($login) !== '' : smsNormalizeNumber($login) !== '';
-        if (!$valid) {
-            $error = $en ? 'Enter your mobile number (09XXXXXXXXX) or your email.' : 'Ilagay ang cellphone number (09XXXXXXXXX) o ang email ninyo.';
+        $is_email = strpos($login, '@') !== false;
+        if ($is_email ? ppNormEmail($login) === '' : ppStrictMobile($login) === '') {
+            $error = $is_email ? ($en ? 'Enter a valid email.' : 'Ilagay ang tamang email.') : ppMobileFormatError();
         } else {
             [$target, $r] = fpSend($login);
             $fp = ['login' => $login, 'target' => $target];
