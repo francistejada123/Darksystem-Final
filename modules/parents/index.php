@@ -17,19 +17,22 @@ $where = '1=1';
 if ($q !== '') {
     $where = "(p.full_name LIKE ? OR p.mobile LIKE ? OR s.first_name LIKE ? OR s.last_name LIKE ? OR s.lrn LIKE ?)";
     $like = '%' . $q . '%';
-    $params = [$like, '%' . preg_replace('/\D/', '', $q) . '%', $like, $like, $like];
+    $digits = preg_replace('/\D/', '', $q);
+    $params = [$like, $digits !== '' ? '%' . $digits . '%' : '-', $like, $like, $like];   // a name search must not match every mobile
 }
 ppEmailEnsureSchema();
 $rows = getRecords(
     "SELECT p.parent_id, p.mobile, p.email, p.email_verified_at, p.full_name, p.last_login, p.created_at, p.is_active,
             ps.relationship, ps.linked_via, s.student_id, s.first_name, s.last_name, s.grade_level
        FROM parents p
-       JOIN parent_students ps ON ps.parent_id = p.parent_id
-       JOIN students s ON s.student_id = ps.student_id
+       LEFT JOIN parent_students ps ON ps.parent_id = p.parent_id
+       LEFT JOIN students s ON s.student_id = ps.student_id
       WHERE $where
       ORDER BY p.created_at DESC, s.last_name LIMIT 300", $params);
+// Accounts without a child are listed too (e.g. the child's record was deleted); the parent can
+// sign in and use "Add a child".
 $totals = getRecord("SELECT (SELECT COUNT(*) FROM parents) AS parents,
-                            (SELECT COUNT(DISTINCT student_id) FROM parent_students) AS kids,
+                            (SELECT COUNT(DISTINCT ps.student_id) FROM parent_students ps JOIN students s ON s.student_id = ps.student_id AND s.is_active = 1) AS kids,
                             (SELECT COUNT(*) FROM students WHERE is_active = 1) AS students");
 include __DIR__ . '/../../includes/header.php';
 ?>
@@ -62,10 +65,11 @@ include __DIR__ . '/../../includes/header.php';
                     <td><?php echo htmlspecialchars($r['full_name'] ?: '—'); ?><small><?php echo htmlspecialchars($r['relationship'] ?: ''); ?></small></td>
                     <td><?php echo htmlspecialchars(smsMask($r['mobile'])); ?></td>
                     <td><?php echo !empty($r['email']) ? '<span class="badge bg-success">Yes</span><small>' . htmlspecialchars(ppMaskEmail($r['email'])) . '</small>' : '<span class="badge bg-secondary">None</span>'; ?></td>
-                    <td><?php echo htmlspecialchars($r['last_name'] . ', ' . $r['first_name']); ?><small><?php echo htmlspecialchars($r['grade_level']); ?></small></td>
+                    <td><?php if ($r['student_id']): ?><?php echo htmlspecialchars($r['last_name'] . ', ' . $r['first_name']); ?><small><?php echo htmlspecialchars($r['grade_level']); ?></small>
+                        <?php else: ?><span class="badge bg-warning text-dark">No child linked</span><small>The child's record was removed, or no child was added yet.</small><?php endif; ?></td>
                     <td><?php echo htmlspecialchars(ucfirst($r['linked_via'] ?: '—')); ?></td>
                     <td><?php echo $r['last_login'] ? date('M j, Y g:i A', strtotime($r['last_login'])) : 'Never'; ?></td>
-                    <td><a class="btn btn-sm btn-outline-primary" href="../students/view.php?id=<?php echo (int) $r['student_id']; ?>">Student record</a></td>
+                    <td><?php if ($r['student_id']): ?><a class="btn btn-sm btn-outline-primary" href="../students/view.php?id=<?php echo (int) $r['student_id']; ?>">Student record</a><?php endif; ?></td>
                 </tr>
             <?php endforeach; ?>
         </table>
