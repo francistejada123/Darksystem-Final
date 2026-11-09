@@ -115,6 +115,18 @@
                             <span class="badge bg-danger ms-auto"><?php echo $pending_applications; ?></span>
                         <?php endif; ?>
                     </a>
+                    <?php
+                    require_once __DIR__ . '/document_request_helpers.php';
+                    $pending_doc_requests = drPendingCount();
+                    ?>
+                    <a href="<?php echo BASE_URL; ?>modules/enrollment/document_requests.php"
+                        class="nav-link <?php echo $current_page == 'document_requests' ? 'active' : ''; ?>"
+                        title="Official documents requested by students (e.g. Certificate of Enrollment for 4Ps or scholarships).">
+                        <i class="fas fa-file-signature"></i> Document Requests
+                        <?php if ($pending_doc_requests > 0): ?>
+                            <span class="badge bg-danger ms-auto"><?php echo $pending_doc_requests; ?></span>
+                        <?php endif; ?>
+                    </a>
 
                     <!-- RECORDS -->
                     <div class="nav-section-label">Records</div>
@@ -200,6 +212,20 @@
                         <i class="fas fa-file-alt"></i> Reports
                     </a>
 
+                    <?php
+                    // ADVISORY group: only for a teacher who is the class adviser of an
+                    // active section (sections.adviser_id). Not an adviser -> no group at all.
+                    $nav_is_adviser = (bool) getRecord("SELECT 1 FROM sections WHERE adviser_id = ? AND is_active = 1 LIMIT 1", [(int)($_SESSION['user_id'] ?? 0)]);
+                    if ($nav_is_adviser): ?>
+                    <!-- ADVISORY (the section this teacher advises -- sections.adviser_id) -->
+                    <div class="nav-section-label">Advisory</div>
+                    <a href="<?php echo BASE_URL; ?>modules/teachers/advisory_students.php"
+                        class="nav-link <?php echo $current_page == 'advisory_students' ? 'active' : ''; ?>"
+                        title="Students of the section you advise: enrollment, grade completeness, attendance and at-risk status.">
+                        <i class="fas fa-users"></i> My Advisory Students
+                    </a>
+                    <?php endif; ?>
+
                     <!-- ATTENDANCE & MONITORING -->
                     <div class="nav-section-label">Attendance & Monitoring</div>
                     <a href="<?php echo BASE_URL; ?>modules/attendance/take.php"
@@ -252,6 +278,18 @@
                         <i class="fas fa-inbox"></i> Online Applications
                         <?php if ($pending_applications > 0): ?>
                             <span class="badge bg-danger ms-auto"><?php echo $pending_applications; ?></span>
+                        <?php endif; ?>
+                    </a>
+                    <?php
+                    require_once __DIR__ . '/document_request_helpers.php';
+                    $pending_doc_requests = drPendingCount();
+                    ?>
+                    <a href="<?php echo BASE_URL; ?>modules/enrollment/document_requests.php"
+                        class="nav-link <?php echo $current_page == 'document_requests' ? 'active' : ''; ?>"
+                        title="Official documents requested by students (e.g. Certificate of Enrollment for 4Ps or scholarships).">
+                        <i class="fas fa-file-signature"></i> Document Requests
+                        <?php if ($pending_doc_requests > 0): ?>
+                            <span class="badge bg-danger ms-auto"><?php echo $pending_doc_requests; ?></span>
                         <?php endif; ?>
                     </a>
 

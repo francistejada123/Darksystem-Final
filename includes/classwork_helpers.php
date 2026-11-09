@@ -92,7 +92,7 @@ function classworkEnsureSchema()
     static $done = false;
     if ($done) return;
     $done = true;
-    if (schemaIsReady('classwork_v4')) return;
+    if (schemaIsReady('classwork_v5')) return;
     $cols = function ($table) {
         return array_column(getRecords(
             "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?",
@@ -111,6 +111,7 @@ function classworkEnsureSchema()
         'google_form_edit_url' => "ADD COLUMN google_form_edit_url VARCHAR(500) DEFAULT NULL COMMENT 'Teacher-only edit link (students get the responder link as an attachment)'",
         'quiz_questions_json'  => "ADD COLUMN quiz_questions_json MEDIUMTEXT DEFAULT NULL COMMENT 'The reviewed AI questions the Google Form was built from'",
         'topic'                => "ADD COLUMN topic VARCHAR(200) DEFAULT NULL COMMENT 'Lesson topic (shown in the student email)'",
+        'post_to_stream'       => "ADD COLUMN post_to_stream TINYINT(1) NOT NULL DEFAULT 1 COMMENT '1 = also show a short notice in the Stream tab; 0 = Classwork tab only'",
     ];
     foreach ($adds as $col => $ddl) {
         if ($a && !in_array($col, $a, true)) {
@@ -149,7 +150,7 @@ function classworkEnsureSchema()
             KEY idx_csf (assignment_id, student_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
     );
-    schemaMarkReady('classwork_v4');
+    schemaMarkReady('classwork_v5');
 }
 
 /** Save one student upload under classwork_submissions (same validation as every classroom upload). */
@@ -371,19 +372,44 @@ function classworkAiCheck($assignmentId, $studentId)
         }
     }
     if (trim($text) === '' && $file === null) {
+        executeQuery("UPDATE classwork_assignment_students SET ai_feedback = ?, ai_checked_at = NULL WHERE assignment_id = ? AND student_id = ?",
+            ['AI could not check this: no readable file (PDF, Word, PowerPoint, text or photo). Your teacher will check it by hand.', (int) $assignmentId, (int) $studentId]);
         return ['success' => false, 'error' => 'No readable file was turned in (PDF, Word, PowerPoint or a photo), so the teacher checks it by hand.'];
     }
 
-    @set_time_limit(150);
+    @set_time_limit(240);
     $activity = ['student_content' => $a['category'] . ': ' . $a['title'] . "\n\n" . $a['instructions'], 'teacher_answer_key' => (string) ($a['answer_key'] ?? '')];
-    $r = aiGradeResourceSubmission($activity, $max, trim($text) !== '' ? $text : null, trim($text) !== '' ? null : $file);
+    // Google's model often answers "high demand" (503) for a moment: try up to 3 times so the
+    // FIRST turn-in gets its score, not only a second one after Unsubmit.
+    $r = null;
+    for ($try = 1; $try <= 3; $try++) {
+        $r = aiGradeResourceSubmission($activity, $max, trim($text) !== '' ? $text : null, trim($text) !== '' ? null : $file, true);
+        if (!empty($r['success']) || in_array($r['error_code'] ?? '', ['missing_api_key', 'no_curl', 'no_activity_content', 'empty_answer'], true)) {
+            break;
+        }
+        if ($try < 3) sleep(5);
+    }
     if (empty($r['success'])) {
         executeQuery("UPDATE classwork_assignment_students SET ai_feedback = ?, ai_checked_at = NULL WHERE assignment_id = ? AND student_id = ?",
             ['AI could not check this: ' . ($r['error'] ?? 'unknown error'), (int) $assignmentId, (int) $studentId]);
         return ['success' => false, 'error' => $r['error'] ?? 'The AI could not check this work.'];
     }
     $score = max(0, min($max, round((float) $r['score'], 2)));
-    $saved = classworkRecordScore((int) $a['teacher_id'], (int) $assignmentId, (int) $studentId, $score, (string) $r['feedback'], 'AI');
+    $feedback = (string) $r['feedback'];
+    if (isset($r['is_related']) && $r['is_related'] === false) {
+        // Not an answer to this activity: 0, clearly flagged. The teacher can still change the score.
+        $score = 0;
+        if (mb_strpos($feedback, 'Hindi tugma') === false) {
+            $feedback = 'Hindi tugma ang naipasa sa activity na ito. ' . $feedback;
+        }
+        executeQuery(
+            "INSERT INTO notifications (user_id, title, message, type, link, created_at) VALUES (?, ?, ?, 'warning', ?, NOW())",
+            [(int) $a['teacher_id'], 'Unrelated file turned in',
+             'The AI found that a student\'s file for "' . $a['title'] . '" does not match the activity (scored 0). Please review it.',
+             BASE_URL . 'modules/teachers/classroom.php?section_id=' . (int) $a['section_id'] . '&subject_code=' . urlencode($a['subject_code']) . '&tab=classwork&open=' . (int) $assignmentId . '#cw-' . (int) $assignmentId]
+        );
+    }
+    $saved = classworkRecordScore((int) $a['teacher_id'], (int) $assignmentId, (int) $studentId, $score, $feedback, 'AI');
     if (!$saved['success']) {
         return $saved;
     }

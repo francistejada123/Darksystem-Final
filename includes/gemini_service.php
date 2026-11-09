@@ -1680,6 +1680,7 @@ function buildSubmissionGradingResponseSchema()
             'suggested_score' => ['type' => 'number'],
             'feedback' => ['type' => 'string'],
             'is_confident' => ['type' => 'boolean'],
+            'is_related' => ['type' => 'boolean'],   // optional: only asked for by the Classroom classwork check
         ],
         'required' => ['suggested_score', 'feedback', 'is_confident'],
     ];
@@ -1715,6 +1716,8 @@ function validateGeminiGradingResponse($response, $maxScore)
         'suggested_score' => round($score, 2),
         'feedback' => $feedback,
         'is_confident' => !empty($decoded['is_confident']),
+        // Missing = the model was not asked / did not say: treat as related (old behaviour).
+        'is_related' => array_key_exists('is_related', $decoded) ? !empty($decoded['is_related']) : true,
     ];
 }
 
@@ -1739,7 +1742,7 @@ function validateGeminiGradingResponse($response, $maxScore)
  * @param array|null $answerFile
  * @return array{success:bool,score?:float,max_score?:float,feedback?:string,is_confident?:bool,error?:string,error_code?:string}
  */
-function aiGradeResourceSubmission($resource, $maxScore, $answerText = null, $answerFile = null)
+function aiGradeResourceSubmission($resource, $maxScore, $answerText = null, $answerFile = null, $checkRelevance = false)
 {
     $activity = trim((string) ($resource['student_content'] ?? ''));
     if ($activity === '') {
@@ -1780,8 +1783,18 @@ function aiGradeResourceSubmission($resource, $maxScore, $answerText = null, $an
         'schema' => buildSubmissionGradingResponseSchema(),
     ];
 
+    $sysInstruction = buildSubmissionGradingSystemInstruction();
+    if ($checkRelevance) {
+        // Classroom classwork: first decide if the file is even an answer to THIS activity.
+        $sysInstruction .= ' RELEVANCE CHECK (do this first): set is_related to true only if the submitted '
+            . 'answer is an actual attempt at THIS activity (same subject/topic as the activity and its answer key). '
+            . 'Set is_related to false when the submission is about something else, an unrelated document, a '
+            . 'random photo or screenshot, a blank/unfilled template, or has nothing to do with the activity. '
+            . 'When is_related is false, suggested_score MUST be 0 and the feedback must say in Taglish, kindly '
+            . 'but clearly, that the file does not match the activity and the student should turn in the right work.';
+    }
     $api_result = callGeminiAPI(
-        buildSubmissionGradingSystemInstruction(),
+        $sysInstruction,
         $prompt,
         $response_format,
         GEMINI_GRADING_TIMEOUT_SECONDS,
@@ -1805,6 +1818,7 @@ function aiGradeResourceSubmission($resource, $maxScore, $answerText = null, $an
         'max_score' => (float) $maxScore,
         'feedback' => $parsed['feedback'],
         'is_confident' => $parsed['is_confident'],
+        'is_related' => $parsed['is_related'],
     ];
 }
 

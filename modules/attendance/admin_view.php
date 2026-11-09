@@ -15,6 +15,9 @@ if (!hasAnyRole(['Administrator', 'Registrar'])) {
     exit;
 }
 
+// Make sure the schedule-snapshot/break columns the queries below select exist.
+teacherAttendanceEnsureSchema();
+
 $page_title = 'Teacher Attendance';
 $current_page = 'attendance';
 $base_url = '../../';

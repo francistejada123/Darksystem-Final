@@ -17,6 +17,7 @@ $application = null;
 $documents = [];
 $approved_lrn = null;
 $error = '';
+$pp_state = null;
 
 if ($ref !== '') {
     $application = getRecord("SELECT * FROM online_applications WHERE reference_no = ? AND deleted_at IS NULL", [$ref]);
@@ -29,52 +30,34 @@ if ($ref !== '') {
                 $approved_lrn = $approved_student['lrn'];
             }
         }
+        // Parent Portal activation stage. Email verification is SIMULATED: once
+        // the enrollment is approved the address counts as verified, so the
+        // guardian registration -> create password -> activated sequence can
+        // run straight from this page. Nothing is sent and no code is needed.
+        require_once __DIR__ . '/includes/parent_portal.php';
+        ppEnsureSchema();
+        $pp_state = ppActivationState($application);
+
+        // Student Portal credentials for an APPROVED application.
+        // spwEnsurePortalCredentials() creates them once if they are missing --
+        // that is what rescues students approved before this feature existed --
+        // and otherwise only READS the existing temporary password back, so
+        // refreshing this page never rotates it.
+        $sp = ['state' => 'none', 'password' => '', 'lrn' => (string) $application['lrn']];
+        if ($application['status'] === 'Approved' && !empty($application['student_id'])) {
+            require_once __DIR__ . '/includes/student_password.php';
+            spwEnsureSchema();
+            $sp = spwEnsurePortalCredentials((int) $application['student_id']);
+            $sp['lrn'] = $sp['lrn'] ?: (string) $application['lrn'];
+        }
     } else {
         $error = 'No application found for reference number "' . htmlspecialchars($ref) . '".';
     }
 }
 
-// Incomplete Requirements (New Student / Transferee without Form 137): the applicant
-// uploads it here; the application goes back to Pending for the registrar.
-$missing = $application ? oeMissingRequirements($application['application_id'], $application['application_type']) : [];
-$upload_msg = '';
-$upload_err = '';
-if ($application && $_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'upload_form137') {
-    $check = preg_replace('/\D/', '', (string) ($_POST['confirm_lrn'] ?? ''));
-    if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
-        $upload_err = 'Your session expired. Please reload the page and try again.';
-    } elseif (!in_array($application['status'], ['Pending', 'Under Review', OE_INCOMPLETE], true) || !$missing) {
-        $upload_err = 'Form 137 is not needed for this application.';
-    } elseif ($check === '' || $check !== preg_replace('/\D/', '', (string) $application['lrn'])) {
-        $upload_err = 'Enter the same LRN you used in your application.';
-    } else {
-        $res = saveApplicationFile($_FILES['form137'] ?? null, $application['reference_no'], 'form137');
-        if (!$res['success']) {
-            $upload_err = $res['message'];
-        } else {
-            executeQuery(
-                "INSERT INTO application_documents (application_id, doc_key, doc_label, file_name, file_path, file_type, file_size) VALUES (?,?,?,?,?,?,?)",
-                [(int) $application['application_id'], 'form137', 'Form 137 (Permanent Record)', $res['name'], $res['path'], $res['type'], $res['size']]
-            );
-            if ($application['status'] === OE_INCOMPLETE) {
-                executeQuery("UPDATE online_applications SET status = 'Pending', remarks = ? WHERE application_id = ?",
-                    ['Form 137 uploaded on ' . date('M j, Y g:i A') . '. Waiting for review.', (int) $application['application_id']]);
-            }
-            foreach (getRecords("SELECT u.user_id FROM users u JOIN roles r ON u.role_id = r.role_id WHERE r.role_name IN ('Administrator','Registrar','Enrollment Officer') AND u.is_active = 1") as $s) {
-                executeQuery(
-                    "INSERT INTO notifications (user_id, title, message, type, link, is_read) VALUES (?, ?, ?, 'info', ?, 0)",
-                    [$s['user_id'], 'Form 137 uploaded', $application['first_name'] . ' ' . $application['last_name'] . ' uploaded Form 137. Reference No. ' . $application['reference_no'] . '.',
-                     'modules/enrollment/view_application.php?id=' . (int) $application['application_id']]
-                );
-            }
-            logActivity(null, 'online_enrollment', 'Form 137 uploaded', 'Ref: ' . $application['reference_no']);
-            header('Location: enrollment_status.php?ref=' . urlencode($application['reference_no']) . '&uploaded=1');
-            exit;
-        }
-    }
-}
-if (isset($_GET['uploaded'])) $upload_msg = 'Form 137 uploaded. Your application is back with the registrar for review.';
-$csrf_token = generateCSRFToken();
+// Form 137 (New Student / Transferee) is NOT uploaded online after applying. The learner brings the
+// physical copy to the school; staff update its status. It never affects the application status.
+$form137_state = $application ? oeForm137Status($application['application_id'], $application['application_type']) : 'Not Applicable';
 
 // status => [label shown to the applicant, colour, icon, message]
 $status_meta = [
@@ -108,12 +91,128 @@ $status_meta['For Correction'] = $status_meta['Rejected'] = $status_meta['Incomp
     <link href="static/css/theme.css" rel="stylesheet">
     <style>
         body { background: #eef2f7; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-        .wrap { max-width: 760px; margin: 50px auto; padding: 0 15px; }
-        .card-x { background: #fff; border-radius: 16px; box-shadow: 0 10px 40px rgba(13, 71, 161, .12); padding: 26px 28px; margin-bottom: 20px; }
+        .wrap { max-width: 860px; margin: 40px auto; padding: 0 16px 40px; }
+
+        /* ---- Base card ------------------------------------------------ */
+        .card-x {
+            background: #fff; border: 1px solid #E3E9F2; border-radius: 18px;
+            box-shadow: 0 4px 18px rgba(15, 35, 80, .07);
+            padding: 26px 28px; margin-bottom: 18px;
+        }
+        .card-x:last-child { margin-bottom: 0; }
+        .card-head { display: flex; align-items: center; gap: 13px; margin-bottom: 18px; }
+        .card-head .ic {
+            width: 44px; height: 44px; border-radius: 13px; flex: 0 0 auto;
+            display: flex; align-items: center; justify-content: center; font-size: 19px;
+        }
+        .card-head h5 { margin: 0; font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
+        .card-head .sub { font-size: 13.5px; color: #667085; margin: 2px 0 0; }
+
+        /* Accent variants: green / orange / blue / purple / neutral */
+        .a-green  { border-color: #BBE5CE; }  .a-green  .ic { background: #E8F7EF; color: #1F9D6B; }
+        .a-orange { border-color: #F8DCA8; }  .a-orange .ic { background: #FEF3E2; color: #B45309; }
+        .a-blue   { border-color: #BFDBFE; }  .a-blue   .ic { background: #E7F0FE; color: #1D4ED8; }
+        .a-purple { border-color: #DDD0F7; }  .a-purple .ic { background: #F1EBFD; color: #6D28D9; }
+        .a-grey   { border-color: #E3E9F2; }  .a-grey   .ic { background: #F1F5F9; color: #475467; }
+
+        /* ---- Track form ---------------------------------------------- */
+        .track-form { display: flex; gap: 10px; }
+        .track-form .form-control {
+            border-radius: 12px; border: 1px solid #D6DEEA; padding: 13px 16px;
+            font-size: 15px; letter-spacing: .4px; height: 50px;
+        }
+        .track-form .form-control:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+        .track-form .btn { border-radius: 12px; padding: 0 30px; font-weight: 700; height: 50px; }
+
+        /* ---- Status hero ---------------------------------------------- */
+        .hero { text-align: center; }
+        .hero .big { font-size: 54px; line-height: 1; }
+        .hero h4 { font-size: 22px; font-weight: 800; margin: 12px 0 4px; }
+        .hero .lbl { font-size: 12px; letter-spacing: 1.2px; text-transform: uppercase; color: #667085; font-weight: 700; }
+        .hero .ref {
+            display: inline-block; margin-top: 6px; font-size: 17px; font-weight: 800;
+            letter-spacing: 1.4px; padding: 9px 20px; border-radius: 12px;
+        }
+        .next-step {
+            margin-top: 20px; text-align: left; background: #F0F7FF; border: 1px solid #BFDBFE;
+            border-radius: 13px; padding: 14px 16px; font-size: 14.5px; color: #1E3A5F;
+        }
+        .next-step b { display: block; margin-bottom: 3px; color: #1565C0; }
+
+        /* ---- Details grid --------------------------------------------- */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 22px; }
+        .field .k { font-size: 12px; text-transform: uppercase; letter-spacing: .8px; color: #667085; font-weight: 700; margin-bottom: 3px; }
+        .field .v { font-size: 15.5px; color: #101828; font-weight: 600; word-break: break-word; }
+        .field.span2 { grid-column: 1 / -1; }
+        .lrn-link { color: #1D4ED8; font-weight: 800; text-decoration: none; letter-spacing: .6px; }
+        .lrn-link:hover { text-decoration: underline; }
+
+        /* ---- Credentials ---------------------------------------------- */
+        .cred-row { margin-bottom: 16px; }
+        .cred-row .k { font-size: 12px; text-transform: uppercase; letter-spacing: .8px; color: #475569; font-weight: 700; margin-bottom: 6px; }
+        .cred-box {
+            display: flex; align-items: center; gap: 8px;
+            background: #F8FAFF; border: 1px solid #BFDBFE; border-radius: 12px; padding: 10px 12px;
+        }
+        .cred-box .val {
+            flex: 1; min-width: 0; font-family: Consolas, 'SF Mono', monospace;
+            font-size: 20px; font-weight: 800; letter-spacing: 1.5px; color: #1D4ED8;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .cred-box .val.pw { color: #B91C1C; }
+        .cred-btn {
+            border: 1px solid #BFDBFE; background: #fff; color: #1D4ED8; border-radius: 9px;
+            font-size: 13px; font-weight: 700; padding: 8px 13px; white-space: nowrap; transition: all .15s;
+        }
+        .cred-btn:hover { background: #1D4ED8; color: #fff; border-color: #1D4ED8; }
+        .cred-note {
+            background: #FEF3E2; border: 1px solid #F8DCA8; border-radius: 12px;
+            padding: 12px 14px; font-size: 14px; color: #7A4A08;
+        }
+        .btn-wide { display: block; width: 100%; border-radius: 12px; padding: 13px; font-weight: 700; font-size: 15.5px; }
+        .btn-purple { background: #6D28D9; border-color: #6D28D9; color: #fff; }
+        .btn-purple:hover { background: #5B21B6; border-color: #5B21B6; color: #fff; }
+
+        /* ---- Copy toast ----------------------------------------------- */
+        #copyToast {
+            position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(20px);
+            background: #101828; color: #fff; font-size: 14px; font-weight: 600;
+            padding: 11px 20px; border-radius: 12px; z-index: 3000; opacity: 0;
+            pointer-events: none; transition: opacity .2s, transform .2s;
+        }
+        #copyToast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        @media (max-width: 640px) {
+            .wrap { margin: 22px auto; padding: 0 12px 30px; }
+            .card-x { padding: 20px 18px; border-radius: 15px; }
+            .grid-2 { grid-template-columns: 1fr; gap: 12px; }
+            .track-form { flex-direction: column; }
+            .track-form .btn { width: 100%; }
+            .cred-box { flex-wrap: wrap; }
+            .cred-box .val { flex-basis: 100%; font-size: 18px; }
+            .hero .big { font-size: 44px; }
+        }
+
         html[data-theme="dark"] body { background: var(--bg); }
-        html[data-theme="dark"] .card-x { background: var(--surface); box-shadow: var(--shadow-md); }
-        html[data-theme="dark"] h3, html[data-theme="dark"] h4, html[data-theme="dark"] h6 { color: var(--ink); }
-        html[data-theme="dark"] .text-muted { color: var(--text-muted) !important; }
+        html[data-theme="dark"] .card-x { background: var(--surface); border-color: var(--border); box-shadow: var(--shadow-md); }
+        html[data-theme="dark"] h3, html[data-theme="dark"] h4, html[data-theme="dark"] h5, html[data-theme="dark"] h6 { color: var(--ink); }
+        html[data-theme="dark"] .text-muted, html[data-theme="dark"] .field .k, html[data-theme="dark"] .hero .lbl { color: var(--text-muted) !important; }
+        html[data-theme="dark"] .field .v { color: var(--ink); }
+        html[data-theme="dark"] .a-green .ic  { background: rgba(31,157,107,.15); }
+        html[data-theme="dark"] .a-orange .ic { background: rgba(180,83,9,.18); }
+        html[data-theme="dark"] .a-blue .ic   { background: rgba(29,78,216,.18); }
+        html[data-theme="dark"] .a-purple .ic { background: rgba(109,40,217,.18); }
+        html[data-theme="dark"] .a-grey .ic   { background: var(--surface-hover); }
+        html[data-theme="dark"] .card-x.a-green  { border-color: rgba(31,157,107,.35); }
+        html[data-theme="dark"] .card-x.a-orange { border-color: rgba(180,83,9,.4); }
+        html[data-theme="dark"] .card-x.a-blue   { border-color: rgba(29,78,216,.4); }
+        html[data-theme="dark"] .card-x.a-purple { border-color: rgba(109,40,217,.4); }
+        html[data-theme="dark"] .hero .ref, html[data-theme="dark"] .cred-box { background: var(--surface-hover); border-color: var(--border); }
+        html[data-theme="dark"] .next-step { background: rgba(29,78,216,.10); border-color: rgba(29,78,216,.35); color: #c7d7f2; }
+        html[data-theme="dark"] .next-step b { color: #aecbfa; }
+        html[data-theme="dark"] .cred-note { background: rgba(180,83,9,.12); border-color: rgba(180,83,9,.35); color: #fdd663; }
+        html[data-theme="dark"] .cred-btn { background: var(--surface-hover); border-color: var(--border); color: #aecbfa; }
+        html[data-theme="dark"] .lrn-link { color: #aecbfa; }
     </style>
     <?php include __DIR__ . '/includes/pwa_head.php'; ?>
 </head>
@@ -132,9 +231,9 @@ $status_meta['For Correction'] = $status_meta['Rejected'] = $status_meta['Incomp
         </div>
 
         <div class="card-x">
-            <form method="GET" class="d-flex gap-2">
+            <form method="GET" class="track-form">
                 <input type="text" name="ref" class="form-control" placeholder="e.g. OE-2026-4F7K2Q" value="<?php echo htmlspecialchars($ref); ?>" required>
-                <button class="btn btn-primary px-4">Track</button>
+                <button class="btn btn-primary">Track</button>
             </form>
             <?php if ($error): ?><div class="alert alert-danger mt-3 mb-0"><?php echo $error; ?></div><?php endif; ?>
         </div>
@@ -144,119 +243,240 @@ $status_meta['For Correction'] = $status_meta['Rejected'] = $status_meta['Incomp
             <?php if ($just_submitted): ?>
                 <div class="alert alert-success"><i class="fas fa-circle-check me-1"></i><strong>Application submitted!</strong> Save your tracking number below. You can come back to this page any time to see your status.</div>
             <?php endif; ?>
-            <div class="card-x text-center">
-                <i class="fas <?php echo $m[2]; ?> text-<?php echo $m[1]; ?>" style="font-size:56px"></i>
-                <h4 class="mt-3 fw-bold"><?php echo htmlspecialchars($m[0]); ?></h4>
-                <p class="text-muted"><?php echo $m[3]; ?></p>
-                <div class="small text-muted mb-1">Application / Tracking Number</div>
-                <span class="badge bg-<?php echo $m[1]; ?> px-3 py-2" style="font-size:15px;letter-spacing:.5px"><?php echo htmlspecialchars($application['reference_no']); ?></span>
+            <div class="card-x hero <?php echo $application['status'] === 'Approved' ? 'a-green' : ''; ?>">
+                <i class="fas <?php echo $m[2]; ?> text-<?php echo $m[1]; ?> big"></i>
+                <h4><?php echo htmlspecialchars($m[0]); ?></h4>
+                <p class="text-muted mb-0"><?php echo $m[3]; ?></p>
+                <div class="lbl" style="margin-top:18px;">Tracking Number</div>
+                <div class="ref" style="background:<?php echo $m[1] === 'success' ? '#E8F7EF;color:#1F9D6B' : ($m[1] === 'warning' ? '#FEF3E2;color:#B45309' : ($m[1] === 'info' ? '#E7F0FE;color:#1D4ED8' : '#E7F0FE;color:#1D4ED8')); ?>;"><?php echo htmlspecialchars($application['reference_no']); ?></div>
+                <?php if ($application['status'] === 'Approved'): ?>
+                    <div class="next-step">
+                        <b><i class="fas fa-arrow-down me-1"></i>Next Step</b>
+                        Your Student Portal credentials are ready &mdash; you will find your LRN and a temporary password in the blue card below. Sign in once with those, and you will be asked to create your own password straight away.
+                    </div>
+                <?php endif; ?>
             </div>
 
-            <?php if ($upload_msg !== ''): ?><div class="alert alert-success"><i class="fas fa-circle-check me-1"></i><?php echo htmlspecialchars($upload_msg); ?></div><?php endif; ?>
-            <?php if ($missing && in_array($application['status'], ['Pending', 'Under Review', OE_INCOMPLETE], true)): ?>
-                <div class="card-x" style="border:2px solid #f59e0b">
-                    <h6 class="fw-bold mb-1"><i class="fas fa-file-circle-exclamation text-warning me-1"></i>Missing requirement: <?php echo htmlspecialchars(implode(', ', $missing)); ?></h6>
-                    <p class="text-muted small mb-2">Upload it when you have it (PDF or photo, up to 5 MB). Your application then goes back to the registrar for review.</p>
-                    <?php if ($upload_err !== ''): ?><div class="alert alert-danger py-2 small"><?php echo htmlspecialchars($upload_err); ?></div><?php endif; ?>
-                    <form method="POST" enctype="multipart/form-data" class="row g-2">
-                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
-                        <input type="hidden" name="ref" value="<?php echo htmlspecialchars($application['reference_no']); ?>">
-                        <input type="hidden" name="action" value="upload_form137">
-                        <div class="col-md-5"><input type="text" name="confirm_lrn" class="form-control" inputmode="numeric" maxlength="12" placeholder="Your LRN (to confirm)" required></div>
-                        <div class="col-md-7"><input type="file" name="form137" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.webp" required></div>
-                        <div class="col-12"><button class="btn btn-warning fw-bold"><i class="fas fa-upload me-1"></i>Upload Form 137</button></div>
-                    </form>
+            <?php if ($form137_state !== 'Not Applicable' && in_array($application['status'], ['Pending', 'Under Review', OE_INCOMPLETE, 'Approved'], true)): ?>
+                <div class="card-x <?php echo $form137_state === 'To Follow' ? 'a-orange' : 'a-green'; ?>">
+                    <div class="card-head" style="margin-bottom:12px;">
+                        <div class="ic"><i class="fas <?php echo $form137_state === 'To Follow' ? 'fa-file-circle-exclamation' : 'fa-file-circle-check'; ?>"></i></div>
+                        <div>
+                            <h5>Form 137: <?php echo htmlspecialchars($form137_state); ?></h5>
+                            <p class="sub" style="color:<?php echo $form137_state === 'To Follow' ? '#B45309' : '#1F9D6B'; ?>;">
+                                <?php if ($form137_state === 'To Follow'): ?>
+                                    You can submit this later &mdash; it is not needed today.
+                                <?php else: ?>
+                                    Received by the school.
+                                <?php endif; ?>
+                            </p>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-0" style="font-size:14.5px;line-height:1.6;">
+                        <?php if ($form137_state === 'To Follow'): ?>
+                            <strong>Your Form 137 can be submitted later.</strong> Please bring the physical copy to the school when classes start or when your previous school releases it. You do not need to upload it online, and it does not affect your application status<?php echo $application['status'] === 'Approved' ? ' or your section assignment' : ''; ?>.
+                        <?php elseif ($form137_state === 'Received'): ?>
+                            The school has received your Form 137.
+                        <?php else: ?>
+                            Your Form 137 has been received and verified by the school.
+                        <?php endif; ?>
+                    </p>
                 </div>
             <?php endif; ?>
 
             <?php if ($application['status'] === 'Approved'): ?>
                 <div class="card-x text-center" style="border:2px solid #198754">
                     <h5 class="fw-bold text-success mb-2"><i class="fas fa-user-graduate me-2"></i>Enrollment Approved</h5>
-                    <p class="mb-3">Your enrollment application has been approved. You may now access your EGradePro Student Portal.</p>
-                    <a href="student_login.php" class="btn btn-success px-4"><i class="fas fa-right-to-bracket me-1"></i>Go to Student Login</a>
-                    <?php
-                        // First time on the device that applied: create the password right here (birthday check).
-                        // Otherwise (password exists / another device): the emailed link, with the LRN filled in.
-                        require_once __DIR__ . '/includes/student_password.php';
-                        spwEnsureSchema();
-                        $tp_student = !empty($application['student_id'])
-                            ? getRecord("SELECT lrn, portal_password_hash FROM students WHERE student_id = ? AND is_active = 1", [(int) $application['student_id']])
-                            : null;
-                        $tp_can_create = $tp_student && empty($tp_student['portal_password_hash']) && oeSubmittedRef() === $application['reference_no'];
-                        $tp_lrn = $tp_student['lrn'] ?? ($application['lrn'] ?? '');
-                    ?>
-                    <div style="margin:16px auto 0;max-width:520px;padding:14px 16px;border-radius:12px;background:#F0F7FF;border:1px solid #BFDBFE;color:#1E3A5F;text-align:left;">
-                        <?php if ($tp_can_create): ?>
-                            <div style="font-size:16px;font-weight:700;margin-bottom:4px;"><i class="fas fa-key me-2" style="color:#1D4ED8;"></i>First time signing in?</div>
-                            <div style="font-size:15px;line-height:1.55;">Create your password now. Your LRN is already filled in; you only confirm your birthday.</div>
-                            <a href="student/create_password.php?ref=<?php echo urlencode($application['reference_no']); ?>" class="btn btn-primary mt-2" style="font-size:15px;font-weight:700;"><i class="fas fa-key me-1"></i> Create My Password</a>
-                        <?php elseif ($tp_student && !empty($tp_student['portal_password_hash'])): ?>
-                            <div style="font-size:16px;font-weight:700;margin-bottom:4px;"><i class="fas fa-lock me-2" style="color:#1D4ED8;"></i>Forgot your password?</div>
-                            <div style="font-size:15px;line-height:1.55;">Your password is already created. Sign in with your LRN and password. Forgot it? We will email you a link.</div>
-                            <a href="student/forgot_password.php?lrn=<?php echo urlencode($tp_lrn); ?>" class="btn btn-outline-primary mt-2" style="font-size:15px;font-weight:600;"><i class="fas fa-key me-1"></i> Forgot Password</a>
-                        <?php else: ?>
-                            <div style="font-size:16px;font-weight:700;margin-bottom:4px;"><i class="fas fa-key me-2" style="color:#1D4ED8;"></i>First time signing in?</div>
-                            <div style="font-size:15px;line-height:1.55;">Create your password using the <strong>Create My Password</strong> button in your approval email. No email or the link expired? Get a new link here:</div>
-                            <a href="student/forgot_password.php?lrn=<?php echo urlencode($tp_lrn); ?>" class="btn btn-outline-primary mt-2" style="font-size:15px;font-weight:600;"><i class="fas fa-key me-1"></i> Create / Forgot Password</a>
-                        <?php endif; ?>
-                    </div>
+                    <p class="mb-3">Your enrollment application has been approved. Your Student Portal credentials are shown below.</p>
                 </div>
             <?php endif; ?>
 
-            <div class="card-x">
-                <h6 class="fw-bold mb-3">Application Details</h6>
-                <table class="table table-sm mb-0">
+            <?php if ($application['status'] === 'Incomplete Requirements'): ?>
+                <?php
+                // Incomplete Requirements is NOT approval: neither the Student Portal
+                // password nor the Parent Portal may be created yet. The missing
+                // Form 138 / Birth Certificate has to be settled by the Admin first.
+                // (A genuinely Incomplete application reaches the portal flow only once
+                // its ENROLLMENT is approved -- e.g. To-Follow Form 137 -- which
+                // ppEnrollmentApproved() detects below and $pp_state reflects.)
+                ?>
+                <div class="card-x text-center" style="border:2px solid #fd7e14">
+                    <h5 class="fw-bold mb-2"><i class="fas fa-hourglass-half me-2"></i>Waiting for Approval</h5>
+                    <p class="mb-0">Your Parent Portal account cannot be set up yet. A required document is still missing, so the school has not approved the enrollment. Once the Enrollment Officer approves it, this page will show the Parent Portal registration step.</p>
+                </div>
+            <?php endif; ?>
+
+            <div class="card-x a-grey">
+                <div class="card-head">
+                    <div class="ic"><i class="fas fa-file-lines"></i></div>
+                    <div><h5>Application Details</h5></div>
+                </div>
+                <div class="grid-2">
                     <?php if ($approved_lrn !== null): ?>
-                        <tr><th width="40%">LRN</th><td>
-                            <a href="modules/attendance/student_qr.php?ref=<?php echo urlencode($application['reference_no']); ?>" class="fw-bold" style="color:#0d6efd;text-decoration:underline" title="Click to show your QR code"><i class="fas fa-qrcode me-1"></i><?php echo htmlspecialchars($approved_lrn); ?></a>
-                            <div class="small text-muted">Click your LRN to show your QR code.</div>
-                        </td></tr>
+                        <div class="field">
+                            <div class="k">LRN</div>
+                            <div class="v"><a href="modules/attendance/student_qr.php?ref=<?php echo urlencode($application['reference_no']); ?>" class="lrn-link" title="Click to show your QR code"><i class="fas fa-qrcode me-1"></i><?php echo htmlspecialchars($approved_lrn); ?></a></div>
+                        </div>
                     <?php endif; ?>
-                    <tr><th width="40%">Applicant Name</th><td><?php echo htmlspecialchars($application['last_name'] . ', ' . $application['first_name'] . ' ' . $application['middle_name']); ?></td></tr>
-                    <tr><th>Tracking Number</th><td><?php echo htmlspecialchars($application['reference_no']); ?></td></tr>
-                    <tr><th>Grade Level</th><td><?php echo htmlspecialchars($application['grade_level']); ?><?php echo $application['strand'] ? ' — ' . htmlspecialchars($application['strand']) : ''; ?></td></tr>
-                    <tr><th>Applicant Type</th><td><?php echo htmlspecialchars($application['application_type']); ?></td></tr>
-                    <tr><th>Date Submitted</th><td><?php echo formatDate($application['created_at'], 'M d, Y h:i A'); ?></td></tr>
-                    <tr><th>Current Status</th><td><span class="badge bg-<?php echo $m[1]; ?>"><?php echo htmlspecialchars($m[0]); ?></span></td></tr>
-                    <tr><th>Documents Uploaded</th><td><?php echo count($documents); ?> file(s)</td></tr>
+                    <div class="field">
+                        <div class="k">Applicant Name</div>
+                        <div class="v"><?php echo htmlspecialchars($application['last_name'] . ', ' . $application['first_name'] . ' ' . $application['middle_name']); ?></div>
+                    </div>
+                    <div class="field">
+                        <div class="k">Tracking Number</div>
+                        <div class="v"><?php echo htmlspecialchars($application['reference_no']); ?></div>
+                    </div>
+                    <div class="field">
+                        <div class="k">Grade Level</div>
+                        <div class="v"><?php echo htmlspecialchars($application['grade_level']); ?><?php echo $application['strand'] ? ' &middot; ' . htmlspecialchars($application['strand']) : ''; ?></div>
+                    </div>
+                    <div class="field">
+                        <div class="k">Applicant Type</div>
+                        <div class="v"><?php echo htmlspecialchars($application['application_type']); ?></div>
+                    </div>
+                    <div class="field">
+                        <div class="k">Date Submitted</div>
+                        <div class="v"><?php echo formatDate($application['created_at'], 'M d, Y h:i A'); ?></div>
+                    </div>
+                    <div class="field">
+                        <div class="k">Current Status</div>
+                        <div class="v"><span class="badge bg-<?php echo $m[1]; ?>"><?php echo htmlspecialchars($m[0]); ?></span></div>
+                    </div>
+                    <div class="field">
+                        <div class="k">Documents Uploaded</div>
+                        <div class="v"><?php echo count($documents); ?> file(s)</div>
+                    </div>
                     <?php if (!empty($application['remarks'])): ?>
-                        <tr><th><?php echo $application['status'] === OE_INCOMPLETE ? 'What is missing' : 'Remarks from the Enrollment Officer'; ?></th><td><?php echo nl2br(htmlspecialchars($application['remarks'])); ?></td></tr>
+                        <div class="field span2">
+                            <div class="k"><?php echo $application['status'] === OE_INCOMPLETE ? 'What is missing' : 'Remarks from the Enrollment Officer'; ?></div>
+                            <div class="v" style="font-weight:500;line-height:1.6;"><?php echo nl2br(htmlspecialchars($application['remarks'])); ?></div>
+                        </div>
                     <?php endif; ?>
-                </table>
+                </div>
+            </div>
+
+            <?php if ($sp['state'] === 'credentials' && $sp['password'] !== ''): ?>
+                <?php /* STUDENT PORTAL CREDENTIALS -- below Application Details.
+                         Shows the ONE temporary password generated at approval;
+                         refreshing the page reads it back rather than making a new one. */ ?>
+                <div class="card-x a-blue">
+                    <div class="card-head">
+                        <div class="ic"><i class="fas fa-key"></i></div>
+                        <div><h5 style="color:#1D4ED8;">Student Portal Credentials</h5>
+                        <p class="sub">Sign in with these, then create your own password.</p></div>
+                    </div>
+                    <div class="cred-row">
+                        <div class="k">LRN / Username</div>
+                        <div class="cred-box">
+                            <span class="val" id="tpLrn"><?php echo htmlspecialchars($sp['lrn']); ?></span>
+                            <button type="button" class="cred-btn" data-copy="tpLrn"><i class="fas fa-copy me-1"></i>Copy</button>
+                        </div>
+                    </div>
+                    <div class="cred-row">
+                        <div class="k">Temporary Password</div>
+                        <div class="cred-box">
+                            <span class="val pw" id="tpPassword">&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;</span>
+                            <button type="button" class="cred-btn" id="tpToggle"><i class="fas fa-eye me-1"></i>Show</button>
+                            <button type="button" class="cred-btn" data-copy="tpPassword" id="tpCopy"><i class="fas fa-copy me-1"></i>Copy</button>
+                        </div>
+                    </div>
+                    <div class="cred-note mb-3">
+                        <i class="fas fa-circle-info me-1"></i>This is a <strong>temporary password</strong>. Use it for your first login only &mdash; you will be required to create a new password immediately after signing in.
+                    </div>
+                    <a href="student_login.php" class="btn btn-success btn-wide"><i class="fas fa-right-to-bracket me-1"></i>Go to Student Portal Login</a>
+                </div>
+                <script>
+                // Show / Hide + Copy. The password value is already in this page;
+                // a refresh only READS it back, it is never regenerated.
+                (function () {
+                    var REAL = <?php echo json_encode($sp['password']); ?>;
+                    var pw = document.getElementById('tpPassword');
+                    var toggle = document.getElementById('tpToggle');
+                    var copyPw = document.getElementById('tpCopy');
+                    var shown = false;
+                    function paint() {
+                        pw.textContent = shown ? REAL : '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022';
+                        toggle.innerHTML = shown ? '<i class="fas fa-eye-slash me-1"></i>Hide' : '<i class="fas fa-eye me-1"></i>Show';
+                        copyPw.disabled = !shown;
+                    }
+                    toggle.addEventListener('click', function () { shown = !shown; paint(); });
+                    paint();
+
+                    var toast = document.getElementById('copyToast');
+                    function say(msg) {
+                        if (!toast) return;
+                        toast.textContent = msg;
+                        toast.classList.add('show');
+                        clearTimeout(toast._t);
+                        toast._t = setTimeout(function () { toast.classList.remove('show'); }, 1800);
+                    }
+                    document.querySelectorAll('[data-copy]').forEach(function (b) {
+                        b.addEventListener('click', function () {
+                            var src = document.getElementById(b.getAttribute('data-copy'));
+                            if (!src) return;
+                            var text = src.id === 'tpPassword' && !shown ? '' : src.textContent.trim();
+                            if (!text) { say('Show the password first to copy it.'); return; }
+                            if (navigator.clipboard && navigator.clipboard.writeText) {
+                                navigator.clipboard.writeText(text).then(function () { say('Copied!'); }, function () { say('Press and hold to copy.'); });
+                            } else {
+                                say('Press and hold to copy.');
+                            }
+                        });
+                    });
+                })();
+                </script>
+            <?php elseif ($sp['state'] === 'activated'): ?>
+                <?php /* Password already changed: the temporary password is gone
+                         and must never be shown again. */ ?>
+                <div class="card-x a-green">
+                    <div class="card-head">
+                        <div class="ic"><i class="fas fa-circle-check"></i></div>
+                        <div><h5 style="color:#1F9D6B;">Student Portal Activated</h5>
+                        <p class="sub">Your password has been set.</p></div>
+                    </div>
+                    <p class="text-muted mb-3" style="font-size:14.5px;line-height:1.6;">
+                        Sign in with your LRN <strong><?php echo htmlspecialchars($sp['lrn']); ?></strong> and the password you created. The temporary password is no longer valid.
+                    </p>
+                    <a href="student_login.php" class="btn btn-success btn-wide"><i class="fas fa-right-to-bracket me-1"></i>Go to Student Portal Login</a>
+                </div>
+            <?php elseif ($sp['state'] === 'unavailable'): ?>
+                <div class="card-x a-orange">
+                    <div class="card-head">
+                        <div class="ic"><i class="fas fa-triangle-exclamation"></i></div>
+                        <div><h5 style="color:#B45309;">Credentials Unavailable</h5>
+                        <p class="sub">Your portal account could not be prepared automatically.</p></div>
+                    </div>
+                    <p class="text-muted mb-0" style="font-size:14.5px;line-height:1.6;">Please contact the registrar's office and they will set it up for you.</p>
+                </div>
+            <?php endif; ?>
+
+            <?php /* Parent Portal: no guardian registration needed any more. Parents
+                     sign in from the Student Portal login page (Parent tab) with the
+                     learner's LRN and the parent/guardian name on record. */ ?>
+
             </div>
         <?php endif; ?>
 
-        <div class="text-center">
-            <a href="online_enrollment.php?new=1" class="btn btn-outline-primary btn-sm" onclick="return confirm('Start a new application for another learner? Your current application stays saved; keep its tracking number.');"><i class="fas fa-file-pen me-1"></i>New application for another learner</a>
-        </div>
-    </div>
-    <?php
-    // Parent Portal pop-up: approved, the device that applied, and no parent linked yet.
-    $pp_pop = null;
-    if ($application && $application['status'] === 'Approved' && !empty($application['student_id'])
-        && oeSubmittedRef() === $application['reference_no']) {
-        require_once __DIR__ . '/includes/parent_portal.php';
-        ppEnsureSchema();
-        if (!ppParentsOf((int) $application['student_id']) && getRecord("SELECT 1 FROM students WHERE student_id = ? AND is_active = 1", [(int) $application['student_id']])) {
-            $pp_pop = $application;
-        }
-    }
-    if ($pp_pop): $pp_ref = urlencode($pp_pop['reference_no']); ?>
-    <div id="ppPop" style="position:fixed;inset:0;z-index:2000;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;padding:16px">
-        <div style="background:#fff;border-radius:16px;max-width:460px;width:100%;padding:22px 20px;box-shadow:0 20px 50px rgba(0,0,0,.3)">
-            <div style="font-size:34px;text-align:center">👨‍👩‍👧</div>
-            <h5 class="fw-bold text-center mb-1">Parent Portal</h5>
-            <p class="text-center mb-2" style="font-size:15px">Para kay <strong><?php echo htmlspecialchars($pp_pop['guardian_name'] ?: 'Magulang'); ?></strong><?php echo $pp_pop['guardian_relationship'] ? ' (' . htmlspecialchars($pp_pop['guardian_relationship']) . ')' : ''; ?></p>
-            <p class="text-center text-muted" style="font-size:15.5px">Makikita ng magulang ang grades, attendance at activities ni <?php echo htmlspecialchars($pp_pop['first_name']); ?>.<br>Number: <strong><?php echo htmlspecialchars(smsMask($pp_pop['guardian_contact']) ?: '—'); ?></strong></p>
-            <div class="d-grid gap-2">
-                <a href="parent/start.php?ref=<?php echo $pp_ref; ?>" class="btn btn-primary fw-bold" style="height:50px;padding-top:12px"><i class="fas fa-mobile-screen me-1"></i> I-setup ngayon sa phone na ito</a>
-                <a href="parent/start.php?ref=<?php echo $pp_ref; ?>&share=1" class="btn btn-outline-primary fw-semibold"><i class="fas fa-share-nodes me-1"></i> I-share sa magulang (Messenger / Copy code)</a>
-                <button type="button" class="btn btn-link text-muted" onclick="try{sessionStorage.setItem('ppPopLater','1')}catch(e){};document.getElementById('ppPop').style.display='none'">Mamaya na lang</button>
+        <?php /* Must stay the LAST thing on the page. Opens a fresh application via
+                 online_enrollment.php?new=1, which starts a blank form -- it only
+                 reads, never touches, the application shown above. */ ?>
+        <div class="card-x a-grey">
+            <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+                <div>
+                    <div style="font-size:16px;font-weight:800;margin-bottom:2px;">New application for another learner</div>
+                    <div class="text-muted" style="font-size:14.5px;">Submit a new enrollment application for another student.</div>
+                </div>
+                <a href="online_enrollment.php?new=1" class="btn btn-outline-primary px-4" style="border-radius:12px;font-weight:700;white-space:nowrap;"
+                   onclick="return confirm('Start a new application for another learner? Your current application stays saved; keep its tracking number.');">
+                    <i class="fas fa-plus me-1"></i>Start New Enrollment
+                </a>
             </div>
         </div>
     </div>
-    <script>try { if (!sessionStorage.getItem('ppPopLater')) document.getElementById('ppPop').style.display = 'flex'; } catch (e) { document.getElementById('ppPop').style.display = 'flex'; }</script>
-    <?php endif; ?>
+    <div id="copyToast" role="status" aria-live="polite"></div>
+    <?php /* Parent Portal pop-up removed: parents now sign in from the Student
+             Portal login page (Parent tab) with the learner's LRN and the
+             parent/guardian name on record -- no separate registration. */ ?>
     <script src="static/js/theme.js"></script>
 </body>
 

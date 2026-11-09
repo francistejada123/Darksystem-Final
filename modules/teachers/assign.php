@@ -6,6 +6,7 @@
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/grading_helpers.php';
+require_once __DIR__ . '/../../includes/teacher_department.php';
 
 if (!defined('BASE_URL')) {
     define('BASE_URL', '/watdahel/');
@@ -45,6 +46,18 @@ $school_year_id = $active_sy ? $active_sy['sy_id'] : 0;
 // used to assign a subject from a term that isn't the one currently active.
 $current_term_live = gh_getCurrentTerm($school_year_id);
 
+// The teacher's Department / Level, saved at registration, is the source of
+// truth for what this teacher may be assigned to: JHS -> Grade 7-10,
+// SHS -> Grade 11-12. Sections and subjects are filtered to that here, and
+// the same rule is re-checked on submit below so it cannot be bypassed by
+// hand-editing the request.
+$teacher_department = tdNormalize($teacher['department_level'] ?? '');
+$teacher_grades = tdGradesFor($teacher_department);
+
+// Existing assignments that break the rule are never deleted here -- they are
+// listed for the Admin to correct.
+$department_conflicts = tdConflictingAssignments($teacher_id);
+
 // Get all active subjects -- strand and term are included so the form below
 // can filter this list down to only what matches the selected section
 // (grade level + strand) and, for Senior High, the currently active term.
@@ -52,10 +65,10 @@ $current_term_live = gh_getCurrentTerm($school_year_id);
 // Management's "Assign Subject to Teacher" flow; this older page was
 // missing it, which let a subject from any grade/strand/term be assigned
 // to any section.
-$subjects = getRecords("SELECT subject_code, subject_name, grade_level, strand, term FROM subjects WHERE is_active = 1 ORDER BY grade_level, subject_name");
+$subjects = tdFilterRows(getRecords("SELECT subject_code, subject_name, grade_level, strand, term FROM subjects WHERE is_active = 1 ORDER BY grade_level, subject_name"), $teacher_department);
 
-// Get all active sections
-$sections = getRecords("SELECT section_id, section_name, grade_level, strand FROM sections WHERE is_active = 1 ORDER BY grade_level, section_name");
+// Get all active sections -- only the ones inside the teacher's department.
+$sections = tdFilterRows(getRecords("SELECT section_id, section_name, grade_level, strand FROM sections WHERE is_active = 1 ORDER BY grade_level, section_name"), $teacher_department);
 
 // Get teacher's currently assigned subjects
 $assigned_subjects = getRecords("
@@ -98,6 +111,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 if (!$picked_section || !$picked_subject) {
                     $errors[] = 'Invalid subject or section selected.';
+                } elseif (!($dept_check = tdCheckAssignment($teacher_department, $picked_section['grade_level']))['ok']) {
+                    // Department restriction: a JHS teacher may never be put
+                    // into Grade 11/12 and an SHS teacher never into 7-10,
+                    // even if the request was hand-edited.
+                    $errors[] = $dept_check['message'];
                 } elseif ($picked_subject['grade_level'] !== $picked_section['grade_level']) {
                     $errors[] = 'That subject does not belong to this section\'s grade level.';
                 } elseif (!empty($picked_section['strand']) && $picked_subject['strand'] !== $picked_section['strand']) {
@@ -195,6 +213,45 @@ include '../../includes/header.php';
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
     <?php unset($_SESSION['error_message']); ?>
+<?php endif; ?>
+
+<?php if ($teacher_department !== ''): ?>
+    <div class="alert alert-info" style="font-size:14.5px;">
+        <i class="fas fa-user-shield me-1"></i>
+        <strong>Department / Level:</strong> <?php echo htmlspecialchars($teacher_department); ?> &mdash;
+        only <?php echo htmlspecialchars(implode(', ', $teacher_grades)); ?> classes, sections and subjects
+        may be assigned to this teacher.
+        <?php if ($teacher_department === 'JHS'): ?>
+            Grade 11&ndash;12 classes are not available.
+        <?php else: ?>
+            Grade 7&ndash;10 classes are not available.
+        <?php endif; ?>
+    </div>
+<?php else: ?>
+    <div class="alert alert-warning" style="font-size:14.5px;">
+        <i class="fas fa-triangle-exclamation me-1"></i>
+        This teacher has no Department / Level on file, so both JHS (Grade 7&ndash;10) and SHS (Grade 11&ndash;12)
+        classes are shown. Edit the teacher and set their Department / Level to lock this down.
+    </div>
+<?php endif; ?>
+
+<?php if (!empty($department_conflicts)): ?>
+    <div class="alert alert-warning" style="font-size:14.5px;">
+        <i class="fas fa-triangle-exclamation me-1"></i>
+        <strong>Needs correction:</strong> <?php echo count($department_conflicts); ?> existing
+        assignment<?php echo count($department_conflicts) === 1 ? '' : 's'; ?> of this teacher
+        falls outside their Department / Level. Nothing was deleted &mdash; please unassign or move them below.
+        <ul class="mb-0 mt-2">
+            <?php foreach ($department_conflicts as $dc): ?>
+                <li>
+                    <?php echo htmlspecialchars($dc['subject_name']); ?> &mdash;
+                    <?php echo htmlspecialchars($dc['section_name']); ?>
+                    (<?php echo htmlspecialchars($dc['grade_level']); ?>)
+                    <span class="text-muted">· teacher is <?php echo htmlspecialchars($dc['department']); ?></span>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
 <?php endif; ?>
 
 <?php if (!empty($errors)): ?>
@@ -349,7 +406,11 @@ include '../../includes/header.php';
                                 <td><?php echo $counter++; ?></td>
                                 <td><strong><?php echo htmlspecialchars($assigned['subject_code']); ?></strong></td>
                                 <td><?php echo htmlspecialchars($assigned['subject_name']); ?></td>
-                                <td><span class="badge bg-secondary"><?php echo htmlspecialchars($assigned['grade_level']); ?></span></td>
+                                <td><span class="badge bg-secondary"><?php echo htmlspecialchars($assigned['grade_level']); ?></span>
+                                    <?php if (!tdGradeAllowed($teacher_department, $assigned['grade_level'])): ?>
+                                        <span class="badge bg-warning text-dark" title="Outside this teacher's Department / Level">Needs correction</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td><?php echo htmlspecialchars($assigned['section_name']); ?></td>
                                 <td class="text-center">
                                     <form method="POST" action="" class="d-inline"

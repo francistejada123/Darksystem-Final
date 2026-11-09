@@ -54,6 +54,19 @@ if (!$enrollment) {
 }
 eoGuard($enrollment['grade_level']);
 
+// Enrollment created from an online application: the same final required-requirements check
+// as Review Application (application_action.php). Blocked = nothing is approved or counted.
+require_once __DIR__ . '/../../includes/enrollment_helpers_online.php';
+$linked_app = getRecord("SELECT application_id, application_type, status FROM online_applications WHERE enrollment_id = ? AND deleted_at IS NULL ORDER BY application_id DESC LIMIT 1", [$enrollment_id]);
+if ($linked_app && $linked_app['status'] !== 'Approved') {
+    $blockers = oeMissingRequirements((int) $linked_app['application_id'], $linked_app['application_type']);
+    if ($blockers) {
+        $_SESSION['approval_blocked'] = ['application_id' => (int) $linked_app['application_id'], 'missing' => $blockers];
+        header('Location: view_application.php?id=' . (int) $linked_app['application_id']);
+        exit;
+    }
+}
+
 // Start transaction
 $db->beginTransaction();
 
@@ -126,6 +139,10 @@ try {
             }
         }
         
+        // If this enrollment came from an online application marked Incomplete Requirements, approve that too.
+        executeQuery("UPDATE online_applications SET status = 'Approved', reviewed_by = ?, reviewed_at = NOW() WHERE enrollment_id = ? AND status = 'Incomplete Requirements'", [$_SESSION['user_id'], $enrollment_id]);
+        if ($linked_app) oeSyncRequirementsStatus((int) $linked_app['application_id']);   // Requirements Status follows the pending list, not the approval
+
         logActivity($_SESSION['user_id'], 'Approved enrollment', 'enrollment', 
             "Approved enrollment ID: $enrollment_id for student: {$enrollment['last_name']}, {$enrollment['first_name']}");
         

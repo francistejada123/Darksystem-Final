@@ -82,7 +82,8 @@ include '../../includes/header.php';
 
 $badge = ['Pending' => 'pending', 'Under Review' => 'review', 'For Correction' => 'incomplete', 'Incomplete Requirements' => 'incomplete', 'Approved' => 'approved', 'Rejected' => 'incomplete'][$application['status']] ?? 'pending';
 // New Student / Transferee: what is still missing (Form 137).
-$ar_missing = oeMissingRequirements($application_id, $application['application_type']);
+$ar_missing = oeSplitMissing($application_id, $application['application_type'])['blockers'];   // only these block approval
+$ar_pending = oeRequirementsPreview($application_id, $application['application_type']);   // approve-with-incomplete: needs confirmation
 $full_name = trim($application['last_name'] . ', ' . $application['first_name'] . ' ' . $application['middle_name'] . ' ' . $application['suffix']);
 ?>
 
@@ -112,6 +113,15 @@ $ar_size = function ($bytes) {
     return $bytes > 0 ? $bytes . ' B' : '';
 };
 $ar_can_decide = in_array($application['status'], ['Pending', 'Under Review', 'For Correction', OE_INCOMPLETE], true);
+// Approved only: reuse the same Enrollment Registration record shown in
+// Student Profile -> Enrollment History (registration.php?id=). Shown only
+// when a valid enrollment record exists; hidden otherwise (including all
+// Pending / Under Review / not-yet-approved applications).
+$ar_enrollment_id = 0;
+if ($application['status'] === 'Approved' && !empty($application['enrollment_id'])) {
+    $ar_enrollment = getRecord("SELECT enrollment_id FROM enrollments WHERE enrollment_id = ?", [(int) $application['enrollment_id']]);
+    if ($ar_enrollment) $ar_enrollment_id = (int) $ar_enrollment['enrollment_id'];
+}
 ?>
 
 <style>
@@ -220,6 +230,11 @@ body.sidebar-collapsed .ar-actionbar { left: var(--sidebar-collapsed-width, 72px
 .ar-actionbar .btn-reject:hover { border-color: #d93025; background: #fdecea; }
 .ar-actionbar .btn-approve { display: inline-flex; align-items: center; gap: 10px; padding: 12px 34px; border-radius: 10px; font-size: 15px; font-weight: 700; color: #fff; background: #1b7a6e; border: none; cursor: pointer; }
 .ar-actionbar .btn-approve:hover { filter: brightness(1.08); }
+.ar-actionbar .btn-approve:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+.ar-block-overlay { position: fixed; inset: 0; background: rgba(16,24,40,.55); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.ar-block-box { background: var(--card-bg, #fff); color: var(--ink, #101828); border-radius: 14px; max-width: 460px; width: 100%; padding: 24px 26px; box-shadow: 0 20px 50px rgba(0,0,0,.3); }
+.ar-block-box h5 { margin: 0 0 10px; font-weight: 800; color: #B91C1C; }
+.ar-block-box ul { margin: 8px 0 18px; padding-left: 20px; }
 
 html[data-theme="dark"] .app-review .ar-avatar { background: rgba(138,180,248,.18); color: #aecbfa; }
 html[data-theme="dark"] .app-review .ar-thumb { background: #16223A; }
@@ -326,34 +341,6 @@ html[data-theme="dark"] .ar-actionbar .btn-reject:hover { background: rgba(217,4
                 </table>
             </div>
 
-            <?php $ar_card = !empty($application['report_card_data']) ? json_decode($application['report_card_data'], true) : null; ?>
-            <?php if (is_array($ar_card)): ?>
-            <!-- What was read from the verified Report Card (all pages together) -->
-            <div class="ar-card">
-                <div class="ar-card-head"><i class="fas fa-file-invoice head-ic"></i><h5>Report Card (Form 138) — verified</h5>
-                    <span class="right"><i class="fas fa-circle-check me-1"></i>LRN matched</span></div>
-                <table class="detail-table">
-                    <tr><th>Name on card</th><td><?php echo htmlspecialchars($ar_card['name'] ?? ''); ?></td></tr>
-                    <tr><th>LRN on card</th><td><?php echo htmlspecialchars($ar_card['lrn'] ?? ''); ?></td></tr>
-                    <tr><th>Grade level</th><td><?php echo htmlspecialchars($ar_card['grade_level'] ?? ''); ?></td></tr>
-                    <?php
-                        // Form 138 grade vs the grade applied for (older applications: computed now)
-                        $ar_gc_status = $application['grade_level_check'] ?? '';
-                        $ar_gc_note = $application['grade_level_check_note'] ?? '';
-                        if ($ar_gc_status === '') { $ar_gc = oeGradeLevelCheck($ar_card, $application['grade_level']); $ar_gc_status = $ar_gc['status']; $ar_gc_note = $ar_gc['message']; }
-                        $ar_gc_style = ['Validated' => 'background:#ECFDF5;color:#047857', 'For Manual Verification' => 'background:#FFFBEB;color:#92400E', 'Grade Level Mismatch' => 'background:#FEF2F2;color:#B91C1C'][$ar_gc_status] ?? 'background:#F2F4F7;color:#475467';
-                    ?>
-                    <tr><th>Grade level check</th><td><span style="display:inline-block;padding:3px 10px;border-radius:999px;font-weight:700;font-size:14px;<?php echo $ar_gc_style; ?>"><?php echo htmlspecialchars($ar_gc_status); ?></span>
-                        <small class="text-muted d-block mt-1">Applied for <?php echo htmlspecialchars($application['grade_level']); ?>. <?php echo htmlspecialchars($ar_gc_note); ?></small></td></tr>
-                    <tr><th>General Average</th><td><strong><?php echo htmlspecialchars((string) ($ar_card['general_average'] ?? '')); ?></strong> <small class="text-muted">— used for section assignment</small></td></tr>
-                    <?php if (!empty($ar_card['remarks'])): ?><tr><th>Remarks</th><td><?php echo htmlspecialchars($ar_card['remarks']); ?></td></tr><?php endif; ?>
-                    <?php if (!empty($ar_card['subjects'])): ?>
-                        <tr><th>Subject grades</th><td><?php echo htmlspecialchars(implode(' · ', array_map(function ($sj) { return $sj['subject'] . ' ' . rtrim(rtrim((string) $sj['grade'], '0'), '.'); }, $ar_card['subjects']))); ?></td></tr>
-                    <?php endif; ?>
-                </table>
-            </div>
-            <?php endif; ?>
-
             <!-- Parent / Guardian -->
             <div class="ar-card">
                 <div class="ar-card-head"><i class="fas fa-users head-ic"></i><h5>Parent / Guardian Information</h5></div>
@@ -404,16 +391,41 @@ html[data-theme="dark"] .ar-actionbar .btn-reject:hover { background: rgba(217,4
                 <?php endforeach; ?>
             </div>
 
+            <?php if (oeForm137Counts($application['application_type']) && empty($application['deleted_at'])):
+                $f137 = oeForm137Status($application_id, $application['application_type']);
+            ?>
+            <!-- Form 137 follow-up status (separate from the application / enrollment status) -->
+            <div class="ar-card">
+                <div class="ar-card-head"><i class="fas fa-folder-open head-ic"></i><h5>Form 137 Status</h5></div>
+                <form method="POST" action="form137_status.php" class="ar-decided">
+                    <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
+                    <input type="hidden" name="application_id" value="<?php echo $application_id; ?>">
+                    <div class="d-flex gap-2 align-items-center flex-wrap">
+                        <select name="form137_status" class="form-select" style="max-width:200px" aria-label="Form 137 Status">
+                            <?php foreach (OE_FORM137_STATUSES as $opt): ?>
+                                <option value="<?php echo htmlspecialchars($opt); ?>"<?php echo $opt === $f137 ? ' selected' : ''; ?>><?php echo htmlspecialchars($opt); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <button type="submit" class="btn btn-primary">Update</button>
+                    </div>
+                    <p class="ar-hint"><i class="fas fa-circle-info me-1"></i>The learner brings the physical Form 137 to the school. This does not change the enrollment status or the section.</p>
+                </form>
+            </div>
+            <?php endif; ?>
+
+            <?php if (empty($application['deleted_at'])): $rp_app = $application; $rp_csrf = $csrf_token; include __DIR__ . '/_requirements_panel.php'; endif; ?>
+
             <!-- Decision -->
             <div class="ar-card">
                 <div class="ar-card-head"><i class="fas fa-shield-halved head-ic"></i><h5>Decision</h5></div>
                 <?php if ($ar_missing): ?>
-                    <div class="ar-missing"><i class="fas fa-file-circle-exclamation me-1"></i><strong>Incomplete Requirements:</strong> missing <?php echo htmlspecialchars(implode(', ', $ar_missing)); ?>. You can still approve if the learner submits it at the registrar.</div>
+                    <div class="ar-missing"><i class="fas fa-file-circle-exclamation me-1"></i><strong>Incomplete Requirements:</strong> missing <?php echo htmlspecialchars(implode(', ', $ar_missing)); ?>. Approval is blocked until every required requirement is complete &mdash; use &ldquo;Incomplete Requirements&rdquo;.</div>
                 <?php endif; ?>
                 <?php if ($ar_can_decide): ?>
                     <form method="POST" action="application_action.php" id="arDecisionForm" class="ar-decision">
                         <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
                         <input type="hidden" name="application_id" value="<?php echo $application_id; ?>">
+                        <input type="hidden" name="confirm_incomplete" id="arConfirmIncomplete" value="0">
 
                         <div class="ar-lrn-row">
                             <span class="lbl">LRN Verification</span>
@@ -447,20 +459,65 @@ html[data-theme="dark"] .ar-actionbar .btn-reject:hover { background: rgba(217,4
     </div>
 </div>
 
+<?php
+// Server blocked an approval attempt (application_action.php): show why. Shown once.
+$ar_blocked = $_SESSION['approval_blocked'] ?? null;
+unset($_SESSION['approval_blocked']);
+if (is_array($ar_blocked) && (int) ($ar_blocked['application_id'] ?? 0) === (int) $application_id && !empty($ar_blocked['missing'])): ?>
+<div class="ar-block-overlay" id="arBlockModal" role="alertdialog" aria-modal="true" aria-labelledby="arBlockTitle">
+    <div class="ar-block-box">
+        <h5 id="arBlockTitle"><i class="fas fa-triangle-exclamation me-2"></i>Cannot Approve Application</h5>
+        <p>This application still has incomplete required requirements. Please review the missing requirements and mark the application as Incomplete Requirements.</p>
+        <strong>Missing Requirements:</strong>
+        <ul>
+            <?php foreach ($ar_blocked['missing'] as $m): ?><li><?php echo htmlspecialchars($m); ?></li><?php endforeach; ?>
+        </ul>
+        <button type="button" class="btn btn-primary" onclick="document.getElementById('arBlockModal').remove()">Review Requirements</button>
+    </div>
+</div>
+<?php endif; ?>
+
+<?php if ($ar_pending && $ar_can_decide && !$ar_missing): ?>
+<div class="ar-block-overlay" id="arIncModal" style="display:none" role="dialog" aria-modal="true" aria-labelledby="arIncTitle">
+    <div class="ar-block-box">
+        <h5 id="arIncTitle"><i class="fas fa-triangle-exclamation me-2"></i>Approve With Incomplete Requirements?</h5>
+        <p>This applicant still has requirements that need to be submitted.</p>
+        <strong>Pending Requirements:</strong>
+        <ul>
+            <?php foreach ($ar_pending as $pr): ?><li><?php echo htmlspecialchars($pr['label']); ?></li><?php endforeach; ?>
+        </ul>
+        <p>The student will be enrolled, but the Requirements Status will remain &ldquo;Incomplete Requirements&rdquo; until the missing document is submitted and verified.</p>
+        <div class="d-flex gap-2 justify-content-end">
+            <button type="button" class="btn btn-light" onclick="document.getElementById('arIncModal').style.display='none'">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="var f=document.getElementById('arDecisionForm');document.getElementById('arConfirmIncomplete').value='1';var h=document.createElement('input');h.type='hidden';h.name='action';h.value='approve';f.appendChild(h);HTMLFormElement.prototype.submit.call(f);">Approve Anyway</button>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 <!-- Sticky action bar -->
 <div class="ar-actionbar">
     <span class="app-id">Application ID: <strong><?php echo htmlspecialchars($application['reference_no']); ?></strong></span>
     <span class="status-badge status-<?php echo $badge; ?>" style="font-size:13.5px;font-weight:700;padding:4px 12px;border-radius:20px;<?php echo ['pending' => 'background:#FFF7E6;color:#B7791F', 'review' => 'background:#dff3fb;color:#0b6a8a', 'approved' => 'background:#EAF7F1;color:#238863', 'incomplete' => 'background:#FFF4E5;color:#B45309'][$badge]; ?>"><?php echo htmlspecialchars(in_array($application['status'], ['Rejected', 'For Correction'], true) ? OE_INCOMPLETE : $application['status']); ?></span>
+    <?php if ($ar_enrollment_id): ?>
+    <a href="registration.php?id=<?php echo $ar_enrollment_id; ?>" class="btn-reject" style="text-decoration:none;"><i class="fas fa-file-lines" style="color:inherit"></i> View Registration</a>
+    <?php endif; ?>
     <span class="spacer"></span>
     <?php if ($ar_can_decide): ?>
-        <?php if ($application['status'] !== OE_INCOMPLETE): ?>
-        <button type="submit" form="arDecisionForm" name="action" value="incomplete" class="btn-reject" onclick="return appConfirm(this, 'Mark this application Incomplete Requirements? The applicant sees the remarks (or the missing requirement) on the tracking page.', {okText: 'Incomplete Requirements'})">
-            <i class="fas fa-file-circle-exclamation"></i> Incomplete Requirements
-        </button>
-        <?php endif; ?>
-        <button type="submit" form="arDecisionForm" name="action" value="approve" class="btn-approve" onclick="return appConfirm(this, 'Approve this application and create the student record?')">
+        <?php if ($ar_missing): ?>
+        <button type="button" class="btn-approve" disabled title="Required requirement(s) incomplete: <?php echo htmlspecialchars(implode(', ', $ar_missing)); ?>">
             <i class="fas fa-check"></i> Approve Application
         </button>
+        <?php elseif ($ar_pending): ?>
+        <?php /* Something is still to be submitted: approval is possible, but only
+                 with an explicit confirmation. */ ?>
+        <button type="button" class="btn-approve" onclick="document.getElementById('arIncModal').style.display='flex'">
+            <i class="fas fa-file-circle-exclamation"></i> Approve With Incomplete Requirements
+        </button>
+        <?php else: ?>
+        <button type="submit" form="arDecisionForm" name="action" value="approve" class="btn-approve" onclick="return appConfirm(this, 'Approve to Continue', {okText: 'Approve to Continue'})">
+            <i class="fas fa-check"></i> Approve Application
+        </button>
+        <?php endif; ?>
     <?php else: ?>
         <a href="applications.php" class="btn-reject" style="text-decoration:none;"><i class="fas fa-arrow-left" style="color:inherit"></i> Back to Inbox</a>
     <?php endif; ?>

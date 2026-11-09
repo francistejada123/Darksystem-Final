@@ -279,13 +279,73 @@ function getTeacherAttendanceState($attendance, $isToday = true) {
 }
 
 /**
- * Server-side sequence guard for the Time In -> Start Break -> End Break
- * -> Time Out flow. The ONLY thing that decides whether an action is
- * accepted — never trust a disabled HTML button alone, since a POST can
- * be replayed or edited regardless of what the page rendered.
+ * Makes sure `teacher_attendance` has the columns the Teacher Attendance
+ * code (modules/attendance/index.php + admin_view.php) reads and writes:
+ * the schedule SNAPSHOT captured at Time In (expected_time_in/out,
+ * expected_break_start/end, schedule_type) and break_start/break_end.
+ *
+ * These columns were never part of the shipped schema (egradepro.sql), so
+ * on a database built from it the Time In INSERT fails with "Unknown
+ * column" and the admin monitoring query returns nothing. This is the same
+ * self-healing pattern as attQrEnsureSchema(): purely additive, idempotent,
+ * NULL-able columns — no table dropped, no existing row changed. The same
+ * change is available as database/migrations/2026_teacher_attendance_schedule_snapshot.sql.
+ *
+ * @return bool true when every required column exists
+ */
+function teacherAttendanceEnsureSchema() {
+    static $ready = null;
+    if ($ready !== null) {
+        return $ready;
+    }
+    if (schemaIsReady('teacher_attendance_snapshot_v1')) {
+        return $ready = true;
+    }
+
+    $required = [
+        'break_start'          => 'time DEFAULT NULL',
+        'break_end'            => 'time DEFAULT NULL',
+        'expected_time_in'     => 'time DEFAULT NULL',
+        'expected_time_out'    => 'time DEFAULT NULL',
+        'expected_break_start' => 'time DEFAULT NULL',
+        'expected_break_end'   => 'time DEFAULT NULL',
+        'schedule_type'        => 'varchar(50) DEFAULT NULL',
+    ];
+
+    $loadColumns = function () {
+        return array_column(getRecords(
+            "SELECT COLUMN_NAME FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'teacher_attendance'"
+        ), 'COLUMN_NAME');
+    };
+
+    $columns = $loadColumns();
+    if (empty($columns)) {
+        error_log('teacherAttendanceEnsureSchema: table teacher_attendance not found or not readable.');
+        return $ready = false;
+    }
+    foreach ($required as $column => $definition) {
+        if (!in_array($column, $columns, true)) {
+            executeQuery("ALTER TABLE `teacher_attendance` ADD COLUMN `$column` $definition");
+        }
+    }
+
+    $columns = $loadColumns();
+    $ready = count(array_diff(array_keys($required), $columns)) === 0;
+    if ($ready) {
+        schemaMarkReady('teacher_attendance_snapshot_v1');
+    } else {
+        error_log('teacherAttendanceEnsureSchema: could not add missing teacher_attendance columns: '
+            . implode(', ', array_diff(array_keys($required), $columns)));
+    }
+    return $ready;
+}
+
+/**
+ * Server-side guard for the teacher's Time In / Time Out actions.
  *
  * @param array|null $attendance today's existing teacher_attendance row, or null
- * @param string $action one of 'time_in'|'start_break'|'end_break'|'time_out'
+ * @param string $action one of 'time_in'|'time_out'
  * @return array{valid:bool,message:string}
  */
 function validateAttendanceAction($attendance, $action) {
@@ -296,36 +356,12 @@ function validateAttendanceAction($attendance, $action) {
             }
             return ['valid' => true, 'message' => ''];
 
-        case 'start_break':
-            if (!$attendance || empty($attendance['time_in'])) {
-                return ['valid' => false, 'message' => 'Please Time In first before starting your break.'];
-            }
-            if (!empty($attendance['time_out'])) {
-                return ['valid' => false, 'message' => 'Attendance for today is already completed.'];
-            }
-            if (!empty($attendance['break_start'])) {
-                return ['valid' => false, 'message' => 'Break has already been started.'];
-            }
-            return ['valid' => true, 'message' => ''];
-
-        case 'end_break':
-            if (!$attendance || empty($attendance['break_start'])) {
-                return ['valid' => false, 'message' => 'Please start your break first.'];
-            }
-            if (!empty($attendance['break_end'])) {
-                return ['valid' => false, 'message' => 'Break has already been ended.'];
-            }
-            return ['valid' => true, 'message' => ''];
-
         case 'time_out':
             if (!$attendance || empty($attendance['time_in'])) {
                 return ['valid' => false, 'message' => 'Please Time In first.'];
             }
             if (!empty($attendance['time_out'])) {
                 return ['valid' => false, 'message' => 'Attendance for today is already completed.'];
-            }
-            if (!empty($attendance['break_start']) && empty($attendance['break_end'])) {
-                return ['valid' => false, 'message' => 'Please End Break before timing out.'];
             }
             return ['valid' => true, 'message' => ''];
 

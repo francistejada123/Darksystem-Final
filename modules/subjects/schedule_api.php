@@ -4,6 +4,7 @@
 session_start();
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../../includes/teacher_department.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -22,8 +23,8 @@ function sched_day_name($n) {
 }
 function sched_shift_config() {
     $defaults = [
-        'jhs_morning_start'=>'07:00', 'jhs_morning_end'=>'12:00',
-        'jhs_afternoon_start'=>'12:30', 'jhs_afternoon_end'=>'17:30'
+        'jhs_morning_start'=>'06:00', 'jhs_morning_end'=>'12:30',
+        'jhs_afternoon_start'=>'12:30', 'jhs_afternoon_end'=>'19:00'
     ];
     $rows = getRecords("SELECT setting_key, setting_value FROM system_settings WHERE setting_group='attendance' AND setting_key IN ('jhs_morning_start','jhs_morning_end','jhs_afternoon_start','jhs_afternoon_end')");
     foreach ($rows as $r) if (!empty($r['setting_value'])) $defaults[$r['setting_key']] = substr($r['setting_value'],0,5);
@@ -68,8 +69,8 @@ function sched_min_to_hm($min) { return sprintf('%02d:%02d', intdiv($min, 60), $
 function sched_slot_config() {
     // Same keys/defaults as Attendance Settings (includes/attendance_helpers.php).
     $cfg = [
-        'jhs_morning_start'=>'07:00', 'jhs_morning_break_start'=>'09:30', 'jhs_morning_break_end'=>'09:45', 'jhs_morning_end'=>'12:00',
-        'jhs_afternoon_start'=>'12:30', 'jhs_afternoon_break_start'=>'15:00', 'jhs_afternoon_break_end'=>'15:15', 'jhs_afternoon_end'=>'17:30',
+        'jhs_morning_start'=>'06:00', 'jhs_morning_break_start'=>'09:00', 'jhs_morning_break_end'=>'09:30', 'jhs_morning_end'=>'12:30',
+        'jhs_afternoon_start'=>'12:30', 'jhs_afternoon_break_start'=>'15:30', 'jhs_afternoon_break_end'=>'16:00', 'jhs_afternoon_end'=>'19:00',
         'shs_start'=>'08:00', 'shs_break_start'=>'10:30', 'shs_break_end'=>'10:45', 'shs_end'=>'14:00',
     ];
     $rows = getRecords("SELECT setting_key, setting_value FROM system_settings WHERE setting_group='attendance'");
@@ -119,6 +120,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && ($_GET['action'] ?? '') === 'availab
     }
     $section = $section_id ? getRecord("SELECT section_id, section_name, grade_level FROM sections WHERE section_id=?", [$section_id]) : null;
     if (!$section) sched_json(false, ['message'=>'Section not found.'], 404);
+
+    // Scheduling follows the same department restriction as assignment: a JHS
+    // teacher may not schedule into Grade 11-12 (and vice versa), so the
+    // time-slot picker never offers a class outside their Department / Level.
+    $dept = $teacher_id > 0 ? tdDepartmentFor($teacher_id) : '';
+    if ($teacher_id > 0 && !tdGradeAllowed($dept, $section['grade_level'])) {
+        sched_json(false, ['message'=>(tdCheckAssignment($dept, $section['grade_level']))['message']], 422);
+    }
 
     $grade = $section['grade_level'];
     $defaultShift = sched_default_shift($grade);
@@ -238,6 +247,15 @@ $assignment = getRecord("SELECT ts.*, sub.subject_name, sec.section_name, sec.gr
                          JOIN sections sec ON sec.section_id=ts.section_id
                          WHERE ts.ts_id=? AND ts.school_year_id=?", [$ts_id,$sy]);
 if (!$assignment) sched_json(false, ['message'=>'This teacher assignment no longer exists.'], 404);
+
+// Department restriction on scheduling: the teacher's own registration
+// Department / Level decides which grade levels this assignment may sit in.
+// A historical assignment that breaks the rule is reported here for the Admin
+// to correct -- it is never deleted automatically.
+$schedTeacherDept = tdDepartmentFor((int)$assignment['teacher_id']);
+if (!tdGradeAllowed($schedTeacherDept, $assignment['grade_level'])) {
+    sched_json(false, ['message'=>(tdCheckAssignment($schedTeacherDept, $assignment['grade_level']))['message']], 422);
+}
 if (!$days) sched_json(false, ['message'=>'Select at least one day.'], 422);
 if (!preg_match('/^\d{2}:\d{2}$/',$start) || !preg_match('/^\d{2}:\d{2}$/',$end) || strtotime($end) <= strtotime($start))
     sched_json(false, ['message'=>'End time must be later than start time.'], 422);

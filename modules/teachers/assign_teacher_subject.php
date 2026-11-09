@@ -5,6 +5,8 @@
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/grading_helpers.php';
+require_once __DIR__ . '/../../includes/teacher_department.php';
+require_once __DIR__ . '/../../includes/fixed_timetable.php';
 
 if (!hasRole('Administrator')) {
     header('Location: ../../index.php');
@@ -18,7 +20,7 @@ $errors = [];
 $success = false;
 
 // Kunin ang listahan ng teachers (role_id = 3)
-$teachers = getRecords("SELECT user_id, first_name, last_name, specialization
+$teachers = getRecords("SELECT user_id, first_name, last_name, specialization, department_level
                         FROM users
                         WHERE role_id = 3 AND is_active = 1
                         ORDER BY last_name, first_name");
@@ -42,6 +44,31 @@ $sections = getRecords("SELECT section_id, section_name, grade_level, strand
 $active_sy = getRecord("SELECT sy_id, sy_name FROM school_years WHERE is_active = 1");
 $current_term_live = gh_getCurrentTerm($active_sy['sy_id'] ?? 0);
 
+// Read-only fixed timetable lookup (JHS Grade 7-10 only, computed live --
+// no teacher needed). Any other grade gets {ok:false}; the form is untouched.
+if (isset($_GET['lookup_schedule'])) {
+    header('Content-Type: application/json; charset=utf-8');
+    $lk_subject = sanitize($_GET['subject_code'] ?? '');
+    $lk_section = intval($_GET['section_id'] ?? 0);
+    $lk_sec = $lk_section ? getRecord('SELECT section_id, grade_level FROM sections WHERE section_id = ?', [$lk_section]) : null;
+    $lk_jhs = $lk_sec && in_array($lk_sec['grade_level'], ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'], true);
+    if (!$lk_jhs || $lk_subject === '') {
+        echo json_encode(['ok' => false, 'has_schedule' => false]);
+        exit;
+    }
+    $lk_ord = array_column(
+        getRecords("SELECT subject_code FROM subjects WHERE is_active = 1 AND grade_level = ? ORDER BY subject_name", [$lk_sec['grade_level']]),
+        'subject_code'
+    );
+    $lk_slot = ftSlotFor($lk_ord, $lk_subject, $lk_sec['grade_level']);
+    if (!$lk_slot) {
+        echo json_encode(['ok' => true, 'has_schedule' => false]);
+        exit;
+    }
+    echo json_encode(['ok' => true, 'has_schedule' => true, 'shift' => $lk_slot['shift_label'], 'summary' => $lk_slot['summary']]);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
         die('Invalid security token. Please refresh the page and try again.');
@@ -52,11 +79,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $section_id = $_POST['section_id'] ?? 0;
     $school_year_id = $active_sy['sy_id'] ?? 0;
 
+    // Department / Level comes from the teacher's registration record and is
+    // the source of truth: JHS teachers may only take Grade 7-10 classes,
+    // SHS teachers only Grade 11-12. Checked here on every POST so the rule
+    // holds even if the form's dropdowns are bypassed or tampered with.
+    $dept_check = ['ok' => true, 'message' => ''];
+
     // Validation
     if (empty($teacher_id)) $errors[] = 'Please select a teacher.';
     if (empty($subject_code)) $errors[] = 'Please select a subject.';
     if (empty($section_id)) $errors[] = 'Please select a section.';
     if (empty($school_year_id)) $errors[] = 'No active school year found.';
+
+    if (empty($errors)) {
+        $sec_row = getRecord('SELECT section_id, grade_level FROM sections WHERE section_id = ?', [(int) $section_id]);
+        if (!$sec_row) {
+            $errors[] = 'Invalid section selected.';
+        } else {
+            $dept_check = tdCheckAssignment(tdDepartmentFor($teacher_id), $sec_row['grade_level']);
+            if (!$dept_check['ok']) $errors[] = $dept_check['message'];
+        }
+    }
 
     // SERVER-SIDE guard against a subject/section mismatch -- see
     // modules/teachers/assign.php for the same check and its rationale.
@@ -71,6 +114,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         if (!$picked_section || !$picked_subject) {
             $errors[] = 'Invalid subject or section selected.';
+        } elseif (!$dept_check['ok']) {
+            // Already reported above; keep it first so the reason is clear.
         } elseif ($picked_subject['grade_level'] !== $picked_section['grade_level']) {
             $errors[] = 'That subject does not belong to this section\'s grade level.';
         } elseif (!empty($picked_section['strand']) && $picked_subject['strand'] !== $picked_section['strand']) {
@@ -96,6 +141,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // JHS Grade 7-10 only: auto-attach the fixed timetable slot (alternate
+    // days, 45-min period inside the shift window). Best-effort: when the
+    // slot is occupied (day/time overlap, never subject name), the teacher is
+    // still assigned and the schedule is left for the Schedule button.
+    // Senior High keeps the existing behaviour exactly.
+    $auto_slot = null;
+    $auto_note = '';
+    if (empty($errors) && in_array($picked_section['grade_level'] ?? '', ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'], true)) {
+        $auto_ord = array_column(
+            getRecords("SELECT subject_code FROM subjects WHERE is_active = 1 AND grade_level = ? ORDER BY subject_name", [$picked_section['grade_level']]),
+            'subject_code'
+        );
+        $auto_slot = ftSlotFor($auto_ord, $subject_code, $picked_section['grade_level']);
+        if ($auto_slot) {
+            foreach ($auto_slot['days'] as $auto_day) {
+                $auto_tconf = getRecord(
+                    "SELECT sub.subject_name, sec.section_name, sec.grade_level
+                     FROM teacher_class_schedule tcs
+                     JOIN subjects sub ON sub.subject_code = tcs.subject_code
+                     JOIN sections sec ON sec.section_id = tcs.section_id
+                     WHERE tcs.school_year_id = ? AND tcs.day_of_week = ? AND tcs.is_active = 1 AND tcs.teacher_id = ?
+                     AND NOT (tcs.subject_code = ? AND tcs.section_id = ?)
+                     AND ? < tcs.end_time AND ? > tcs.start_time LIMIT 1",
+                    [$school_year_id, $auto_day, $teacher_id, $subject_code, $section_id, $auto_slot['start'], $auto_slot['end']]
+                );
+                if ($auto_tconf) {
+                    $auto_note = 'no auto-schedule: teacher has ' . $auto_tconf['subject_name']
+                        . ' (' . $auto_tconf['grade_level'] . '-' . $auto_tconf['section_name'] . ') at that time';
+                    break;
+                }
+                $auto_sconf = getRecord(
+                    "SELECT sub.subject_name FROM teacher_class_schedule tcs
+                     JOIN subjects sub ON sub.subject_code = tcs.subject_code
+                     WHERE tcs.school_year_id = ? AND tcs.day_of_week = ? AND tcs.is_active = 1 AND tcs.section_id = ?
+                     AND NOT (tcs.subject_code = ? AND tcs.section_id = ?)
+                     AND ? < tcs.end_time AND ? > tcs.start_time LIMIT 1",
+                    [$school_year_id, $auto_day, $section_id, $subject_code, $section_id, $auto_slot['start'], $auto_slot['end']]
+                );
+                if ($auto_sconf) {
+                    $auto_note = 'no auto-schedule: section already has ' . $auto_sconf['subject_name'] . ' at that time';
+                    break;
+                }
+            }
+        }
+    }
+
     // If no errors, insert
     if (empty($errors)) {
         $sql = "INSERT INTO teacher_subjects (teacher_id, subject_code, section_id, school_year_id)
@@ -108,6 +199,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                        "Assigned $subject_code to {$teacher['first_name']} {$teacher['last_name']}");
             $success = true;
             $_SESSION['success_message'] = 'Subject assigned successfully!';
+            if ($auto_slot && $auto_note === '') {
+                executeQuery(
+                    "DELETE FROM teacher_class_schedule WHERE teacher_id = ? AND subject_code = ? AND section_id = ? AND school_year_id = ?",
+                    [$teacher_id, $subject_code, $section_id, $school_year_id]
+                );
+                $auto_saved = true;
+                foreach ($auto_slot['days'] as $auto_day) {
+                    $auto_ok = executeQuery(
+                        "INSERT INTO teacher_class_schedule (teacher_id, subject_code, section_id, school_year_id, day_of_week, start_time, end_time, shift_type, shift, is_active)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
+                        [$teacher_id, $subject_code, $section_id, $school_year_id, $auto_day, $auto_slot['start'], $auto_slot['end'], $auto_slot['shift_type'], $auto_slot['shift']]
+                    );
+                    if (!$auto_ok) { $auto_saved = false; break; }
+                }
+                $_SESSION['success_message'] = $auto_saved
+                    ? 'Subject assigned successfully! Class schedule attached (' . $auto_slot['shift_label'] . ' · ' . $auto_slot['summary'] . ').'
+                    : 'Subject assigned successfully! Note: the class schedule could not be saved — set it via Schedule.';
+            } elseif ($auto_slot) {
+                $_SESSION['success_message'] .= ' Note: ' . $auto_note . ' — set it via Schedule.';
+            }
         } else {
             $errors[] = 'Failed to assign subject. Please try again.';
         }
@@ -162,10 +273,11 @@ include '../../includes/header.php';
             <div class="row g-3">
                 <div class="col-md-6">
                     <label class="form-label">Select Teacher</label>
-                    <select name="teacher_id" class="form-select" required>
+                    <select name="teacher_id" id="atsTeacherSelect" class="form-select" required>
                         <option value="">-- Select Teacher --</option>
                         <?php foreach ($teachers as $teacher): ?>
-                            <option value="<?php echo $teacher['user_id']; ?>">
+                            <option value="<?php echo $teacher['user_id']; ?>"
+                                    data-dept="<?php echo htmlspecialchars(tdNormalize($teacher['department_level'] ?? '')); ?>">
                                 <?php echo htmlspecialchars($teacher['last_name'] . ', ' . $teacher['first_name']); ?>
                                 <?php if (!empty($teacher['specialization'])): ?>
                                     (<?php echo htmlspecialchars($teacher['specialization']); ?>)
@@ -173,6 +285,7 @@ include '../../includes/header.php';
                             </option>
                         <?php endforeach; ?>
                     </select>
+                    <small class="text-muted" id="atsDeptHint">Pick a teacher to load only the classes of their Department / Level.</small>
                 </div>
 
                 <div class="col-md-6">
@@ -215,6 +328,8 @@ include '../../includes/header.php';
                 </div>
             </div>
 
+            <div class="alert alert-info mt-3 mb-0" id="atsFixedBox" style="display:none;font-size:14.5px;"></div>
+
             <div class="d-flex justify-content-end gap-2 mt-4">
                 <a href="index.php" class="btn btn-secondary">Cancel</a>
                 <button type="submit" class="btn btn-primary">
@@ -231,11 +346,43 @@ include '../../includes/header.php';
 // on submit; this is only for a clean picking experience.
 (function () {
     var CURRENT_TERM = <?php echo json_encode($current_term_live); ?>;
+    var teacherSelect = document.getElementById('atsTeacherSelect');
+    var deptHint = document.getElementById('atsDeptHint');
     var sectionSelect = document.getElementById('atsSectionSelect');
     var subjectSelect = document.getElementById('atsSubjectSelect');
     var subjectOptions = Array.prototype.slice.call(subjectSelect.options);
+    var sectionOptions = Array.prototype.slice.call(sectionSelect.options);
 
-    sectionSelect.addEventListener('change', function () {
+    // The chosen teacher's Department / Level (saved at registration) decides
+    // which grade levels are selectable: JHS = Grade 7-10, SHS = Grade 11-12.
+    // The server re-checks this on submit; this is only for a clean picking
+    // experience and to stop wrong choices appearing at all.
+    function departmentGrades(dept) {
+        if (dept === 'SHS') return ['Grade 11', 'Grade 12'];
+        if (dept === 'JHS') return ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'];
+        return null; // not set on file: offer everything
+    }
+
+    function applyDepartment() {
+        var opt = teacherSelect.options[teacherSelect.selectedIndex];
+        var dept = opt ? opt.getAttribute('data-dept') : '';
+        var allowed = departmentGrades(dept);
+        sectionSelect.value = '';
+
+        sectionOptions.forEach(function (o) {
+            if (!o.value) { o.hidden = false; return; }
+            o.hidden = !!(allowed && allowed.indexOf(o.getAttribute('data-grade')) === -1);
+        });
+
+        if (deptHint) {
+            deptHint.textContent = !dept
+                ? 'This teacher has no Department / Level on file \u2014 all grade levels are shown.'
+                : 'Department / Level: ' + dept + ' \u2014 only ' + (dept === 'SHS' ? 'Grade 11 and Grade 12' : 'Grade 7, 8, 9 and 10') + ' classes are selectable.';
+        }
+        filterSubjects();
+    }
+
+    function filterSubjects() {
         var opt = sectionSelect.options[sectionSelect.selectedIndex];
         var grade = opt ? opt.getAttribute('data-grade') : null;
         var strand = opt ? opt.getAttribute('data-strand') : '';
@@ -256,7 +403,34 @@ include '../../includes/header.php';
             var matchesTerm = strand ? (term === CURRENT_TERM) : true;
             o.hidden = !(matchesGrade && matchesStrand && matchesTerm);
         });
-    });
+    }
+
+    // JHS only: show the fixed timetable slot (Shift + Days + Time) read-only
+    // once Subject + Section are picked. Display only -- never feeds the POST.
+    var fixedBox = document.getElementById('atsFixedBox');
+    function refreshFixedSchedule() {
+        if (!fixedBox) return;
+        var secOpt = sectionSelect.options[sectionSelect.selectedIndex];
+        var grade = secOpt ? secOpt.getAttribute('data-grade') : null;
+        var isJhs = ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'].indexOf(grade) >= 0;
+        var code = subjectSelect.value;
+        if (!isJhs || !code || !sectionSelect.value) { fixedBox.style.display = 'none'; return; }
+        fixedBox.style.display = '';
+        fixedBox.textContent = 'Loading class schedule…';
+        fetch('assign_teacher_subject.php?lookup_schedule=1&subject_code=' + encodeURIComponent(code) + '&section_id=' + encodeURIComponent(sectionSelect.value))
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (!d.ok || !d.has_schedule) { fixedBox.style.display = 'none'; return; }
+                fixedBox.innerHTML = '<strong>Class schedule (read-only):</strong> ' + d.shift + ' · ' + d.summary
+                    + ' — auto-attached on Assign.';
+            })
+            .catch(function () { fixedBox.style.display = 'none'; });
+    }
+
+    teacherSelect.addEventListener('change', applyDepartment);
+    sectionSelect.addEventListener('change', filterSubjects);
+    sectionSelect.addEventListener('change', refreshFixedSchedule);
+    subjectSelect.addEventListener('change', refreshFixedSchedule);
 })();
 </script>
 

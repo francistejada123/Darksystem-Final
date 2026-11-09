@@ -4,6 +4,9 @@
 
 session_start();
 require_once '../../../config/database.php';
+require_once '../../../includes/student_password.php';   // spwRequireChangedPassword()
+require_once '../../../includes/student_portal_data.php';   // spdCurriculumClasses(): same subject list as the Dashboard
+require_once '../../../includes/document_request_helpers.php'; // Official Document Request (separate from Enrollment Registration)
 
 // Check if student is logged in
 if (!isset($_SESSION['student_id']) || $_SESSION['role'] !== 'Student') {
@@ -11,9 +14,31 @@ if (!isset($_SESSION['student_id']) || $_SESSION['role'] !== 'Student') {
     exit;
 }
 
+// First login: the account still holds the temporary password issued when the
+// Admin approved the enrollment, so the portal may not be used until it is
+// changed (see includes/student_password.php).
+if (spwRequireChangedPassword()) exit;
+
+
 $student_id = $_SESSION['student_id'];
 $student_name = $_SESSION['student_name'];
 $lrn = $_SESSION['student_lrn'];
+
+// ---- Official Document Request: submit / cancel (always for the signed-in student only) ----
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($_POST['dr_action'] ?? '', ['submit', 'cancel'], true)) {
+    if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
+        $dr_res = ['ok' => false, 'message' => 'Your session expired. Please try again.'];
+    } elseif ($_POST['dr_action'] === 'submit') {
+        $dr_res = drCreateRequest($student_id, $_POST['document_type'] ?? '', $_POST['purpose'] ?? '', $_POST['purpose_other'] ?? '', $_POST['note'] ?? '', $_POST['document_other'] ?? '');
+    } else {
+        $dr_res = drStudentCancel($student_id, (int) ($_POST['request_id'] ?? 0));
+    }
+    $_SESSION['dr_flash'] = $dr_res;
+    header('Location: enrollment.php#document-request');
+    exit;
+}
+$dr_flash = $_SESSION['dr_flash'] ?? null;
+unset($_SESSION['dr_flash']);
 
 // Get current enrollment
 $current_enrollment = getRecord("
@@ -38,6 +63,12 @@ $enrollment_history = getRecords("
 
 // Get student info
 $student = getRecord("SELECT * FROM students WHERE student_id = ?", [$student_id]);
+
+// Registered Subjects of the current enrollment -- the SAME source the Dashboard
+// and My Classes use (curriculum of the enrollment's grade / strand / section,
+// current term for Senior High). Subject code + name only; view-only.
+$registered_subjects = $current_enrollment ? spdCurriculumClasses($student_id, (int) $current_enrollment['school_year_id']) : [];
+$registered_terms = array_values(array_unique(array_filter(array_map(function ($r) { return trim((string) ($r['term'] ?? '')); }, $registered_subjects))));
 
 // Profile photo for the topbar avatar/dropdown — same lookup used on
 // every other Student Portal page.
@@ -279,6 +310,47 @@ $page_title = 'Enrollment Status';
                 </div>
             </div>
 
+            <!-- Registered Subjects (view-only) -->
+            <div class="card-portal">
+                <div class="card-portal-header">
+                    <span>Registered Subjects</span>
+                    <?php if ($registered_subjects): ?>
+                        <span style="font-size:13.5px;font-weight:500;color:var(--portal-gray);">
+                            <?php echo count($registered_subjects); ?> subject<?php echo count($registered_subjects) === 1 ? '' : 's'; ?><?php echo $registered_terms ? ' &middot; ' . htmlspecialchars(implode(', ', $registered_terms)) : ''; ?>
+                        </span>
+                    <?php endif; ?>
+                </div>
+                <div class="card-portal-body" style="padding:0;">
+                    <?php if ($registered_subjects): ?>
+                        <div class="table-responsive">
+                            <table class="grade-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:60px;">#</th>
+                                        <th style="width:220px;">Subject Code</th>
+                                        <th>Subject Name</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($registered_subjects as $i => $rs): ?>
+                                    <tr>
+                                        <td><?php echo $i + 1; ?></td>
+                                        <td><strong><?php echo htmlspecialchars($rs['subject_code']); ?></strong></td>
+                                        <td><?php echo htmlspecialchars($rs['subject_name']); ?></td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php else: ?>
+                        <div class="empty-state" style="padding:32px 20px;">
+                            <i class="fas fa-book d-block"></i>
+                            <h5><?php echo $current_enrollment ? 'Your subjects appear here once you are assigned to a section.' : 'No current enrollment.'; ?></h5>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
             <!-- Enrollment History -->
             <?php if ($enrollment_history && count($enrollment_history) > 0): ?>
             <div class="card-portal">
@@ -313,6 +385,135 @@ $page_title = 'Enrollment Status';
                 </div>
             </div>
             <?php endif; ?>
+
+            <!-- ================= Official Document Request (separate from Enrollment Registration) ================= -->
+            <?php
+            $dr_types = drDocumentTypes();
+            $dr_requests = drStudentRequests($student_id);
+            $dr_can_request = (bool) drCurrentEnrollment($student_id);
+            $dr_csrf = generateCSRFToken();
+            ?>
+            <div id="document-request" style="margin-top:32px;padding-top:24px;border-top:2px dashed var(--portal-border);">
+                <div class="card-portal">
+                    <div class="card-portal-header"><span><i class="fas fa-file-signature me-2"></i>Official Document Request</span></div>
+                    <div class="card-portal-body">
+                        <p style="font-size:14.5px;color:var(--portal-gray);margin-bottom:16px;">
+                            Need an official enrollment document for 4Ps, scholarship, financial assistance, or another official requirement?
+                            Submit a request here. The school office will prepare it and you will see its status below.
+                        </p>
+                        <?php if ($dr_flash): ?>
+                            <div class="alert alert-<?php echo $dr_flash['ok'] ? 'success' : 'danger'; ?> py-2" style="font-size:14.5px;"><?php echo htmlspecialchars($dr_flash['message']); ?></div>
+                        <?php endif; ?>
+                        <?php if (!$dr_can_request): ?>
+                            <div class="alert alert-light border py-2 mb-0" style="font-size:14.5px;"><i class="fas fa-circle-info me-1"></i>You can request a document once your enrollment for the current school year is approved.</div>
+                        <?php else: ?>
+                            <form method="POST" action="enrollment.php#document-request" id="drForm">
+                                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($dr_csrf); ?>">
+                                <input type="hidden" name="dr_action" value="submit">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label" for="dr_type" style="font-size:14px;font-weight:600;">Document Type <span class="text-danger">*</span></label>
+                                        <select class="form-select" id="dr_type" name="document_type" required>
+                                            <option value="">Select Document Type</option>
+                                            <?php foreach ($dr_types as $t): ?><option value="<?php echo htmlspecialchars($t); ?>"><?php echo htmlspecialchars($t); ?></option><?php endforeach; ?>
+                                        </select>
+                                        <div id="dr_doc_other_wrap" class="mt-2" style="display:none;">
+                                            <label class="form-label" for="dr_doc_other" style="font-size:14px;font-weight:600;">Specify Document <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control" id="dr_doc_other" name="document_other" maxlength="255" placeholder="e.g. Certification requested by scholarship provider">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label" for="dr_purpose" style="font-size:14px;font-weight:600;">Purpose <span class="text-danger">*</span></label>
+                                        <select class="form-select" id="dr_purpose" name="purpose" required>
+                                            <option value="">Select Purpose</option>
+                                            <?php foreach (drPurposes() as $p): ?><option value="<?php echo htmlspecialchars($p); ?>"><?php echo htmlspecialchars($p); ?></option><?php endforeach; ?>
+                                        </select>
+                                        <div id="dr_other_wrap" class="mt-2" style="display:none;">
+                                            <label class="form-label" for="dr_other" style="font-size:14px;font-weight:600;">Specify Purpose <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control" id="dr_other" name="purpose_other" maxlength="255">
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label" for="dr_note" style="font-size:14px;font-weight:600;">Additional Note <span style="font-weight:400;color:var(--portal-gray);">(optional)</span></label>
+                                        <textarea class="form-control" id="dr_note" name="note" rows="2" maxlength="1000" placeholder="Anything the school office should know about this request"></textarea>
+                                    </div>
+                                    <div class="col-12">
+                                        <button type="submit" class="btn" style="background:var(--portal-primary);color:#fff;font-weight:600;padding:8px 20px;"><i class="fas fa-paper-plane me-1"></i> Submit Request</button>
+                                    </div>
+                                </div>
+                            </form>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <div class="card-portal">
+                    <div class="card-portal-header">My Document Requests</div>
+                    <div class="card-portal-body" style="padding:0;">
+                        <?php if (!$dr_requests): ?>
+                            <div class="empty-state" style="padding:28px 20px;"><i class="fas fa-file-circle-question d-block"></i><h5>No document requests yet.</h5></div>
+                        <?php else: ?>
+                            <div class="table-responsive">
+                                <table class="grade-table">
+                                    <thead>
+                                        <tr><th>Document</th><th>Purpose</th><th>Requested</th><th>Status</th><th></th></tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($dr_requests as $dr): ?>
+                                        <tr>
+                                            <td><?php echo htmlspecialchars(drDocumentLabel($dr)); ?></td>
+                                            <td><?php echo htmlspecialchars(drPurposeLabel($dr)); ?></td>
+                                            <td style="white-space:nowrap;"><?php echo date('M d, Y', strtotime($dr['requested_at'])); ?></td>
+                                            <td><span class="badge bg-<?php echo drStatusBadgeClass($dr['status']); ?>" style="font-size:12.5px;"><?php echo htmlspecialchars(strtoupper($dr['status'])); ?></span>
+                                                <?php if ($dr['status'] === DR_PROCESSING): ?>
+                                                    <div style="font-size:12.5px;color:var(--portal-gray);margin-top:3px;">Your document request is currently being processed.</div>
+                                                <?php elseif ($dr['status'] === DR_RELEASED): ?>
+                                                    <div style="font-size:12.5px;color:var(--portal-gray);margin-top:3px;"><?php echo !empty($dr['released_at']) ? 'Released: ' . date('M d, Y', strtotime($dr['released_at'])) . '. ' : ''; ?>Completed &mdash; no further action needed.</div>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td style="text-align:right;white-space:nowrap;">
+                                                <?php if ($dr['status'] === DR_PENDING): ?>
+                                                    <form method="POST" action="enrollment.php#document-request" style="display:inline;" onsubmit="return confirm('Cancel this request?');">
+                                                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($dr_csrf); ?>">
+                                                        <input type="hidden" name="dr_action" value="cancel">
+                                                        <input type="hidden" name="request_id" value="<?php echo (int) $dr['request_id']; ?>">
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger">Cancel Request</button>
+                                                    </form>
+                                                <?php endif; ?>
+                                            </td>
+                                        </tr>
+                                        <?php if ($dr['status'] === DR_READY && !empty($dr['claiming_date'])): $dr_time = drClaimTimeText($dr); ?>
+                                        <tr>
+                                            <td colspan="5" style="background:rgba(29,78,216,0.05);border-left:3px solid #1d4ed8;">
+                                                <div style="font-weight:700;color:#1d4ed8;font-size:14.5px;margin-bottom:6px;"><i class="fas fa-box-open me-1"></i>Your requested document is ready for claiming.</div>
+                                                <div class="info-row" style="padding:5px 0;"><span class="info-label">Claiming Date</span><span class="info-value"><?php echo date('F d, Y', strtotime($dr['claiming_date'])); ?></span></div>
+                                                <?php if ($dr_time !== ''): ?><div class="info-row" style="padding:5px 0;"><span class="info-label">Time</span><span class="info-value"><?php echo htmlspecialchars($dr_time); ?></span></div><?php endif; ?>
+                                                <div class="info-row" style="padding:5px 0;"><span class="info-label">Location</span><span class="info-value"><?php echo htmlspecialchars($dr['claiming_location']); ?></span></div>
+                                                <?php if (!empty($dr['claiming_instructions'])): ?><div class="info-row" style="padding:5px 0;"><span class="info-label">Instructions</span><span class="info-value"><?php echo nl2br(htmlspecialchars($dr['claiming_instructions'])); ?></span></div><?php endif; ?>
+                                            </td>
+                                        </tr>
+                                        <?php elseif ($dr['status'] === DR_READY): ?>
+                                        <tr><td colspan="5" style="font-size:13.5px;color:var(--portal-gray);">Your document is ready for release. Please coordinate with the school office for claiming.</td></tr>
+                                        <?php endif; ?>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+            <script>
+            (function () {
+                function toggle(sel, wrap, input, value) {
+                    var s = document.getElementById(sel), w = document.getElementById(wrap), i = document.getElementById(input);
+                    if (!s) return;
+                    function sync() { var on = s.value === value; w.style.display = on ? '' : 'none'; i.required = on; if (!on) i.value = ''; }
+                    s.addEventListener('change', sync); sync();
+                }
+                toggle('dr_purpose', 'dr_other_wrap', 'dr_other', 'Other');
+                toggle('dr_type', 'dr_doc_other_wrap', 'dr_doc_other', <?php echo json_encode(DR_DOC_OTHER); ?>);
+            })();
+            </script>
         </div>
     </div>
 </div>

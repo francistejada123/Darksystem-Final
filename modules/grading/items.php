@@ -300,6 +300,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($sw_start !== null && $sw_end !== null && $sw_end < $sw_start) {
                 $_SESSION['error_message'] = 'End Date cannot be earlier than Start Date.';
             } else {
+                // Dates only here -- any Start/End Time set in Teacher
+                // Management > Term Dates is kept as-is (not cleared).
                 if (!gh_setTermWindow($active_sy['sy_id'], $term, $sw_start, $sw_end, $teacher_id)) {
                     $_SESSION['error_message'] = 'Could not save ' . htmlspecialchars($term) . ' dates: ' . htmlspecialchars($GLOBALS['gh_term_window_error'] ?: 'database error');
                 } else {
@@ -542,6 +544,7 @@ include '../../includes/header.php';
     .aim-open-ai-btn { margin-top:6px; border:1px solid #14213D; background:transparent; color:#14213D; border-radius:6px; padding:3px 10px; font-size:13.5px; font-weight:600; }
     .aim-open-ai-btn:hover { background:#14213D; color:#fff; }
     .aim-section-label { font-size:12.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color: var(--text-muted); margin:4px 0 8px; }
+
 </style>
 
 <?php
@@ -553,9 +556,8 @@ $window_badge_colors = [
     'warning'   => ['#FEF3E6', '#B54708'],
 ];
 list($wb_bg, $wb_fg) = $window_badge_colors[$window_status['badge']] ?? $window_badge_colors['secondary'];
-$date_range_text = ($term_window && !empty($term_window['start_date']) && !empty($term_window['end_date']))
-    ? formatDate($term_window['start_date']) . ' – ' . formatDate($term_window['end_date'])
-    : 'Dates not set';
+// Includes the optional Start/End Time when the administrator set one.
+$date_range_text = gh_termWindowRangeText($term_window);
 $encode_url = 'index.php?step=5&section_id=' . $section_id . '&subject_code=' . urlencode($subject_code) . '&term=' . urlencode($term);
 ?>
 <div class="mai-page">

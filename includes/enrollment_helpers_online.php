@@ -19,6 +19,7 @@ if (!defined('APPLICATION_UPLOAD_URL')) {
  *  - Grade 8 to 10  : Junior High continuing / transferee
  *  - Grade 11       : incoming Senior High (from Grade 10) — needs strand
  *  - Grade 12       : Senior High continuing — needs strand
+ *  (Grade 11 is also open to Continuing learners who finished Grade 10 at IISS.)
  *
  * @return array list of [key, label, hint, required]
  */
@@ -40,7 +41,7 @@ function getRequiredDocuments($grade_level, $applicant_type = null)
     switch ($grade_level) {
         case 'Grade 7':
             return [
-                ['key' => 'form138', 'label' => 'Form 138 — Grade 6 Report Card',            'hint' => 'Front and back page, with the promotion remarks.', 'required' => true],
+                ['key' => 'form138', 'label' => 'Form 138 — Grade 6 Report Card',            'hint' => 'Page 1 of the report card, with the promotion remarks. Add another page only if needed.', 'required' => true],
                 ['key' => 'completion_cert', 'label' => 'Certificate of Completion (Elementary)', 'hint' => 'Proof that you finished Grade 6.',           'required' => true],
                 $psa, $good_moral, $id_pic, $form137, $brgy,
             ];
@@ -80,10 +81,11 @@ function getRequiredDocuments($grade_level, $applicant_type = null)
 // ============================================================
 // APPLICANT TYPE RULES
 //   New Student  - Grade 7 and Grade 11 only.     Report Card + Birth Certificate
-//   Continuing   - Grade 8, 9, 10 and 12 only.    Report Card only
+//   Continuing   - Grade 8 to 12, but only the ONE grade that follows the learner's
+//                  verified IISS record (see getContinuingEligibility()).  Report Card only
 //   Returning    - any grade (Balik-Aral).        Report Card + Birth Certificate
 //                  + Last Grade Completed / Last School Year / Last School Attended
-//   Transferee   - any grade.                     Report Card + Birth Certificate
+//   Transferee   - Grade 8 to 12 only (Grade 7 is for New Students). Report Card + Birth Certificate
 //                  + Previous School Name / Address, Last Grade Completed / Last School Year
 // The values are the existing online_applications.application_type ENUM values.
 // ============================================================
@@ -99,8 +101,9 @@ function getApplicantTypeGrades($applicant_type)
 {
     switch ($applicant_type) {
         case 'New Student': return ['Grade 7', 'Grade 11'];
-        case 'Continuing':  return ['Grade 8', 'Grade 9', 'Grade 10', 'Grade 12'];
-        case 'Transferee':
+        case 'Continuing':  return ['Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
+        // Grade 7 is the entry grade for New Students, so a Transferee cannot apply for it.
+        case 'Transferee':  return array_values(array_diff(getOnlineGradeLevels(), ['Grade 7']));
         case 'Returning':   return getOnlineGradeLevels();
     }
     return [];
@@ -124,7 +127,10 @@ function applicantTypeGradeMessage($applicant_type, $grade_level)
         return 'New Student applications are only for Grade 7 and Grade 11. For ' . $grade_level . ', please choose Continuing (current student), Returning or Transferee.';
     }
     if ($applicant_type === 'Continuing') {
-        return 'Continuing applications are only for Grade 8, 9, 10 and 12. For ' . $grade_level . ', please choose New Student, Returning or Transferee.';
+        return 'Continuing applications are only for Grade 8, 9, 10, 11 and 12. For ' . $grade_level . ', please choose New Student, Returning or Transferee.';
+    }
+    if ($applicant_type === 'Transferee') {
+        return 'Transferee applications are only for Grade 8, 9, 10, 11 and 12. Grade 7 is for New Students, so please choose New Student for ' . $grade_level . '.';
     }
     return 'The selected Applicant Type is not available for ' . $grade_level . '.';
 }
@@ -160,8 +166,8 @@ function getRequiredDocumentsForType($grade_level, $applicant_type)
         $docs[] = ['key' => 'psa', 'label' => 'PSA / NSO Birth Certificate', 'hint' => 'Clear photocopy or scanned copy.', 'required' => true];
     }
     if (oeForm137Counts($applicant_type)) {
-        // Optional to submit now; without it the application is Incomplete Requirements until it is uploaded.
-        $docs[] = ['key' => 'form137', 'label' => 'Form 137 (Permanent Record)', 'hint' => 'Upload it if you already have it. Without it your application is marked Incomplete Requirements until you upload it on your Enrollment Tracking page.', 'required' => false];
+        // Optional: a missing Form 137 never makes the application Incomplete Requirements.
+        $docs[] = ['key' => 'form137', 'label' => 'Form 137 (Permanent Record)', 'hint' => 'Optional. Upload it if you already have it; you can also send it later on your Enrollment Tracking page.', 'required' => false];
     }
     return $docs;
 }
@@ -170,8 +176,10 @@ function getRequiredDocumentsForType($grade_level, $applicant_type)
 function getLastGradeOptions($grade_level)
 {
     $applying = intval(str_replace('Grade ', '', $grade_level));
+    // Secondary school (Grade 7-12): no elementary grades. Only a Grade 7 applicant can have come from Grade 6.
+    if ($applying === 7) return ['Grade 6'];
     $out = [];
-    for ($i = 1; $i < $applying && $i <= 12; $i++) {
+    for ($i = 7; $i < $applying && $i <= 12; $i++) {
         $out[] = 'Grade ' . $i;
     }
     return $out;
@@ -395,6 +403,10 @@ if (!function_exists('assignSectionForApplication')) {
             [$grade_level]
         );
 
+        if ($is_shs) {
+            // HUMSS is retired (ASSH only): its sections are never auto-assigned.
+            $sections = array_values(array_filter($sections, fn($s) => strtoupper(trim((string)($s['strand'] ?? ''))) !== 'HUMSS'));
+        }
         if ($is_shs && !empty($strand)) {
             $sections = array_values(array_filter($sections, fn($s) => $s['strand'] === $strand));
         }
@@ -599,6 +611,26 @@ function getContinuingPreviousGrades($student_id)
 }
 
 /** Is this LRN already blocked by a pending application or a current-school-year enrollment? Returns an error message or ''. */
+/**
+ * One LRN = one application per school year: is there already an Approved
+ * (not Recycle-Bin) online application with this LRN for this school year?
+ * $exclude_id skips the application being looked at (used when approving).
+ * @return array|null the clashing application (reference_no) or null
+ */
+function lrnApprovedApplication($lrn, $sy_id, $exclude_id = 0)
+{
+    $lrn = trim((string) $lrn);
+    if ($lrn === '') return null;
+    $sql = "SELECT application_id, reference_no FROM online_applications
+            WHERE lrn = ? AND status = 'Approved' AND deleted_at IS NULL AND application_id <> ?";
+    $params = [$lrn, (int) $exclude_id];
+    if ($sy_id) {
+        $sql .= ' AND school_year_id = ?';
+        $params[] = (int) $sy_id;
+    }
+    return getRecord($sql . ' LIMIT 1', $params) ?: null;
+}
+
 function lrnBlockingMessage($lrn, $student_id, $sy_id)
 {
     if ($student_id && $sy_id) {
@@ -608,9 +640,149 @@ function lrnBlockingMessage($lrn, $student_id, $sy_id)
         );
         if ($already) return 'This learner is already enrolled (or has an enrollment waiting for approval) for the current school year. Please contact the registrar instead.';
     }
-    $dupe_app = getRecord("SELECT reference_no FROM online_applications WHERE lrn = ? AND status IN ('Pending','Under Review') AND deleted_at IS NULL", [$lrn]);
+    $dupe_app = getRecord("SELECT reference_no FROM online_applications WHERE lrn = ? AND status IN ('Pending','Under Review','For Correction','Incomplete Requirements') AND deleted_at IS NULL", [$lrn]);
     if ($dupe_app) return 'You already have a pending application (Ref. ' . $dupe_app['reference_no'] . ').';
+    $approved = lrnApprovedApplication($lrn, $sy_id);
+    if ($approved) return 'This LRN already has an approved application (Ref. ' . $approved['reference_no'] . ') for the current school year. Please contact the registrar instead.';
     return '';
+}
+
+// ------------------------------------------------------------
+// CONTINUING ELIGIBILITY
+// "Continuing" is decided by the learner's own IISS enrollment history, never
+// by what the applicant clicked:
+//   - latest Approved / Graduated enrollment BEFORE the active school year
+//   - that school year must be the one right before the active one (a gap
+//     means Returning / Balik-Aral)
+//   - next grade = last grade + 1 (Grade 10 -> Grade 11 is still Continuing),
+//     or the same grade when the year result says "Not Promoted"
+// Uses the existing students / enrollments / student_year_status rows only.
+// ------------------------------------------------------------
+const OE_MSG_CONTINUING_NOT_FOUND = 'No existing IISS learner record was found. Continuing enrollment is only available to students who previously studied at IISS. If this is your first enrollment at IISS, please select New Student or Transferee as applicable.';
+const OE_MSG_USE_CONTINUING = 'An existing IISS learner record was found. Since you previously studied at IISS, please select Continuing Student.';
+
+/** 'Grade 10' -> 10 (0 when it is not a grade label). */
+function oeGradeNumber($grade_level)
+{
+    return preg_match('/^Grade\s+(\d{1,2})$/', trim((string) $grade_level), $m) ? (int) $m[1] : 0;
+}
+
+/** First year of a school year ('2025-2026' -> 2025); falls back to its start date; 0 when unknown. */
+function oeSchoolYearStart($sy_name, $start_date = null)
+{
+    if (preg_match('/^(\d{4})\s*-\s*(\d{4})$/', trim((string) $sy_name), $m)) return (int) $m[1];
+    if (!empty($start_date) && preg_match('/^(\d{4})-/', (string) $start_date, $m)) return (int) $m[1];
+    return 0;
+}
+
+/**
+ * Is this learner allowed to apply as Continuing for the school year $sy_id,
+ * and for which grade level?
+ *
+ * @return array {ok, status, message, last_grade, last_school_year, expected_grade, retained}
+ *   status: ok | no_history | gap | completed_shs | invalid_grade | current_year
+ */
+function getContinuingEligibility($student_id, $sy_id)
+{
+    $fail = function ($status, $message, $last_grade = '', $last_sy = '') {
+        return ['ok' => false, 'status' => $status, 'message' => $message, 'last_grade' => $last_grade,
+                'last_school_year' => $last_sy, 'expected_grade' => '', 'retained' => false];
+    };
+    $no_history = 'We could not find a completed IISS enrollment for this learner, so this cannot be a Continuing enrollment. Please choose Returning (Balik-Aral) or contact the registrar.';
+
+    $student_id = (int) $student_id;
+    $student = $student_id > 0 ? getRecord("SELECT student_id, grade_level, school_year_id, enrollment_status FROM students WHERE student_id = ?", [$student_id]) : null;
+    if (!$student) return $fail('no_history', OE_MSG_CONTINUING_NOT_FOUND);
+
+    $active = $sy_id ? getRecord("SELECT sy_id, sy_name, start_date FROM school_years WHERE sy_id = ?", [(int) $sy_id]) : null;
+    $active_start = $active ? oeSchoolYearStart($active['sy_name'], $active['start_date']) : 0;
+
+    // Latest Approved / Graduated enrollment that happened BEFORE the school year being applied for.
+    $last = null;
+    $rows = getRecords(
+        "SELECT e.enrollment_id, e.school_year_id, e.grade_level, sy.sy_name, sy.start_date
+         FROM enrollments e
+         LEFT JOIN school_years sy ON sy.sy_id = e.school_year_id
+         WHERE e.student_id = ? AND e.enrollment_status IN ('Approved','Graduated')",
+        [$student_id]
+    );
+    foreach ($rows as $r) {
+        $start = oeSchoolYearStart($r['sy_name'], $r['start_date']);
+        if ($active_start > 0 && $start >= $active_start) continue;              // this / a later school year
+        if ($sy_id && (int) $r['school_year_id'] === (int) $sy_id) continue;
+        if ($last === null || $start > $last['start'] || ($start === $last['start'] && (int) $r['enrollment_id'] > (int) $last['enrollment_id'])) {
+            $last = ['start' => $start, 'enrollment_id' => $r['enrollment_id'], 'school_year_id' => (int) $r['school_year_id'],
+                     'grade_level' => (string) $r['grade_level'], 'sy_name' => (string) ($r['sy_name'] ?? '')];
+        }
+    }
+
+    if ($last === null) {
+        // Learner records created without an enrollment row (imported): the student record itself is the history.
+        $enr = (string) $student['enrollment_status'];
+        if ($enr === 'Transferred') {
+            return $fail('no_history', $no_history);
+        }
+        $sy_row = !empty($student['school_year_id']) ? getRecord("SELECT sy_name, start_date FROM school_years WHERE sy_id = ?", [(int) $student['school_year_id']]) : null;
+        $start = $sy_row ? oeSchoolYearStart($sy_row['sy_name'], $sy_row['start_date']) : 0;
+        if ($active_start > 0 && $start >= $active_start) {
+            return $fail('current_year', 'This learner is already registered for the current school year. Please contact the registrar instead.');
+        }
+        $last = ['start' => $start, 'enrollment_id' => 0, 'school_year_id' => (int) ($student['school_year_id'] ?? 0),
+                 'grade_level' => (string) $student['grade_level'], 'sy_name' => $sy_row ? (string) $sy_row['sy_name'] : ''];
+    }
+
+    $last_grade = $last['grade_level'];
+    $n = oeGradeNumber($last_grade);
+    if ($n < 7 || $n > 12) {
+        return $fail('invalid_grade', 'The grade level on your IISS record could not be used for Continuing enrollment. Please contact the registrar.', $last_grade, $last['sy_name']);
+    }
+
+    // An enrollment gap (one or more school years skipped) is Returning / Balik-Aral, not Continuing.
+    if ($active_start > 0 && $last['start'] > 0 && ($active_start - $last['start']) > 1) {
+        return $fail('gap',
+            'Our records show you last studied at IISS in SY ' . $last['sy_name'] . ' (' . $last_grade . '). Because school years were skipped, this is not a Continuing enrollment. Please select Returning (Balik-Aral) instead.',
+            $last_grade, $last['sy_name']);
+    }
+
+    // Year result (Completed / Promoted or Not Promoted) when the school has finalized one.
+    $retained = false;
+    if ($last['school_year_id'] > 0) {
+        $ys = getRecord("SELECT status FROM student_year_status WHERE student_id = ? AND school_year_id = ? AND grade_level = ? LIMIT 1",
+            [$student_id, $last['school_year_id'], $last_grade]);
+        $retained = $ys && stripos((string) $ys['status'], 'not promoted') !== false;
+    }
+    $next_n = $retained ? $n : $n + 1;
+    if ($next_n > 12) {
+        return $fail('completed_shs', 'Our records show you already completed Grade 12 at IISS, so there is no next grade level to enroll in. Please contact the registrar.', $last_grade, $last['sy_name']);
+    }
+
+    return ['ok' => true, 'status' => 'ok', 'message' => '', 'last_grade' => $last_grade, 'last_school_year' => $last['sy_name'],
+            'expected_grade' => 'Grade ' . $next_n, 'retained' => $retained];
+}
+
+/**
+ * Why a Continuing application for $grade_level is refused, or '' when it is
+ * exactly the grade the learner's verified IISS record allows.
+ */
+function continuingGradeError(array $elig, $grade_level)
+{
+    if (empty($elig['ok'])) return $elig['message'];
+    if ($grade_level === $elig['expected_grade']) return '';
+    return 'Based on your verified IISS record (' . $elig['last_grade'] . ($elig['retained'] ? ', not promoted' : ', completed') . '), Continuing students can only enroll in ' . $elig['expected_grade'] . '. You selected ' . ($grade_level !== '' ? $grade_level : 'no grade level') . '.';
+}
+
+/**
+ * New Student / Transferee entered an LRN that already has an IISS record.
+ * A learner whose record shows normal progression is sent to Continuing; any
+ * other existing record keeps the general "already registered" message.
+ */
+function existingLRNApplicantMessage($applicant_type, $student_id, $sy_id)
+{
+    if ($applicant_type === 'New Student') {
+        $e = getContinuingEligibility($student_id, $sy_id);
+        if (!empty($e['ok'])) return OE_MSG_USE_CONTINUING;
+    }
+    return 'This LRN is already registered. If you are a current or former student of the school, choose Continuing or Returning instead; otherwise please contact the registrar.';
 }
 
 /**
@@ -630,7 +802,7 @@ function lookupLearnerForApplication($applicant_type, $lrn, $birth_date, $sy_id)
     // ---- New Student / Transferee: the LRN must not be on file yet ----
     if (!applicantTypeLooksUpLRN($applicant_type)) {
         if ($exists) {
-            return ['ok' => false, 'status' => 'duplicate', 'message' => 'This LRN is already registered. If you are a current or former student of the school, choose Continuing or Returning instead; otherwise please contact the registrar.'];
+            return ['ok' => false, 'status' => 'duplicate', 'message' => existingLRNApplicantMessage($applicant_type, $exists['student_id'], $sy_id)];
         }
         $blocked = lrnBlockingMessage($lrn, null, $sy_id);
         if ($blocked !== '') return ['ok' => false, 'status' => 'blocked', 'message' => $blocked];
@@ -644,7 +816,7 @@ function lookupLearnerForApplication($applicant_type, $lrn, $birth_date, $sy_id)
 
     if (!$exists) {
         if ($applicant_type === 'Continuing') {
-            return ['ok' => false, 'status' => 'not_found', 'message' => 'We could not find a student record with that LRN. Please check the number, or contact the registrar. If you are coming from another school, choose Transferee instead.'];
+            return ['ok' => false, 'status' => 'not_found', 'message' => OE_MSG_CONTINUING_NOT_FOUND];
         }
         $blocked = lrnBlockingMessage($lrn, null, $sy_id);
         if ($blocked !== '') return ['ok' => false, 'status' => 'blocked', 'message' => $blocked];
@@ -659,10 +831,23 @@ function lookupLearnerForApplication($applicant_type, $lrn, $birth_date, $sy_id)
     $blocked = lrnBlockingMessage($lrn, $profile['student_id'], $sy_id);
     if ($blocked !== '') return ['ok' => false, 'status' => 'blocked', 'message' => $blocked];
 
+    if ($applicant_type === 'Continuing') {
+        // The learner's own IISS history decides the grade level -- not the applicant.
+        $elig = getContinuingEligibility($profile['student_id'], $sy_id);
+        if (empty($elig['ok'])) {
+            return ['ok' => false, 'status' => 'not_continuing', 'message' => $elig['message']];
+        }
+        return ['ok' => true, 'status' => 'verified', 'found' => true, 'profile' => $profile,
+                'continuing' => ['expected_grade' => $elig['expected_grade'], 'last_grade' => $elig['last_grade'],
+                                 'last_school_year' => $elig['last_school_year'], 'retained' => $elig['retained']],
+                'message' => 'Record found. Your last grade at IISS was ' . $elig['last_grade']
+                    . ($elig['last_school_year'] !== '' ? ' (SY ' . $elig['last_school_year'] . ')' : '')
+                    . ($elig['retained'] ? ' and you will repeat it' : '')
+                    . ', so your grade level is ' . $elig['expected_grade'] . '. Your saved details are shown below — change only what is different.'];
+    }
+
     return ['ok' => true, 'status' => 'verified', 'found' => true, 'profile' => $profile,
-            'message' => $applicant_type === 'Continuing'
-                ? 'Record found. Your saved details are shown below — change only what is different.'
-                : 'Welcome back! We found your old record. Please review every detail and update whatever changed.'];
+            'message' => 'Welcome back! We found your old record. Please review every detail and update whatever changed.'];
 }
 
 /** The decision besides Approved: a required document is missing (replaces Rejected / For Correction). */
@@ -684,18 +869,246 @@ function oeEnsureCorrectionStatus()
     schemaMarkReady('online_app_status_v3');
 }
 
-/** New Student and Transferee: Form 137 may be sent later, but without it the application is Incomplete Requirements. */
+/** New Student and Transferee can attach Form 137, but it is OPTIONAL (it never affects the application status). */
 function oeForm137Counts($applicant_type)
 {
     return in_array($applicant_type, ['New Student', 'Transferee'], true);
 }
 
-/** Labels of the requirements still missing for this application (New Student / Transferee: Form 137). */
+/**
+ * Requirements that are actually REQUIRED but still missing / invalid for this application.
+ * Single source of truth for BOTH the Review Application buttons and the server-side
+ * approval guard (application_action.php, approve.php). [] = safe to approve.
+ *
+ * Form 137 is optional ("To Follow" is fine), so it is NEVER listed here.
+ * Checks: every REQUIRED document is uploaded (and the file still exists), the LRN (if
+ * given) is 12 digits, and Form 138's grade level is not a mismatch for the grade applied for.
+ * "For Manual Verification" is left to the officer's own review and does not block.
+ */
 function oeMissingRequirements($application_id, $applicant_type)
+{
+    $split = oeSplitMissing($application_id, $applicant_type);
+    return array_merge($split['blockers'], array_column($split['followups'], 'label'));
+}
+
+/**
+ * The same checks as oeMissingRequirements(), split in two:
+ *  blockers  - approval is NOT allowed (record missing, Form 138 missing, bad LRN, Form 138 grade mismatch)
+ *  followups - a required DOCUMENT that is not uploaded yet. The Admin may approve anyway; it then stays
+ *              a pending requirement (Requirements Status = Incomplete Requirements) until it is verified.
+ * @return array{blockers:string[], followups:array<int,array{key:string,label:string}>}
+ */
+function oeSplitMissing($application_id, $applicant_type)
+{
+    $res = ['blockers' => [], 'followups' => []];
+    $app = getRecord("SELECT * FROM online_applications WHERE application_id = ?", [(int) $application_id]);
+    if (!$app) {
+        $res['blockers'][] = 'Application record not found';
+        return $res;
+    }
+
+    // Same checklist the Review page shows (type rules first, grade's original list as fallback).
+    $docs = getRequiredDocuments($app['grade_level'], $applicant_type)
+        ?: getRequiredDocuments($app['grade_level']);
+
+    $uploaded = [];
+    foreach (getApplicationDocuments((int) $application_id) as $d) {
+        $path = (string) ($d['file_path'] ?? '');
+        $exists = $path !== '' && is_file(__DIR__ . '/../' . $path);
+        $uploaded[$d['doc_key']] = $exists;
+    }
+
+    foreach ($docs as $doc) {
+        if (empty($doc['required']) || $doc['key'] === 'form137') continue;   // Form 137 never blocks
+        if (!empty($uploaded[$doc['key']])) continue;
+        if ($doc['key'] === 'form138') {
+            $res['blockers'][] = $doc['label'];   // the report card drives the grade check and section assignment
+        } else {
+            $res['followups'][] = ['key' => $doc['key'], 'label' => $doc['label']];
+        }
+    }
+
+    $lrn = trim((string) ($app['lrn'] ?? ''));
+    if ($lrn !== '' && !preg_match('/^\d{12}$/', $lrn)) {
+        $res['blockers'][] = 'Valid 12-digit LRN';
+    }
+
+    if (($app['grade_level_check'] ?? '') === 'Grade Level Mismatch') {
+        $res['blockers'][] = 'Form 138 grade level does not match the grade applied for';
+    }
+
+    return $res;
+}
+
+/** Allowed Form 137 follow-up statuses (kept separate from the application / enrollment status). */
+const OE_FORM137_STATUSES = ['To Follow', 'Received', 'Verified'];
+
+/** Adds online_applications.form137_status once (NULL = not set by staff yet, see oeForm137Status()). */
+function oeEnsureForm137Schema()
+{
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    if (schemaIsReady('online_app_form137_status_v1')) return;
+    try {
+        if (!getRecord("SHOW COLUMNS FROM online_applications LIKE 'form137_status'")) {
+            executeQuery("ALTER TABLE online_applications ADD COLUMN form137_status ENUM('To Follow','Received','Verified') NULL DEFAULT NULL COMMENT 'Form 137 follow-up (New Student / Transferee). Separate from status.'");
+        }
+        schemaMarkReady('online_app_form137_status_v1');
+    } catch (\Throwable $e) {
+        error_log('oeEnsureForm137Schema: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Form 137 state for New Student / Transferee: 'To Follow', 'Received' or 'Verified'.
+ * It is its own status, separate from the application / enrollment status: 'To Follow'
+ * is NOT an Incomplete Requirements condition (the application can still be Approved and
+ * the student is counted in the section), and changing it never touches the approval.
+ * Until staff set it, it is worked out from the application: a Form 137 uploaded with the
+ * application = 'Received', nothing uploaded = 'To Follow'.
+ */
+function oeForm137Status($application_id, $applicant_type)
+{
+    if (!oeForm137Counts($applicant_type)) return 'Not Applicable';
+    try {
+        oeEnsureForm137Schema();
+        $row = getRecord("SELECT form137_status FROM online_applications WHERE application_id = ?", [(int) $application_id]);
+        if ($row && in_array($row['form137_status'], OE_FORM137_STATUSES, true)) return $row['form137_status'];
+    } catch (\Throwable $e) {
+        error_log('oeForm137Status: ' . $e->getMessage());
+    }
+    $has = getRecord("SELECT 1 FROM application_documents WHERE application_id = ? AND doc_key = 'form137'", [(int) $application_id]);
+    return $has ? 'Received' : 'To Follow';
+}
+
+/** Optional Form 137 not uploaded yet (New Student / Transferee). Display / optional-upload use only. */
+function oeOptionalForm137Missing($application_id, $applicant_type)
 {
     if (!oeForm137Counts($applicant_type)) return [];
     $has = getRecord("SELECT 1 FROM application_documents WHERE application_id = ? AND doc_key = 'form137'", [(int) $application_id]);
     return $has ? [] : ['Form 137 (Permanent Record)'];
+}
+
+// ============================================================
+// REQUIREMENTS STATUS  (separate from the application / enrollment status)
+//   application status  : Pending / Under Review / Incomplete Requirements / Approved
+//   requirements status : 'Complete' | 'Incomplete Requirements'   (online_applications.requirements_status)
+// An Approved application can still have pending requirements (Form 137 To Follow, or a document the
+// Admin approved as To Follow). Approving never marks the requirements Complete by itself.
+// Pending items: Form 137 (its own form137_status) + rows of online_app_requirements.
+// ============================================================
+const OE_REQ_COMPLETE = 'Complete';
+
+/** Adds online_applications.requirements_status / requirements_updated_at and the online_app_requirements table, once. */
+function oeEnsureRequirementsSchema()
+{
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    if (schemaIsReady('online_app_requirements_v1')) return;
+    try {
+        if (!getRecord("SHOW COLUMNS FROM online_applications LIKE 'requirements_status'")) {
+            executeQuery("ALTER TABLE online_applications
+                ADD COLUMN requirements_status ENUM('Complete','Incomplete Requirements') NULL DEFAULT NULL COMMENT 'Separate from status',
+                ADD COLUMN requirements_updated_at DATETIME NULL DEFAULT NULL");
+        }
+        executeQuery("CREATE TABLE IF NOT EXISTS online_app_requirements (
+            requirement_id INT AUTO_INCREMENT PRIMARY KEY,
+            application_id INT NOT NULL,
+            doc_key VARCHAR(40) NOT NULL,
+            label VARCHAR(150) NOT NULL,
+            status ENUM('To Follow','Received','Verified') NOT NULL DEFAULT 'To Follow',
+            updated_by INT NULL,
+            updated_at DATETIME NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY uniq_app_doc (application_id, doc_key),
+            KEY idx_app (application_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        schemaMarkReady('online_app_requirements_v1');
+    } catch (\Throwable $e) {
+        error_log('oeEnsureRequirementsSchema: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Requirements still pending for an application: [['key','label','state'], ...]. [] = nothing pending.
+ * Form 137 is pending while it is To Follow, or when staff set it to Received and have not verified it yet
+ * (a Form 137 uploaded with the application and never touched by staff counts as submitted).
+ */
+function oePendingRequirements($application_id, $applicant_type)
+{
+    oeEnsureRequirementsSchema();
+    $out = [];
+    if (oeForm137Counts($applicant_type)) {
+        $row = getRecord("SELECT form137_status FROM online_applications WHERE application_id = ?", [(int) $application_id]);
+        $explicit = ($row && in_array($row['form137_status'], OE_FORM137_STATUSES, true)) ? $row['form137_status'] : null;
+        $state = oeForm137Status($application_id, $applicant_type);
+        if ($state === 'To Follow' || ($explicit !== null && $state !== 'Verified')) {
+            $out[] = ['key' => 'form137', 'label' => 'Form 137', 'state' => $state];
+        }
+    }
+    foreach (getRecords("SELECT doc_key, label, status FROM online_app_requirements WHERE application_id = ? AND status <> 'Verified' ORDER BY requirement_id", [(int) $application_id]) as $r) {
+        $out[] = ['key' => $r['doc_key'], 'label' => $r['label'], 'state' => $r['status']];
+    }
+    return $out;
+}
+
+/** Pending list for the Review page: after approval the saved list; before it, also the documents not uploaded yet. */
+function oeRequirementsPreview($application_id, $applicant_type)
+{
+    $pending = oePendingRequirements($application_id, $applicant_type);
+    $app = getRecord("SELECT status FROM online_applications WHERE application_id = ?", [(int) $application_id]);
+    if ($app && $app['status'] !== 'Approved') {
+        $have = array_column($pending, 'key');
+        foreach (oeSplitMissing($application_id, $applicant_type)['followups'] as $f) {
+            if (!in_array($f['key'], $have, true)) $pending[] = ['key' => $f['key'], 'label' => $f['label'], 'state' => 'To Follow'];
+        }
+    }
+    return $pending;
+}
+
+/** Writes requirements_status from the pending list. Returns the new status, or null on failure. */
+function oeSyncRequirementsStatus($application_id)
+{
+    try {
+        oeEnsureRequirementsSchema();
+        $app = getRecord("SELECT application_type FROM online_applications WHERE application_id = ?", [(int) $application_id]);
+        if (!$app) return null;
+        $st = oePendingRequirements($application_id, $app['application_type']) ? OE_INCOMPLETE : OE_REQ_COMPLETE;
+        executeQuery("UPDATE online_applications SET requirements_status = ?, requirements_updated_at = NOW() WHERE application_id = ?", [$st, (int) $application_id]);
+        return $st;
+    } catch (\Throwable $e) {
+        error_log('oeSyncRequirementsStatus: ' . $e->getMessage());
+        return null;
+    }
+}
+
+/**
+ * Students of the adviser's section with pending requirements (reminder list; status + names only,
+ * never the uploaded files). Only the section's own adviser (sections.adviser_id) gets rows.
+ */
+function oeAdviserIncompleteRequirements($adviser_user_id)
+{
+    oeEnsureRequirementsSchema();
+    $rows = getRecords(
+        "SELECT a.application_id, a.application_type, a.requirements_updated_at, a.reviewed_at,
+                s.student_id, s.first_name, s.last_name, s.lrn, e.grade_level, sec.section_name
+           FROM online_applications a
+           JOIN enrollments e ON e.enrollment_id = a.enrollment_id
+           JOIN students s ON s.student_id = e.student_id AND s.is_active = 1
+           JOIN sections sec ON sec.section_id = e.section_id AND sec.adviser_id = ?
+          WHERE a.status = 'Approved' AND (a.requirements_status IS NULL OR a.requirements_status = 'Incomplete Requirements') AND a.deleted_at IS NULL
+            AND e.enrollment_status = 'Approved'
+            AND e.school_year_id = (SELECT sy_id FROM school_years WHERE is_active = 1)
+          ORDER BY s.last_name, s.first_name",
+        [(int) $adviser_user_id]
+    );
+    foreach ($rows as &$r) {
+        $r['pending'] = oePendingRequirements($r['application_id'], $r['application_type']);
+        $r['updated'] = $r['requirements_updated_at'] ?: $r['reviewed_at'];
+    }
+    unset($r);
+    return array_values(array_filter($rows, function ($r) { return !empty($r['pending']); }));
 }
 
 /** Cookie that remembers a submitted application on this browser (30 days). */

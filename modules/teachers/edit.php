@@ -9,6 +9,7 @@ if (!defined('BASE_URL')) {
 }
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/teacher_validation.php';
+require_once __DIR__ . '/../../includes/teacher_department.php';
 
 if (!hasRole('Administrator')) {
     header('Location: ../../index.php');
@@ -57,6 +58,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $position_designation = sanitize($_POST['position_designation'] ?? '');
         $prc_license_number = sanitize($_POST['prc_license_number'] ?? '');
         $qualification_status = sanitize($_POST['qualification_status'] ?? 'Pending');
+        // Department / Level is the source of truth for which classes this
+        // teacher may ever be assigned to (JHS -> Grade 7-10, SHS -> Grade 11-12).
+        // Kept editable here so an Admin can correct a mis-selected department;
+        // existing out-of-scope assignments are flagged, never deleted.
+        $department_level = tdNormalize($_POST['department_level'] ?? ($teacher['department_level'] ?? ''));
 
         if (empty($username)) $errors[] = 'Username is required.';
         if (empty($email)) $errors[] = 'Email is required.';
@@ -91,6 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     prc_license_number = ?,
                     position_designation = ?,
                     years_experience = ?,
+                    department_level = ?,
                     qualification_status = ?,
                     is_active = ?
                     WHERE user_id = ?";
@@ -99,6 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $first_name, $last_name, $middle_name ?: null, $suffix ?: null, $sex ?: null,
                 $highest_educ_attainment ?: null, $specialization ?: null, $degree_course ?: null,
                 $prc_license_number ?: null, $position_designation ?: null, $years_experience,
+                $department_level ?: null,
                 $qualification_status, $is_active, $teacher_id
             ];
 
@@ -239,6 +247,15 @@ if (!empty($errors) && $_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             <div class="form-card-body">
                 <div class="form-grid">
+                    <div class="form-group">
+                        <label>Department / Level <span class="req">*</span></label>
+                        <select name="department_level" required>
+                            <option value="">-- Select --</option>
+                            <option value="JHS" <?php echo tdNormalize($teacher['department_level'] ?? '') === 'JHS' ? 'selected' : ''; ?>>JHS (Junior High School) &mdash; Grades 7&ndash;10 only</option>
+                            <option value="SHS" <?php echo tdNormalize($teacher['department_level'] ?? '') === 'SHS' ? 'selected' : ''; ?>>SHS (Senior High School) &mdash; Grades 11&ndash;12 only</option>
+                        </select>
+                        <small class="text-muted">This decides which classes, sections and subjects this teacher can be assigned to.</small>
+                    </div>
                     <div class="form-group">
                         <label>Highest Educational Attainment <span class="req">*</span></label>
                         <select name="highest_educ_attainment" required>

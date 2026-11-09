@@ -2,38 +2,40 @@
 // includes/enrollment_lrn_card.php
 // Online Enrollment -- Form 138 / Report Card (doc key "form138").
 //
-// The Report Card is uploaded as 2-3 pages under ONE requirement:
-//   Page 1 / Front (required), Page 2 / Back / Grades (required), Page 3 (optional).
+// The Report Card is uploaded as 1-3 pages under ONE requirement:
+//   Page 1 / Report Card (required); Page 2 / Additional Page and Page 3 are optional.
+// Completeness is CONTENT-based, not page-count-based: a one-page (single-sided) Report Card
+// that already shows the LRN and the grades is complete. Page 2 is only asked for when the
+// required information (LRN / General Average) could not be found on what was uploaded.
 // All pages are read TOGETHER by the AI (Gemini, one request) as one document:
 // student name, LRN, grade level, subject final grades, General Average and
 // promotion remarks. Then:
-//   verified   -> the LRN matches Step 2 AND the General Average was found
-//   mismatch   -> "Wrong LRN number. The LRN entered in Personal Information does not match ..."
-//   unreadable -> no clearly readable 12-digit LRN
+//   verified   -> the General Average was found
 //   incomplete -> "Complete Report Card grades could not be detected ..."
 //   error      -> the reader is unavailable right now (try again)
-// Nothing is accepted automatically. The detected LRN is normalized (spaces /
-// dashes removed) and must be exactly 12 digits. The verified General Average
-// is saved in the application and used for section assignment.
+// The LRN on the card is NOT compared with the LRN entered in Step 2.
+// Nothing is accepted automatically. The verified General Average is saved in
+// the application and used for section assignment.
 //
 // The same pages are checked twice (live in Step 3, then again on submit); a
 // successful read is kept in the session by the pages' SHA-1, so the second
-// check is instant and cannot be bypassed with other files or another LRN.
+// check is instant.
 
 require_once __DIR__ . '/gemini_service.php'; // callGeminiAPI(), extractGeminiRawText()
 
 const OE_LRN_CARD_DOC_KEY = 'form138';
 const OE_LRN_MSG_MISMATCH = 'Wrong LRN number. The LRN entered in Personal Information does not match the LRN found on the Report Card.';
 const OE_LRN_MSG_UNREADABLE = 'LRN could not be verified. Please upload a clear and readable Report Card.';
-const OE_CARD_MSG_INCOMPLETE = 'Complete Report Card grades could not be detected. Please upload the front and back/pages of your Form 138 clearly.';
+const OE_CARD_MSG_INCOMPLETE = 'Additional page required. Please upload the page containing the missing report card information.';
+const OE_CARD_MSG_UNVERIFIED = 'Some information could not be verified from the uploaded report card. Please upload a clearer image or add another page of the Form 138.';
 
 /** The pages of the Report Card requirement: form field suffix => label, required. */
 function oeReportCardPages()
 {
     return [
-        ''    => ['label' => 'Page 1 / Front', 'required' => true],
-        '_p2' => ['label' => 'Page 2 / Back / Grades', 'required' => true],
-        '_p3' => ['label' => 'Page 3', 'required' => false],
+        ''    => ['label' => 'Page 1 / Report Card', 'required' => true],
+        '_p2' => ['label' => 'Page 2 / Additional Page', 'required' => false],   // required only if information is missing
+        '_p3' => ['label' => 'Page 3 / Additional Page', 'required' => false],
     ];
 }
 
@@ -128,7 +130,7 @@ function oeReportCardAnalyze(array $paths)
     ];
     $system = 'You read the pages of ONE Philippine DepEd learner Report Card (Form 138 / SF9). The pages are given together and may be '
         . 'phone photos (tilted, rotated, shadowed) or scans; one photo may show both the front and the back side by side. '
-        . 'The front usually has the name and LRN, the inside/back the grades. Read ALL pages as one document and report: '
+        . 'The front usually has the name and LRN, the inside/back the grades, but a one-page card may show both on the same side. Read ALL pages as one document and report: '
         . 'student_name; lrn = the 12-digit Learner Reference Number (printed, typed or HANDWRITTEN, often in 12 small boxes or after "LRN:"), '
         . 'copied digit by digit -- never guess, complete or invent a digit; '
         . 'lrn_clearly_readable = true when you can read all 12 digits with confidence, false if there is no LRN or a digit is truly unreadable; '
@@ -264,40 +266,23 @@ function oeReportCardLrnRecheck(array $paths, $entered)
 }
 
 /**
- * Check the whole Report Card against the LRN from Step 2.
+ * Check the whole Report Card (the LRN on the card is NOT compared any more).
  * @param string[] $paths
  * @return array{status:string, message:string, detected:string, data:array}
  */
-function oeReportCardCheck(array $paths, $enteredLrn)
+function oeReportCardCheck(array $paths)
 {
-    $entered = oeNormalizeLrn($enteredLrn);
     $read = oeReportCardAnalyze($paths);
     if (!$read['ok']) {
         return ['status' => 'error', 'message' => 'The Report Card could not be checked right now. Please try again in a moment.', 'detected' => '', 'data' => []];
     }
     $d = $read['data'];
-    // First read did not match (or found no LRN): read the LRN alone again, upright, before deciding.
-    if ($entered !== '' && $d['lrn'] !== $entered) {
-        $re = oeReportCardLrnRecheck($paths, $entered);
-        if ($re['matched']) {
-            $d['lrn'] = $entered;
-        } elseif ($d['lrn'] === '' && !empty($re['reads'])) {
-            $d['lrn'] = $re['reads'][0];
-        }
-    }
-    if ($d['lrn'] === '') {
-        return ['status' => 'unreadable', 'message' => OE_LRN_MSG_UNREADABLE, 'detected' => '', 'data' => $d];
-    }
-    if ($entered === '') {
-        return ['status' => 'mismatch', 'message' => 'Enter your 12-digit LRN in Personal Information first.', 'detected' => $d['lrn'], 'data' => $d];
-    }
-    if (!hash_equals($d['lrn'], $entered)) {
-        return ['status' => 'mismatch', 'message' => OE_LRN_MSG_MISMATCH, 'detected' => $d['lrn'], 'data' => $d];
-    }
     if ($d['general_average'] === null) {
-        return ['status' => 'incomplete', 'message' => OE_CARD_MSG_INCOMPLETE, 'detected' => $d['lrn'], 'data' => $d];
+        // One page uploaded -> ask for the additional page; already 2+ pages -> ask for a clearer image / other page.
+        $msg = count($paths) >= 2 ? OE_CARD_MSG_UNVERIFIED : OE_CARD_MSG_INCOMPLETE;
+        return ['status' => 'incomplete', 'message' => $msg, 'detected' => $d['lrn'], 'data' => $d];
     }
-    return ['status' => 'verified', 'message' => 'LRN Verified', 'detected' => $d['lrn'], 'data' => $d];
+    return ['status' => 'verified', 'message' => 'Report Card Verified', 'detected' => $d['lrn'], 'data' => $d];
 }
 
 // ---------------------------------------------------------------------------
@@ -377,4 +362,4 @@ function oeEnsureGradeCheckSchema()
         executeQuery("ALTER TABLE online_applications ADD COLUMN grade_level_check_note VARCHAR(255) NULL");
     }
     schemaMarkReady('oe_grade_check_v1');
-}
+} 

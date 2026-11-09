@@ -24,7 +24,7 @@ function cpEligibleStudent($ref)
 {
     if ($ref === '' || oeSubmittedRef() !== $ref) return null;          // not the device that applied
     $app = getRecord("SELECT student_id, lrn, status FROM online_applications WHERE reference_no = ? AND deleted_at IS NULL", [$ref]);
-    if (!$app || $app['status'] !== 'Approved') return null;
+    if (!$app || !in_array($app['status'], ['Approved', 'Incomplete Requirements'], true)) return null;
     $st = !empty($app['student_id'])
         ? getRecord("SELECT student_id, lrn, first_name, email, birth_date, portal_password_hash FROM students WHERE student_id = ? AND is_active = 1", [(int) $app['student_id']])
         : getRecord("SELECT student_id, lrn, first_name, email, birth_date, portal_password_hash FROM students WHERE lrn = ? AND is_active = 1", [$app['lrn']]);

@@ -9,10 +9,22 @@ require_once '../../../includes/grading_helpers.php';
 require_once '../../../includes/student_portal_ui.php'; // spSubjectColor(), spInitial() — for the Classes grid below
 require_once '../../../includes/assessment_material_helpers.php'; // aim_getStudentTasks() (mobile: pending / upcoming)
 require_once '../../../includes/student_portal_data.php';         // mobile dashboard summary
+require_once '../../../includes/student_password.php';            // spwMustChangePassword()
 
 // Check if student is logged in
 if (!isset($_SESSION['student_id']) || $_SESSION['role'] !== 'Student') {
     header('Location: ../../../student_login.php');
+    exit;
+}
+
+// First login: the account still holds the temporary password issued when the
+// Admin approved the enrollment. The portal may not be used until it is changed,
+// so send the student to the Change Password page. This is the portal-wide guard
+// for the dashboard; the other portal pages ask the same question through
+// spwMustChangePassword() (see spwRequireChangedPassword()).
+$spw_gate = getRecord("SELECT portal_password_temp FROM students WHERE student_id = ? AND is_active = 1", [$_SESSION['student_id']]);
+if (spwMustChangePassword($spw_gate ?: [])) {
+    header('Location: ../../../student/change_password.php');
     exit;
 }
 
@@ -26,6 +38,10 @@ $student_name = $_SESSION['student_name'];
 // file), then cleared here so a later refresh will not show it again.
 $login_success = $_SESSION['login_success_message'] ?? null;
 unset($_SESSION['login_success_message']);
+
+// Shown once right after the first-login password change, then cleared.
+$pw_changed = $_SESSION['password_changed_message'] ?? null;
+unset($_SESSION['password_changed_message']);
 
 // Get active school year
 $active_sy = getRecord("SELECT * FROM school_years WHERE is_active = 1");
@@ -73,20 +89,9 @@ $enrollment = getRecord("
 // assigned to this student's subject". Deliberately NOT derived from
 // $grades above: a subject with no grade recorded yet (too early in the
 // term) should still show up as a class the student can open.
-$classes = getRecords(
-    "SELECT DISTINCT sub.subject_code, sub.subject_name, ts.teacher_id, e.section_id, e.school_year_id,
-            u.first_name AS teacher_first, u.last_name AS teacher_last,
-            (SELECT GROUP_CONCAT(CONCAT(CASE tcs.day_of_week WHEN 1 THEN 'Mon' WHEN 2 THEN 'Tue' WHEN 3 THEN 'Wed' WHEN 4 THEN 'Thu' WHEN 5 THEN 'Fri' WHEN 6 THEN 'Sat' WHEN 7 THEN 'Sun' END, ' ', TIME_FORMAT(tcs.start_time,'%l:%i %p'), '–', TIME_FORMAT(tcs.end_time,'%l:%i %p')) ORDER BY tcs.day_of_week SEPARATOR ' · ')
-             FROM teacher_class_schedule tcs
-             WHERE tcs.teacher_id=ts.teacher_id AND tcs.subject_code=ts.subject_code AND tcs.section_id=ts.section_id AND tcs.school_year_id=ts.school_year_id AND tcs.is_active=1) AS class_schedule
-     FROM enrollments e
-     JOIN teacher_subjects ts ON ts.section_id = e.section_id AND ts.school_year_id = e.school_year_id
-     JOIN subjects sub ON sub.subject_code = ts.subject_code
-     JOIN users u ON u.user_id = ts.teacher_id
-     WHERE e.student_id = ? AND e.school_year_id = ?
-     ORDER BY sub.subject_name",
-    [$student_id, $active_sy['sy_id'] ?? 0]
-);
+// Curriculum subjects of the student's grade / strand / section, each matched
+// with the teacher assigned in Teacher Management (or "To Be Assigned").
+$classes = spdCurriculumClasses($student_id, $active_sy['sy_id'] ?? 0);
 
 // Unseen-message count per subject — powers each class card's small "New"
 // badge WITHOUT showing any message content on the dashboard itself; the
@@ -331,11 +336,7 @@ $sp_att = spdAttendance($student_id, $enrollment['section_id'] ?? null);
     <?php include __DIR__ . '/../../../includes/pwa_head.php'; ?>
 </head>
 <body>
-<?php if ($login_success): ?>
-<!-- Dashboard page loader — see static/js/dashboard-animations.js.
-     Only rendered right after a fresh login, never on a plain
-     dashboard revisit, refresh, or repeated click on the sidebar link,
-     since $login_success is already consumed (unset above) by then. -->
+<?php if ($login_success || $pw_changed): ?>
 <div id="pageLoader" class="page-loader" role="status" aria-live="polite" aria-label="Loading dashboard">
     <div class="page-loader-inner">
         <img src="../../../static/images/logo.png" alt="" class="page-loader-logo" onerror="this.style.display='none';">
@@ -447,7 +448,7 @@ $sp_att = spdAttendance($student_id, $enrollment['section_id'] ?? null);
                     <div class="empty-state">
                         <i class="fas fa-chalkboard"></i>
                         <h5>No classes yet</h5>
-                        <p class="mb-0">Your enrolled subjects will show up here once they're assigned.</p>
+                        <p class="mb-0">Your subjects show up here once you are enrolled in a section.</p>
                     </div>
                 </div>
             <?php else: ?>
@@ -455,9 +456,9 @@ $sp_att = spdAttendance($student_id, $enrollment['section_id'] ?? null);
                     <?php foreach ($classes as $c): ?>
                         <?php
                             $color = spSubjectColor($c['subject_code']);
-                            $teacher_name = trim($c['teacher_first'] . ' ' . $c['teacher_last']);
+                            $teacher_name = spdTeacherName($c);
                             $unread = $unread_by_subject[$c['subject_code']] ?? 0;
-                            $class_schedule = getRecords("SELECT day_of_week, TIME_FORMAT(start_time, '%H:%i') AS start_time, TIME_FORMAT(end_time, '%H:%i') AS end_time FROM teacher_class_schedule WHERE teacher_id=? AND subject_code=? AND section_id=? AND school_year_id=? AND is_active=1 ORDER BY day_of_week, start_time", [(int)$c['teacher_id'], $c['subject_code'], (int)$c['section_id'], (int)$c['school_year_id']]);
+                            $class_schedule = empty($c['teacher_id']) ? [] : getRecords("SELECT day_of_week, TIME_FORMAT(start_time, '%H:%i') AS start_time, TIME_FORMAT(end_time, '%H:%i') AS end_time FROM teacher_class_schedule WHERE teacher_id=? AND subject_code=? AND section_id=? AND school_year_id=? AND is_active=1 ORDER BY day_of_week, start_time", [(int)$c['teacher_id'], $c['subject_code'], (int)$c['section_id'], (int)$c['school_year_id']]);
                             $portal_day_names = [1=>'Mon',2=>'Tue',3=>'Wed',4=>'Thu',5=>'Fri'];
                             $class_schedule_text = $class_schedule ? date('g:i', strtotime($class_schedule[0]['start_time'])) . '–' . date('g:i A', strtotime($class_schedule[0]['end_time'])) . ' · ' . implode('-', array_map(function ($row) use ($portal_day_names) { return $portal_day_names[(int)$row['day_of_week']] ?? ''; }, $class_schedule)) : '';
                         ?>
@@ -468,7 +469,7 @@ $sp_att = spdAttendance($student_id, $enrollment['section_id'] ?? null);
                                 <?php endif; ?>
                                 <div class="class-card-title"><?php echo htmlspecialchars($c['subject_name']); ?></div>
                                 <div class="class-card-teacher"><?php echo htmlspecialchars($teacher_name); ?></div>
-                                <div class="class-card-avatar"><?php echo htmlspecialchars(spInitial($c['teacher_first'])); ?></div>
+                                <div class="class-card-avatar"><?php echo !empty($c['teacher_id']) ? htmlspecialchars(spInitial($c['teacher_first'])) : '<i class="fas fa-user-clock"></i>'; ?></div>
                             </div>
                             <div class="class-card-body">
                                 <?php if ($class_schedule_text): ?><div class="class-card-update"><i class="fas fa-clock me-1"></i><?php echo htmlspecialchars($class_schedule_text); ?></div><?php endif; ?>
@@ -617,6 +618,11 @@ $sp_att = spdAttendance($student_id, $enrollment['section_id'] ?? null);
 <?php if ($login_success): ?>
 var __loginSuccessMessage = <?php echo json_encode(strip_tags($login_success)); ?>;
 <?php endif; ?>
+<?php if ($pw_changed): ?>
+// Shown once after the first-login password change; the student is already
+// signed in here, so this confirms the change rather than logging them in.
+var __pwChangedMessage = <?php echo json_encode(strip_tags($pw_changed)); ?>;
+<?php endif; ?>
 document.addEventListener('DOMContentLoaded', function () {
     if (typeof initDashboardLoad === 'function') {
         initDashboardLoad({
@@ -626,6 +632,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 // plain refresh of this dashboard.
                 if (typeof __loginSuccessMessage !== 'undefined' && typeof notifyLoginSuccess === 'function') {
                     notifyLoginSuccess(__loginSuccessMessage);
+                }
+                if (typeof __pwChangedMessage !== 'undefined' && typeof notifyLoginSuccess === 'function') {
+                    notifyLoginSuccess(__pwChangedMessage);
                 }
             }
         });

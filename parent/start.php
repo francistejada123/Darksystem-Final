@@ -17,10 +17,15 @@ header('Referrer-Policy: no-referrer');
 ppEnsureSchema();
 $ref = preg_replace('/[^A-Za-z0-9-]/', '', (string) ($_GET['ref'] ?? ''));
 $app = ($ref !== '' && oeSubmittedRef() === $ref)
-    ? getRecord("SELECT a.student_id, a.status, a.guardian_contact, a.guardian_name, a.guardian_relationship FROM online_applications a WHERE a.reference_no = ? AND a.deleted_at IS NULL", [$ref])
+    ? getRecord("SELECT a.*, a.application_id FROM online_applications a WHERE a.reference_no = ? AND a.deleted_at IS NULL", [$ref])
     : null;
-$ok = $app && $app['status'] === 'Approved' && !empty($app['student_id'])
-      && getRecord("SELECT 1 FROM students WHERE student_id = ? AND is_active = 1", [(int) $app['student_id']]);
+// Guardian registration is only offered once the enrollment is APPROVED.
+// Pending / Under Review / genuinely Incomplete Requirements must not be able
+// to reach here, so the portal is not activated before approval. An approved
+// "To Follow Form 137" enrollment qualifies through ppEnrollmentApproved().
+$pp_state = $app ? ppActivationState($app) : null;
+$pp_sid = ($pp_state && $pp_state['can_guardian']) ? ppStudentForApplication($app) : 0;
+$ok = $pp_sid && getRecord("SELECT 1 FROM students WHERE student_id = ? AND is_active = 1", [$pp_sid]);
 if (!$ok) {
     header('Location: setup.php');
     exit;
@@ -28,7 +33,7 @@ if (!$ok) {
 // One code per device visit (kept in the session so a refresh does not make more).
 $key = 'pp_start_' . $ref;
 if (empty($_SESSION[$key]) || !ppFindCode($_SESSION[$key])) {
-    $_SESSION[$key] = ppIssueCode((int) $app['student_id'], 'tracking', $app['guardian_contact']);
+    $_SESSION[$key] = ppIssueCode((int) $pp_sid, 'tracking', $app['guardian_contact']);
 }
 $code = $_SESSION[$key];
 if (empty($_GET['share'])) {

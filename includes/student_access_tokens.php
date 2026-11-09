@@ -87,7 +87,7 @@ function sptConsume($rawToken)
            FROM students s
            JOIN enrollments e ON e.student_id = s.student_id
                 AND e.school_year_id = (SELECT sy_id FROM school_years WHERE is_active = 1)
-                AND e.enrollment_status = 'Approved'
+                AND e.enrollment_status IN ('Approved', 'Incomplete Requirements')
            LEFT JOIN sections sec ON sec.section_id = e.section_id
           WHERE s.student_id = ? AND s.is_active = 1",
         [(int) $t['student_id']]

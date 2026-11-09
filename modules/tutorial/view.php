@@ -308,14 +308,14 @@ include '../../includes/header.php';
                         ?>
                             <tr>
                                 <td data-label="Subject" style="border-bottom: 1px solid var(--border-soft);padding:14px 16px;font-weight:600;color: var(--ink);"><?php echo htmlspecialchars($item['subject_name']); ?></td>
-                                <td data-label="Current" style="border-bottom: 1px solid var(--border-soft);padding:14px 16px;color:#C94A4A;font-weight:700;"><?php echo number_format($item['current_grade'], 2); ?>%</td>
+                                <td data-label="Current" style="border-bottom: 1px solid var(--border-soft);padding:14px 16px;color:#C94A4A;font-weight:700;"><?php echo $item['current_grade'] !== null && (float) $item['current_grade'] > 0 ? number_format((float) $item['current_grade'], 2) . '%' : '<span style="color: var(--text-muted);font-weight:500;">In progress</span>'; ?></td>
                                 <td data-label="Target" style="border-bottom: 1px solid var(--border-soft);padding:14px 16px;font-weight:600;"><?php echo number_format($item['target_grade'], 2); ?>%</td>
                                 <td data-label="Teacher" style="border-bottom: 1px solid var(--border-soft);padding:14px 16px;">
                                     <?php echo $item['tutor_first']
                                         ? htmlspecialchars($item['tutor_last'] . ', ' . $item['tutor_first'])
                                         : '<span style="color: var(--text-muted);">Not assigned</span>'; ?>
                                 </td>
-                                <td data-label="Focus" style="border-bottom: 1px solid var(--border-soft);padding:14px 16px;color: var(--ink);font-size:16px;line-height:1.55;min-width:280px;"><?php echo htmlspecialchars($item['recommended_action']); ?></td>
+                                <td data-label="Focus" style="border-bottom: 1px solid var(--border-soft);padding:14px 16px;color: var(--ink);font-size:16px;line-height:1.55;min-width:280px;"><?php echo nl2br(htmlspecialchars((string) $item['recommended_action'])); ?></td>
                                 <td data-label="Learning Material" style="border-bottom: 1px solid var(--border-soft);padding:14px 16px;min-width:220px;">
                                     <?php if ($has_material): ?>
                                         <div class="material-card">
@@ -498,6 +498,7 @@ document.addEventListener('DOMContentLoaded', function () {
         btn.addEventListener('click', function () {
             var itemId = btn.getAttribute('data-item-id');
             var subject = btn.getAttribute('data-subject') || '';
+            window.tutMatSubject = subject;   // read by the warning-only file check below
             var mode = btn.getAttribute('data-mode') || 'add';
 
             document.getElementById('addMaterialModalTitle').textContent =
@@ -539,5 +540,17 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 <?php endif; ?>
+
+<script src="<?php echo BASE_URL; ?>static/js/file-relevance.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var f = document.getElementById('uploadMaterialFile');
+    if (!f || !window.FileRelevance) return;
+    FileRelevance.attach({ input: f, form: f.form, url: <?php echo json_encode(BASE_URL . 'modules/teachers/check_file_relevance.php'); ?>,
+        csrf: <?php echo json_encode(generateCSRFToken()); ?>,
+        getSubject: function () { return window.tutMatSubject || ''; },
+        getContext: function () { var t = document.getElementById('uploadMaterialTitle'); return t ? t.value : ''; } });
+});
+</script>
 
 <?php include '../../includes/footer.php'; ?>

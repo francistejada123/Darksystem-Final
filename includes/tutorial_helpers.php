@@ -584,6 +584,71 @@ function getWeakSubjectsForStudent($student_id, $sy_id)
 }
 
 /**
+ * Subjects a student needs tutoring in -- the SAME list AI Analytics shows:
+ *   - finalized terms below passing / Incomplete (getWeakSubjectsForStudent), plus
+ *   - every subject-term getAtRiskSubjectRecords() flags, INCLUDING the ongoing
+ *     term (2+ missing assessments, repeated low scores, current grade below passing).
+ * One row per subject. $teacher_id limits it to the subjects that teacher handles.
+ * @return array<int,array{subject_code:string, subject_name:string, final_grade:?float,
+ *                          remarks:?string, term:?string, teacher_id:?int, reason:string}>
+ */
+function tutorialAtRiskSubjects($student_id, $sy_id, $teacher_id = null)
+{
+    $out = [];
+    foreach (getWeakSubjectsForStudent($student_id, $sy_id) as $w) {
+        $out[$w['subject_code']] = [
+            'subject_code' => $w['subject_code'],
+            'subject_name' => $w['subject_name'],
+            'final_grade' => $w['final_grade'] !== null ? (float) $w['final_grade'] : null,
+            'remarks' => $w['remarks'],
+            'term' => $w['term'],
+            'teacher_id' => $w['teacher_id'] !== null ? (int) $w['teacher_id'] : null,
+            'reason' => ($w['remarks'] === 'Incomplete' ? 'Incomplete term' : 'Term Grade below passing') . ' (' . $w['term'] . ')',
+        ];
+    }
+    if (function_exists('getAtRiskSubjectRecords')) {
+        foreach (getAtRiskSubjectRecords($student_id, $sy_id) as $r) {
+            $code = $r['subject_code'];
+            $has_grade = empty($r['in_progress']) || (float) $r['final_grade'] > 0;
+            $reason = trim(implode(' · ', array_column($r['risk_reasons'] ?? [], 'label')));
+            if (!isset($out[$code])) {
+                $out[$code] = [
+                    'subject_code' => $code,
+                    'subject_name' => $r['subject_name'],
+                    'final_grade' => $has_grade ? (float) $r['final_grade'] : null,
+                    'remarks' => $r['remarks'] ?? null,
+                    'term' => $r['term'],
+                    'teacher_id' => $r['teacher_id'] !== null ? (int) $r['teacher_id'] : null,
+                    'reason' => ($reason !== '' ? $reason : 'At risk') . ' (' . $r['term'] . ')',
+                ];
+            } elseif ($reason !== '' && strpos($out[$code]['reason'], $reason) === false) {
+                $out[$code]['reason'] .= '; ' . $reason . ' (' . $r['term'] . ')';
+            }
+            if (!empty($r['missing_assessments'])) {
+                $out[$code]['missing'] = array_values(array_unique(array_merge($out[$code]['missing'] ?? [], $r['missing_assessments'])));
+            }
+            if (!empty($r['weak_topics'])) {
+                $out[$code]['weak_topics'] = array_values(array_unique(array_merge($out[$code]['weak_topics'] ?? [], $r['weak_topics'])));
+            }
+        }
+    }
+    if ($teacher_id !== null) {
+        $out = array_filter($out, function ($r) use ($teacher_id) { return (int) $r['teacher_id'] === (int) $teacher_id; });
+    }
+    return array_values($out);
+}
+
+/** Recommended action for a plan item: the subject tip + why the student is at risk. */
+function tutorialRecommendedAction(array $subj)
+{
+    $txt = tutorialSubjectTip($subj['subject_name']);
+    if (!empty($subj['reason'])) $txt .= "\nWhy: " . $subj['reason'] . '.';
+    if (!empty($subj['missing'])) $txt .= "\nMissing: " . implode(', ', $subj['missing']) . '.';
+    if (!empty($subj['weak_topics'])) $txt .= "\nFocus topics: " . implode(', ', $subj['weak_topics']) . '.';
+    return $txt;
+}
+
+/**
  * Add any currently-weak subjects that aren't already on the plan yet.
  * Safe to call repeatedly (e.g. every time the plan is viewed) — subjects
  * already on the plan are left untouched so teacher/student progress on
@@ -591,7 +656,7 @@ function getWeakSubjectsForStudent($student_id, $sy_id)
  */
 function syncTutorialPlanItems($plan_id, $student_id, $sy_id)
 {
-    $weak_subjects = getWeakSubjectsForStudent($student_id, $sy_id);
+    $weak_subjects = tutorialAtRiskSubjects($student_id, $sy_id);
     if (empty($weak_subjects)) {
         return 0;
     }
@@ -617,7 +682,7 @@ function syncTutorialPlanItems($plan_id, $student_id, $sy_id)
             $subj['subject_code'],
             $subj['final_grade'],
             $subj['teacher_id'] ?: null,
-            tutorialSubjectTip($subj['subject_name']),
+            tutorialRecommendedAction($subj),
         ]);
         $added++;
     }
@@ -632,7 +697,7 @@ function syncTutorialPlanItems($plan_id, $student_id, $sy_id)
  */
 function generateTutorialPlan($student_id, $sy_id, $created_by, $risk_level = 'High')
 {
-    $weak_subjects = getWeakSubjectsForStudent($student_id, $sy_id);
+    $weak_subjects = tutorialAtRiskSubjects($student_id, $sy_id);
     if (empty($weak_subjects)) {
         return false;
     }
@@ -671,7 +736,7 @@ function generateTutorialPlan($student_id, $sy_id, $created_by, $risk_level = 'H
             $subj['subject_code'],
             $subj['final_grade'],
             $subj['teacher_id'] ?: null,
-            tutorialSubjectTip($subj['subject_name']),
+            tutorialRecommendedAction($subj),
         ]);
     }
 

@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
         $flash = ['danger', 'Invalid security token. Please try again.'];
     } elseif (($_POST['action'] ?? '') === 'test') {
-        $r = smsSend($_POST['to'] ?? '', 'EGradePro: This is a sample message from the school system. ' . date('M j, g:i A'), ['kind' => 'test', 'created_by' => (int) $_SESSION['user_id']]);
+        $r = smsSend($_POST['to'] ?? '', 'Welcome to EGradePro! Please confirm with your child that you have access to the Parent Portal. This will help you stay informed about your childs academic activities, attendance, tasks, and school updates at Imelda Integrated Secondary School.' . date('M j, g:i A'), ['kind' => 'test', 'created_by' => (int) $_SESSION['user_id']]);
         $flash = $r['success'] ? ['success', 'Sent! It should arrive in a few seconds to a few minutes.'] : ['danger', 'Not sent: ' . ($r['error'] ?: $r['status'])];
         logActivity($_SESSION['user_id'], 'settings', 'Sent test SMS', $r['status']);
     } elseif (($_POST['action'] ?? '') === 'sender') {

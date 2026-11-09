@@ -5,11 +5,18 @@
 session_start();
 require_once '../../../config/database.php';
 require_once '../../../includes/attendance_qr_helpers.php'; // attQrLrnLink() -- tap the LRN to show your attendance QR code
+require_once '../../../includes/student_password.php';      // spwRequireChangedPassword() (must come before the call below)
 
 if (!isset($_SESSION['student_id']) || $_SESSION['role'] !== 'Student') {
     header('Location: ../../../student_login.php');
     exit;
 }
+
+// First login: the account still holds the temporary password issued when the
+// Admin approved the enrollment, so the portal may not be used until it is
+// changed (see includes/student_password.php).
+if (spwRequireChangedPassword()) exit;
+
 
 $student_id = $_SESSION['student_id'];
 $student_name = $_SESSION['student_name'];
@@ -291,6 +298,90 @@ $page_title = 'My Profile';
         .account-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; }
         .profile-empty-note { font-size: 14.5px; color: var(--portal-gray); font-style: italic; padding: 10px 0; }
 
+
+        /* ===== My Profile redesign (layout only; same data and forms) ===== */
+        .pf-page { width: 100%; }
+        .pf-page .form-control, .pf-page .form-select { width: 100%; }
+        .pf-grid { display: grid; gap: 18px; margin-bottom: 0; }
+        .pf-grid > .card-portal { margin-bottom: 18px; min-width: 0; }
+        .pf-grid-top { grid-template-columns: 300px minmax(0, 1fr); }
+        .pf-grid-mid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); }
+        .pf-grid-half { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+        .pf-card { padding: 18px 20px; border-radius: 12px !important; box-shadow: 0 4px 14px rgba(20,33,61,0.05); margin-bottom: 18px; }
+        .pf-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+        .pf-card-head h5 { margin: 0; font-size: 16px; font-weight: 700; color: var(--portal-primary); display: flex; align-items: center; gap: 10px; }
+        .pf-ic { width: 32px; height: 32px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+        .pf-ic.sm { width: 28px; height: 28px; font-size: 12.5px; }
+        .pf-ic.blue { background: rgba(53,110,168,0.12); color: #356EA8; }
+        .pf-ic.purple { background: rgba(124,77,214,0.12); color: #7C4DD6; }
+        .pf-ic.green { background: rgba(35,136,99,0.12); color: var(--portal-green); }
+        .pf-ic.amber { background: rgba(183,121,31,0.12); color: var(--portal-yellow); }
+        .pf-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 24px; }
+        .pf-fields-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        .pf-field { min-width: 0; padding-bottom: 10px; border-bottom: 1px solid var(--portal-border); }
+        .pf-span { grid-column: 1 / -1; border-bottom: none; padding-bottom: 0; }
+        .pf-label { font-size: 12.5px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: var(--portal-gray); margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+        .pf-label i { width: 14px; text-align: center; font-size: 12px; }
+        .pf-value { font-size: 15px; font-weight: 600; color: var(--portal-primary); line-height: 1.4; }
+        .pf-break { word-break: break-word; }
+        .pf-empty { color: var(--portal-gray); font-weight: 400; font-style: italic; }
+        .pf-muted { font-size: 14.5px; color: var(--portal-gray); margin: 0 0 12px; line-height: 1.5; }
+        .pf-muted-inline { font-size: 13.5px; color: var(--portal-gray); font-weight: 400; }
+        .pf-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+        .pf-badge.ok { background: rgba(35,136,99,0.10); color: var(--portal-green); }
+        .pf-badge.warn { background: rgba(183,121,31,0.12); color: var(--portal-yellow); }
+        .pf-badge.neutral { background: rgba(102,112,133,0.10); color: var(--portal-gray); }
+        .pf-summary { text-align: center; }
+        .pf-summary .profile-avatar { width: 104px; height: 104px; margin-bottom: 12px; }
+        .pf-summary .profile-name { margin-bottom: 2px; }
+        .pf-role { font-size: 14px; color: var(--portal-gray); margin-bottom: 10px; }
+        .pf-badges { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 14px; }
+        .pf-lrn-box { border: 1px solid var(--portal-border); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+        .pf-lrn-box .pf-label { justify-content: center; }
+        .pf-lrn { font-size: 17px; font-weight: 700; color: var(--portal-primary); letter-spacing: .02em; }
+        .pf-hint { font-size: 12.5px; color: var(--portal-gray); margin-top: 4px; }
+        .pf-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 600; border: 1px solid transparent; cursor: pointer; text-decoration: none; transition: background-color .15s, border-color .15s; white-space: nowrap; }
+        .pf-btn-primary { background: #356EA8; color: #fff; }
+        .pf-btn-primary:hover { background: #2B5C8D; color: #fff; }
+        .pf-btn-outline { background: transparent; color: #356EA8; border-color: #356EA8; border-radius: 999px; padding: 6px 14px; }
+        .pf-btn-outline:hover { background: rgba(53,110,168,0.08); }
+        .pf-btn-light { background: transparent; color: var(--portal-primary); border-color: var(--portal-border); }
+        .pf-btn-light:hover { background: rgba(53,110,168,0.06); }
+        .pf-btn-purple { background: #7C4DD6; color: #fff; }
+        .pf-btn-purple:hover { background: #6A3DC2; color: #fff; }
+        .pf-parent { border-top: 4px solid #7C4DD6 !important; }
+        .pf-parent-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--portal-border); }
+        .pf-parent-empty { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 8px; background: rgba(124,77,214,0.07); color: #6A3DC2; font-size: 14.5px; font-weight: 600; }
+        .pf-code-box { margin-top: 12px; border: 1px dashed rgba(124,77,214,0.4); border-radius: 12px; padding: 14px; text-align: center; }
+        .pf-form-label { display: block; font-size: 13.5px; font-weight: 600; color: var(--portal-gray); margin-bottom: 5px; }
+        .pf-pw-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+        .pf-pw { position: relative; }
+        .pf-pw .form-control { padding-right: 40px; height: 42px; }
+        .pf-eye { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); border: 0; background: transparent; color: var(--portal-gray); width: 34px; height: 34px; border-radius: 6px; cursor: pointer; }
+        .pf-eye:hover { color: var(--portal-primary); }
+        .pf-pw-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+        .pf-pw-foot small { flex: 1 1 260px; }
+        .pf-corr-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr) auto; gap: 12px; align-items: end; }
+        .pf-corr-grid .form-control, .pf-corr-grid .form-select { height: 42px; }
+        .pf-corr-btn .pf-btn { height: 42px; }
+        html[data-theme="dark"] .pf-value, html[data-theme="dark"] .pf-card-head h5, html[data-theme="dark"] .pf-lrn { color: #E6EDF7; }
+        html[data-theme="dark"] .pf-btn-light { color: #E6EDF7; }
+        html[data-theme="dark"] .pf-parent-empty { color: #C7B3F2; }
+        @media (max-width: 1100px) {
+            .pf-grid-mid { grid-template-columns: 1fr; }
+            .pf-fields-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 900px) {
+            .pf-grid-top, .pf-grid-half { grid-template-columns: 1fr; }
+            .pf-corr-grid { grid-template-columns: 1fr 1fr; }
+            .pf-corr-btn { grid-column: 1 / -1; }
+        }
+        @media (max-width: 600px) {
+            .pf-fields, .pf-fields-4, .pf-pw-grid, .pf-corr-grid { grid-template-columns: 1fr; }
+            .pf-card { padding: 16px; }
+            .pf-pw-foot .pf-btn { width: 100%; }
+        }
+
         @media (max-width: 900px) {
             .profile-row-cards { flex-direction: column; }
             .profile-row-cards > .card-portal { flex: 1 1 100% !important; width: 100%; }
@@ -390,111 +481,136 @@ $page_title = 'My Profile';
                 <div class="alert-portal danger"><i class="fas fa-exclamation-circle"></i> <ul style="margin:0;padding-left:16px;"><?php foreach ($errors as $error): ?><li><?php echo $error; ?></li><?php endforeach; ?></ul></div>
             <?php endif; ?>
 
-            <div class="profile-row-cards">
+            <?php
+            // Display-only helpers for this page (no data is changed here).
+            $pf_enrolled = ($student['enrollment_status'] ?? '') === 'Enrolled';
+            $pf_strand = !empty($student['strand']) ? ($student['strand'] === 'ASSH' ? 'ASSH Cluster' : $student['strand']) : '';
+            $pf_val = function ($v, $empty = 'Not provided') {
+                $v = trim((string) ($v ?? ''));
+                return $v === '' || $v === 'N/A' ? '<span class="pf-empty">' . $empty . '</span>' : htmlspecialchars($v);
+            };
+            ?>
+
+            <div class="pf-page">
+
+            <!-- 1. Profile summary + Personal information -->
+            <div class="pf-grid pf-grid-top">
                 <!-- Profile Summary -->
-                <div class="card-portal" style="flex: 0 0 320px;">
-                    <div class="card-portal-body profile-card">
-                        <div class="profile-avatar">
-                            <?php if ($profile_image): ?>
-                                <img src="<?php echo $profile_image; ?>" alt="Profile Photo">
-                            <?php else: ?>
-                                <i class="fas fa-user-graduate"></i>
-                            <?php endif; ?>
-                            <div class="upload-overlay">
-                                <form method="POST" action="" enctype="multipart/form-data" style="position:relative;">
-                                    <input type="file" name="profile_image" accept="image/*" onchange="this.form.submit()">
-                                    <i class="fas fa-camera"></i>
-                                </form>
-                            </div>
-                        </div>
-                        <div class="profile-name"><?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?></div>
-                        <div class="profile-lrn">Student</div>
-                        <span class="profile-status <?php echo $student['enrollment_status'] == 'Enrolled' ? 'enrolled' : 'pending'; ?>"><?php echo $student['enrollment_status'] === 'Enrolled' ? '✓ Enrolled' : ($student['enrollment_status'] ?? 'Pending'); ?></span>
-                        <?php if (!empty($student['strand'])): ?><br><span class="profile-strand"><?php echo htmlspecialchars($student['strand'] === 'ASSH' ? 'ASSH Cluster' : $student['strand']); ?></span><?php endif; ?>
-                        <div class="profile-summary-divider"></div>
-                        <div class="profile-summary-id-label">LRN</div>
-                        <div class="profile-summary-id-value"><?php echo attQrLrnLink($student['lrn']); ?></div>
-                        <?php if (attQrIsApproved($student_id)): ?><div class="profile-hint"><i class="fas fa-qrcode me-1"></i> Tap your LRN to show your attendance QR code</div><?php endif; ?>
-                        <div class="profile-hint"><i class="fas fa-camera me-1"></i> Click camera to upload &middot; JPG, PNG &middot; Max 2MB</div>
-                    </div>
-                </div>
-
-                <!-- Personal Information (merged with contact details) -->
-                <div class="card-portal">
-                    <div class="card-portal-header">
-                        <span><i class="fas fa-id-card me-1"></i> Personal Information</span>
-                        <button class="btn-edit-outline" id="toggleEditBtn" onclick="toggleEdit()"><i class="fas fa-pen me-1"></i> Edit Profile</button>
-                    </div>
-                    <div class="card-portal-body">
-
-                        <!-- View Mode -->
-                        <div id="viewMode">
-                            <div class="info-row"><span class="info-label"><i class="fas fa-user info-icon"></i>Full Name</span><span class="info-value"><?php echo htmlspecialchars($student['first_name']); ?><?php if (!empty($student['middle_name'])): ?> <?php echo htmlspecialchars($student['middle_name']); ?><?php endif; ?> <?php echo htmlspecialchars($student['last_name']); ?></span></div>
-                            <div class="info-row"><span class="info-label"><i class="fas fa-venus-mars info-icon"></i>Gender</span><span class="info-value"><?php echo $student['gender']; ?></span></div>
-                            <div class="info-row"><span class="info-label"><i class="fas fa-birthday-cake info-icon"></i>Birth Date</span><span class="info-value"><?php echo date('F d, Y', strtotime($student['birth_date'])); ?></span></div>
-                            <div class="info-row"><span class="info-label"><i class="fas fa-phone info-icon"></i>Contact Number</span><span class="info-value"><?php echo htmlspecialchars($student['contact_number'] ?? 'N/A'); ?></span></div>
-                            <div class="info-row"><span class="info-label"><i class="fas fa-envelope info-icon"></i>Email</span><span class="info-value"><?php echo htmlspecialchars($student['email'] ?? 'N/A'); ?></span></div>
-                            <div class="info-row"><span class="info-label"><i class="fas fa-map-marker-alt info-icon"></i>Address</span><span class="info-value"><?php echo nl2br(htmlspecialchars($student['address'] ?? 'N/A')); ?></span></div>
-                        </div>
-
-                        <!-- Edit Mode -->
-                        <div id="editMode" style="display: none;">
-                            <div class="edit-notice"><i class="fas fa-info-circle me-1"></i> Update your contact information below.</div>
-                            <form method="POST" action="">
-                                <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
-                                <input type="hidden" name="update_profile" value="1">
-                                <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <label class="form-label-custom">Contact Number</label>
-                                        <input type="text" name="contact_number" class="form-input-custom" value="<?php echo htmlspecialchars($student['contact_number'] ?? ''); ?>">
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label-custom">Email</label>
-                                        <input type="email" name="email" class="form-input-custom" value="<?php echo htmlspecialchars($student['email'] ?? ''); ?>">
-                                    </div>
-                                    <div class="col-12">
-                                        <label class="form-label-custom">Address</label>
-                                        <textarea name="address" class="form-input-custom" rows="2"><?php echo htmlspecialchars($student['address'] ?? ''); ?></textarea>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label-custom">Guardian Name</label>
-                                        <input type="text" name="guardian_name" class="form-input-custom" value="<?php echo htmlspecialchars($student['guardian_name'] ?? ''); ?>">
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label-custom">Guardian Contact</label>
-                                        <input type="text" name="guardian_contact" class="form-input-custom" value="<?php echo htmlspecialchars($student['guardian_contact'] ?? ''); ?>">
-                                    </div>
-                                </div>
-                                <div class="d-flex justify-content-end gap-2 mt-4">
-                                    <button type="button" class="btn-cancel" onclick="toggleEdit()"><i class="fas fa-times me-1"></i> Cancel</button>
-                                    <button type="submit" class="btn-edit"><i class="fas fa-save me-1"></i> Save</button>
-                                </div>
+                <div class="card-portal pf-card pf-summary">
+                    <div class="profile-avatar">
+                        <?php if ($profile_image): ?>
+                            <img src="<?php echo $profile_image; ?>" alt="Profile Photo">
+                        <?php else: ?>
+                            <i class="fas fa-user-graduate"></i>
+                        <?php endif; ?>
+                        <div class="upload-overlay" title="Change profile photo">
+                            <form method="POST" action="" enctype="multipart/form-data" style="position:relative;">
+                                <input type="file" name="profile_image" id="profileImageInput" accept="image/*" onchange="this.form.submit()">
+                                <i class="fas fa-camera"></i>
                             </form>
                         </div>
+                    </div>
+                    <div class="profile-name"><?php echo htmlspecialchars($student['first_name'] . ' ' . $student['last_name']); ?></div>
+                    <div class="pf-role">Student</div>
+                    <div class="pf-badges">
+                        <span class="pf-badge <?php echo $pf_enrolled ? 'ok' : 'warn'; ?>"><?php echo $pf_enrolled ? '<i class="fas fa-check-circle"></i> Enrolled' : htmlspecialchars($student['enrollment_status'] ?? 'Pending'); ?></span>
+                        <?php if ($pf_strand !== ''): ?><span class="pf-badge neutral"><?php echo htmlspecialchars($pf_strand); ?></span><?php endif; ?>
+                    </div>
+                    <div class="pf-lrn-box">
+                        <div class="pf-label">LRN</div>
+                        <div class="pf-lrn"><?php echo attQrLrnLink($student['lrn']); ?></div>
+                        <?php if (attQrIsApproved($student_id)): ?><div class="pf-hint"><i class="fas fa-qrcode"></i> Tap your LRN to show your attendance QR code</div><?php endif; ?>
+                    </div>
+                    <label for="profileImageInput" class="pf-btn pf-btn-light w-100"><i class="fas fa-camera"></i> Change Photo</label>
+                    <div class="pf-hint mt-2">JPG, PNG, GIF or WEBP &middot; Max 2MB</div>
+                </div>
+
+                <!-- Personal Information -->
+                <div class="card-portal pf-card">
+                    <div class="pf-card-head">
+                        <h5><span class="pf-ic blue"><i class="fas fa-id-card"></i></span> Personal Information</h5>
+                        <button class="pf-btn pf-btn-outline" id="toggleEditBtn" onclick="toggleEdit()"><i class="fas fa-pen"></i> Edit Profile</button>
+                    </div>
+
+                    <!-- View Mode -->
+                    <div id="viewMode">
+                        <div class="pf-fields">
+                            <div class="pf-field"><div class="pf-label"><i class="fas fa-user"></i> Full Name</div><div class="pf-value"><?php echo htmlspecialchars($student['first_name']); ?><?php if (!empty($student['middle_name'])): ?> <?php echo htmlspecialchars($student['middle_name']); ?><?php endif; ?> <?php echo htmlspecialchars($student['last_name']); ?></div></div>
+                            <div class="pf-field"><div class="pf-label"><i class="fas fa-venus-mars"></i> Gender</div><div class="pf-value"><?php echo $pf_val($student['gender'] ?? ''); ?></div></div>
+                            <div class="pf-field"><div class="pf-label"><i class="fas fa-birthday-cake"></i> Birth Date</div><div class="pf-value"><?php echo !empty($student['birth_date']) ? date('F d, Y', strtotime($student['birth_date'])) : '<span class="pf-empty">Not provided</span>'; ?></div></div>
+                            <div class="pf-field"><div class="pf-label"><i class="fas fa-phone"></i> Contact Number</div><div class="pf-value"><?php echo $pf_val($student['contact_number'] ?? ''); ?></div></div>
+                            <div class="pf-field"><div class="pf-label"><i class="fas fa-envelope"></i> Email</div><div class="pf-value pf-break"><?php echo $pf_val($student['email'] ?? ''); ?></div></div>
+                            <div class="pf-field pf-span"><div class="pf-label"><i class="fas fa-map-marker-alt"></i> Address</div><div class="pf-value"><?php echo nl2br($pf_val($student['address'] ?? '')); ?></div></div>
+                        </div>
+                    </div>
+
+                    <!-- Edit Mode (same form and fields as before) -->
+                    <div id="editMode" style="display: none;">
+                        <div class="edit-notice"><i class="fas fa-info-circle me-1"></i> Update your contact information below.</div>
+                        <form method="POST" action="">
+                            <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
+                            <input type="hidden" name="update_profile" value="1">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label-custom">Contact Number</label>
+                                    <input type="text" name="contact_number" class="form-input-custom" value="<?php echo htmlspecialchars($student['contact_number'] ?? ''); ?>">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label-custom">Email</label>
+                                    <input type="email" name="email" class="form-input-custom" value="<?php echo htmlspecialchars($student['email'] ?? ''); ?>">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label-custom">Address</label>
+                                    <textarea name="address" class="form-input-custom" rows="2"><?php echo htmlspecialchars($student['address'] ?? ''); ?></textarea>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label-custom">Guardian Name</label>
+                                    <input type="text" name="guardian_name" class="form-input-custom" value="<?php echo htmlspecialchars($student['guardian_name'] ?? ''); ?>">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label-custom">Guardian Contact</label>
+                                    <input type="text" name="guardian_contact" class="form-input-custom" value="<?php echo htmlspecialchars($student['guardian_contact'] ?? ''); ?>">
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-end gap-2 mt-4">
+                                <button type="button" class="btn-cancel" onclick="toggleEdit()"><i class="fas fa-times me-1"></i> Cancel</button>
+                                <button type="submit" class="btn-edit"><i class="fas fa-save me-1"></i> Save</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
 
-            <!-- Parent Portal -->
-            <div class="card-portal">
-                <div class="card-portal-header"><span><i class="fas fa-people-roof me-1"></i> Parent Portal</span></div>
-                <div class="card-portal-body">
-                    <p class="text-muted" style="font-size:15px">Your parent or guardian can see your grades, attendance and tasks (view only). Only the school can remove a linked parent.</p>
+            <!-- 2. Parent Portal + Change Password -->
+            <div class="pf-grid pf-grid-mid">
+                <!-- Parent Portal (same linking / code logic as before) -->
+                <div class="card-portal pf-card pf-parent">
+                    <div class="pf-card-head">
+                        <h5><span class="pf-ic purple"><i class="fas fa-people-roof"></i></span> Parent Portal</h5>
+                        <?php if ($pp_linked): ?><span class="pf-badge ok"><i class="fas fa-link"></i> Linked</span><?php endif; ?>
+                    </div>
+                    <p class="pf-muted">Your parent or guardian can see your grades, attendance and tasks (view only). Only the school can remove a linked parent.</p>
                     <?php if ($pp_linked): ?>
                         <?php foreach ($pp_linked as $pl): ?>
-                            <div class="info-row"><span class="info-label"><i class="fas fa-user-shield info-icon"></i><?php echo htmlspecialchars($pl['full_name'] ?: 'Parent'); ?><?php echo $pl['relationship'] ? ' (' . htmlspecialchars($pl['relationship']) . ')' : ''; ?></span><span class="info-value"><?php echo htmlspecialchars(smsMask($pl['mobile'])); ?></span></div>
+                            <div class="pf-parent-row">
+                                <span class="pf-ic purple sm"><i class="fas fa-user-shield"></i></span>
+                                <div>
+                                    <div class="pf-value"><?php echo htmlspecialchars($pl['full_name'] ?: 'Parent'); ?><?php echo $pl['relationship'] ? ' <span class="pf-muted-inline">(' . htmlspecialchars($pl['relationship']) . ')</span>' : ''; ?></div>
+                                    <div class="pf-muted-inline"><?php echo htmlspecialchars(smsMask($pl['mobile'])); ?></div>
+                                </div>
+                            </div>
                         <?php endforeach; ?>
                     <?php else: ?>
-                        <div class="profile-empty-note">No parent linked yet.</div>
+                        <div class="pf-parent-empty"><i class="fas fa-circle-info"></i> No parent linked yet.</div>
                     <?php endif; ?>
                     <?php if ($pp_code): $pp_link = ppSetupLink($pp_code); ?>
-                        <div style="margin-top:12px;background:#F1F5F9;border-radius:12px;padding:14px;text-align:center">
+                        <div class="pf-code-box">
                             <div id="ppQr" data-link="<?php echo htmlspecialchars($pp_link); ?>" style="width:150px;height:150px;margin:0 auto 8px"></div>
-                            <div style="font-size:14.5px;color:#64748b">Code</div>
+                            <div class="pf-muted-inline">Code</div>
                             <div style="font-size:24px;font-weight:800;letter-spacing:3px"><?php echo htmlspecialchars(ppFormatCode($pp_code)); ?></div>
                             <div style="font-size:14px;word-break:break-all"><?php echo htmlspecialchars($pp_link); ?></div>
-                            <button type="button" class="btn btn-sm btn-primary mt-2" id="ppShare"><i class="fas fa-share me-1"></i> Share to parent</button>
-                            <div style="font-size:14px;color:#64748b;margin-top:6px">Let your parent scan this, or send it by Messenger. They enter your birthday and make a PIN. Works once, expires in <?php echo PP_CODE_DAYS; ?> days.</div>
+                            <button type="button" class="pf-btn pf-btn-purple mt-2" id="ppShare"><i class="fas fa-share"></i> Share to parent</button>
+                            <div class="pf-muted-inline" style="margin-top:6px">Let your parent scan this, or send it by Messenger. They enter your birthday and make a PIN. Works once, expires in <?php echo PP_CODE_DAYS; ?> days.</div>
                         </div>
                         <script src="../../../static/js/vendor/qrcode.min.js"></script>
                         <script>
@@ -510,126 +626,141 @@ $page_title = 'My Profile';
                         })();
                         </script>
                     <?php else: ?>
-                        <form method="POST" class="mt-2"><input type="hidden" name="csrf_token" value="<?php echo generateCSRFToken(); ?>"><input type="hidden" name="parent_code" value="1">
-                            <button class="btn btn-outline-primary"><i class="fas fa-qrcode me-1"></i> Make a code for my parent</button></form>
+                        <form method="POST" class="mt-3"><input type="hidden" name="csrf_token" value="<?php echo generateCSRFToken(); ?>"><input type="hidden" name="parent_code" value="1">
+                            <button class="pf-btn pf-btn-purple"><i class="fas fa-qrcode"></i> Make a code for my parent</button></form>
                     <?php endif; ?>
                 </div>
-            </div>
 
-            <!-- Change Password -->
-            <div class="card-portal">
-                <div class="card-portal-header"><span><i class="fas fa-lock me-1"></i> Change Password</span></div>
-                <div class="card-portal-body">
-                    <form method="POST" action="" autocomplete="off" class="row g-2 align-items-end">
+                <!-- Change Password (same fields / backend as before) -->
+                <div class="card-portal pf-card">
+                    <div class="pf-card-head">
+                        <h5><span class="pf-ic blue"><i class="fas fa-lock"></i></span> Change Password</h5>
+                    </div>
+                    <form method="POST" action="" autocomplete="off">
                         <input type="hidden" name="csrf_token" value="<?php echo generateCSRFToken(); ?>">
                         <input type="hidden" name="change_password" value="1">
-                        <div class="col-12 col-md-4"><label class="form-label small fw-semibold mb-1">Current password</label><input type="password" name="current_password" class="form-control" required autocomplete="current-password"></div>
-                        <div class="col-12 col-md-3"><label class="form-label small fw-semibold mb-1">New password</label><input type="password" name="new_password" class="form-control" required minlength="8" autocomplete="new-password"></div>
-                        <div class="col-12 col-md-3"><label class="form-label small fw-semibold mb-1">Confirm new password</label><input type="password" name="confirm_password" class="form-control" required minlength="8" autocomplete="new-password"></div>
-                        <div class="col-12 col-md-2"><button type="submit" class="btn btn-primary w-100"><i class="fas fa-save me-1"></i> Save</button></div>
-                        <div class="col-12"><small class="text-muted">At least 8 characters with letters and numbers. Forgot it? Sign out and use <strong>Create / Forgot password</strong> on the Student Login.</small></div>
+                        <div class="pf-pw-grid">
+                            <div>
+                                <label class="pf-form-label" for="pfCurPw">Current Password</label>
+                                <div class="pf-pw"><input type="password" id="pfCurPw" name="current_password" class="form-control" required autocomplete="current-password"><button type="button" class="pf-eye" aria-label="Show password"><i class="fas fa-eye"></i></button></div>
+                            </div>
+                            <div>
+                                <label class="pf-form-label" for="pfNewPw">New Password</label>
+                                <div class="pf-pw"><input type="password" id="pfNewPw" name="new_password" class="form-control" required minlength="8" autocomplete="new-password"><button type="button" class="pf-eye" aria-label="Show password"><i class="fas fa-eye"></i></button></div>
+                            </div>
+                            <div>
+                                <label class="pf-form-label" for="pfConfPw">Confirm New Password</label>
+                                <div class="pf-pw"><input type="password" id="pfConfPw" name="confirm_password" class="form-control" required minlength="8" autocomplete="new-password"><button type="button" class="pf-eye" aria-label="Show password"><i class="fas fa-eye"></i></button></div>
+                            </div>
+                        </div>
+                        <div class="pf-pw-foot">
+                            <small class="pf-muted-inline"><i class="fas fa-shield-halved"></i> At least 8 characters with letters and numbers. Forgot it? Sign out and use <strong>Create / Forgot password</strong> on the Student Login.</small>
+                            <button type="submit" class="pf-btn pf-btn-primary"><i class="fas fa-save"></i> Save Changes</button>
+                        </div>
                     </form>
                 </div>
             </div>
 
-            <div class="profile-row-cards">
-                <!-- Guardian Information -->
-                <div class="card-portal">
-                    <div class="card-portal-header"><span><i class="fas fa-user-shield me-1"></i> Guardian Information</span></div>
-                    <div class="card-portal-body">
-                        <?php if (!empty($student['guardian_name'])): ?>
-                        <div class="info-row"><span class="info-label"><i class="fas fa-user-shield info-icon"></i>Guardian Name</span><span class="info-value"><?php echo htmlspecialchars($student['guardian_name']); ?></span></div>
-                        <div class="info-row"><span class="info-label"><i class="fas fa-phone-alt info-icon"></i>Guardian Contact</span><span class="info-value"><?php echo htmlspecialchars($student['guardian_contact'] ?? 'N/A'); ?></span></div>
-                        <?php else: ?>
+            <!-- 3. Guardian + Academic -->
+            <div class="pf-grid pf-grid-half">
+                <div class="card-portal pf-card">
+                    <div class="pf-card-head">
+                        <h5><span class="pf-ic green"><i class="fas fa-user-shield"></i></span> Guardian Information</h5>
+                        <?php if ($pp_linked): ?><span class="pf-badge ok"><i class="fas fa-link"></i> Parent Portal linked</span><?php endif; ?>
+                    </div>
+                    <?php if (!empty($student['guardian_name'])): ?>
+                        <div class="pf-fields">
+                            <div class="pf-field"><div class="pf-label"><i class="fas fa-user"></i> Guardian Name</div><div class="pf-value"><?php echo htmlspecialchars($student['guardian_name']); ?></div></div>
+                            <div class="pf-field"><div class="pf-label"><i class="fas fa-phone-alt"></i> Guardian Contact</div><div class="pf-value"><?php echo $pf_val($student['guardian_contact'] ?? ''); ?></div></div>
+                        </div>
+                    <?php else: ?>
                         <div class="profile-empty-note">No guardian information on file yet.</div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-
-                <!-- Academic Information -->
-                <div class="card-portal">
-                    <div class="card-portal-header"><span><i class="fas fa-graduation-cap me-1"></i> Academic Information</span></div>
-                    <div class="card-portal-body">
-                        <div class="info-row"><span class="info-label"><i class="fas fa-layer-group info-icon"></i>Grade Level</span><span class="info-value"><?php echo htmlspecialchars($student['grade_level']); ?></span></div>
-                        <div class="info-row"><span class="info-label"><i class="fas fa-chalkboard info-icon"></i>Section</span><span class="info-value"><?php echo htmlspecialchars($student['section_name'] ?? 'Not Assigned'); ?></span></div>
-                        <div class="info-row"><span class="info-label"><i class="fas fa-user-tie info-icon"></i>Adviser</span><span class="info-value"><?php echo htmlspecialchars($student['adviser_name'] ?? 'Not yet assigned'); ?></span></div>
-                        <?php if (!empty($student['strand'])): ?>
-                        <div class="info-row"><span class="info-label"><i class="fas fa-flag info-icon"></i>Strand</span><span class="info-value"><?php echo htmlspecialchars($student['strand'] === 'ASSH' ? 'ASSH Cluster' : $student['strand']); ?></span></div>
-                        <?php endif; ?>
-                        <div class="info-row"><span class="info-label"><i class="fas fa-calendar-alt info-icon"></i>School Year</span><span class="info-value"><?php echo htmlspecialchars($student['sy_name'] ?? 'N/A'); ?></span></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Account Information -->
-            <div class="card-portal">
-                <div class="card-portal-header"><span><i class="fas fa-shield-alt me-1"></i> Account Information</span></div>
-                <div class="card-portal-body">
-                    <div class="account-info-grid">
-                        <div>
-                            <div class="info-row"><span class="info-label"><i class="fas fa-id-badge info-icon"></i>Enrollment Status</span><span class="info-value"><?php echo htmlspecialchars($student['enrollment_status'] ?? 'N/A'); ?></span></div>
-                            <div class="info-row"><span class="info-label"><i class="fas fa-book-reader info-icon"></i>Curriculum</span><span class="info-value"><?php echo htmlspecialchars($student['curriculum_type'] ?? 'N/A'); ?></span></div>
-                        </div>
-                        <div>
-                            <div class="info-row"><span class="info-label"><i class="fas fa-calendar-plus info-icon"></i>Date Registered</span><span class="info-value"><?php echo !empty($student['created_at']) ? date('F d, Y', strtotime($student['created_at'])) : 'N/A'; ?></span></div>
-                            <div class="info-row"><span class="info-label"><i class="fas fa-key info-icon"></i>Login Method</span><span class="info-value">LRN-Based Login</span></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Request a correction (official information) -->
-            <?php $sr_requests = srStudentRequests($student_id); ?>
-            <div class="card-portal" id="corrections">
-                <div class="card-portal-header"><span><i class="fas fa-pen-to-square me-1"></i> Request a correction</span></div>
-                <div class="card-portal-body">
-                    <p style="font-size:14.5px;color:var(--portal-gray);margin-bottom:10px;">
-                        Is your name, birth date or gender wrong? Send a request with the correct value and the basis (e.g. your PSA birth certificate).
-                        The Registrar reviews it, and your record changes once it is approved. (Contact, address and guardian details you can edit yourself above.)
-                    </p>
-                    <form method="POST" action="#corrections" class="row g-2 align-items-end">
-                        <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
-                        <input type="hidden" name="request_correction" value="1">
-                        <div class="col-md-3">
-                            <label class="form-label" style="font-size:14px;font-weight:600;">Information</label>
-                            <select name="field_name" class="form-select form-select-sm" required>
-                                <option value="">Choose...</option>
-                                <?php foreach ($sr_student_fields as $fk => $fl): ?>
-                                    <option value="<?php echo $fk; ?>"><?php echo htmlspecialchars($fl); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label" style="font-size:14px;font-weight:600;">Correct value</label>
-                            <input type="text" name="new_value" class="form-control form-control-sm" maxlength="255" placeholder="e.g. Maria / 2013-05-14 / Female" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label" style="font-size:14px;font-weight:600;">Reason / basis</label>
-                            <input type="text" name="reason" class="form-control form-control-sm" maxlength="500" placeholder="e.g. Per my PSA birth certificate" required>
-                        </div>
-                        <div class="col-md-2">
-                            <button type="submit" class="btn btn-sm w-100" style="background:#14213D;color:#fff;">Send request</button>
-                        </div>
-                    </form>
-                    <?php if (!empty($sr_requests)): ?>
-                        <div class="table-responsive mt-3">
-                            <table class="table table-sm mb-0" style="font-size:14px;">
-                                <thead><tr><th>Information</th><th>Requested</th><th>Date</th><th>Status</th></tr></thead>
-                                <tbody>
-                                <?php foreach ($sr_requests as $rq): ?>
-                                    <tr>
-                                        <td><?php echo htmlspecialchars(srCorrectionFields()[$rq['field_name']] ?? $rq['field_name']); ?></td>
-                                        <td><?php echo htmlspecialchars($rq['new_value']); ?></td>
-                                        <td><?php echo date('M j, Y', strtotime($rq['created_at'])); ?></td>
-                                        <td><?php echo htmlspecialchars($rq['status']); ?><?php echo !empty($rq['review_note']) ? ' — ' . htmlspecialchars($rq['review_note']) : ''; ?></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
                     <?php endif; ?>
                 </div>
+
+                <div class="card-portal pf-card">
+                    <div class="pf-card-head">
+                        <h5><span class="pf-ic blue"><i class="fas fa-graduation-cap"></i></span> Academic Information</h5>
+                    </div>
+                    <div class="pf-fields">
+                        <div class="pf-field"><div class="pf-label"><i class="fas fa-layer-group"></i> Grade Level</div><div class="pf-value"><?php echo $pf_val($student['grade_level'] ?? ''); ?></div></div>
+                        <div class="pf-field"><div class="pf-label"><i class="fas fa-chalkboard"></i> Section</div><div class="pf-value"><?php echo $pf_val($student['section_name'] ?? '', 'Not Assigned'); ?></div></div>
+                        <div class="pf-field"><div class="pf-label"><i class="fas fa-user-tie"></i> Adviser</div><div class="pf-value"><?php echo $pf_val($student['adviser_name'] ?? '', 'Not yet assigned'); ?></div></div>
+                        <div class="pf-field"><div class="pf-label"><i class="fas fa-calendar-alt"></i> School Year</div><div class="pf-value"><?php echo $pf_val($student['sy_name'] ?? '', 'N/A'); ?></div></div>
+                        <?php if ($pf_strand !== ''): ?>
+                        <div class="pf-field"><div class="pf-label"><i class="fas fa-flag"></i> Strand</div><div class="pf-value"><?php echo htmlspecialchars($pf_strand); ?></div></div>
+                        <?php endif; ?>
+                    </div>
+                </div>
             </div>
+
+            <!-- 4. Account Information -->
+            <div class="card-portal pf-card">
+                <div class="pf-card-head">
+                    <h5><span class="pf-ic blue"><i class="fas fa-shield-alt"></i></span> Account Information</h5>
+                </div>
+                <div class="pf-fields pf-fields-4">
+                    <div class="pf-field"><div class="pf-label"><i class="fas fa-id-badge"></i> Enrollment Status</div><div class="pf-value"><span class="pf-badge <?php echo $pf_enrolled ? 'ok' : 'warn'; ?>"><?php echo htmlspecialchars($student['enrollment_status'] ?? 'N/A'); ?></span></div></div>
+                    <div class="pf-field"><div class="pf-label"><i class="fas fa-book-reader"></i> Curriculum</div><div class="pf-value"><?php echo $pf_val($student['curriculum_type'] ?? '', 'N/A'); ?></div></div>
+                    <div class="pf-field"><div class="pf-label"><i class="fas fa-calendar-plus"></i> Date Registered</div><div class="pf-value"><?php echo !empty($student['created_at']) ? date('F d, Y', strtotime($student['created_at'])) : '<span class="pf-empty">N/A</span>'; ?></div></div>
+                    <div class="pf-field"><div class="pf-label"><i class="fas fa-key"></i> Login Method</div><div class="pf-value">LRN-Based Login</div></div>
+                </div>
+            </div>
+
+            <!-- 5. Request a correction (same form / backend as before) -->
+            <?php $sr_requests = srStudentRequests($student_id); ?>
+            <div class="card-portal pf-card" id="corrections">
+                <div class="pf-card-head">
+                    <h5><span class="pf-ic amber"><i class="fas fa-pen-to-square"></i></span> Request a Correction</h5>
+                </div>
+                <p class="pf-muted">
+                    Is your name, birth date or gender wrong? Send a request with the correct value and the basis (e.g. your PSA birth certificate).
+                    The Registrar reviews it, and your record changes once it is approved. (Contact, address and guardian details you can edit yourself above.)
+                </p>
+                <form method="POST" action="#corrections" class="pf-corr-grid">
+                    <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
+                    <input type="hidden" name="request_correction" value="1">
+                    <div>
+                        <label class="pf-form-label">Information</label>
+                        <select name="field_name" class="form-select" required>
+                            <option value="">Choose...</option>
+                            <?php foreach ($sr_student_fields as $fk => $fl): ?>
+                                <option value="<?php echo $fk; ?>"><?php echo htmlspecialchars($fl); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="pf-form-label">Correct Value</label>
+                        <input type="text" name="new_value" class="form-control" maxlength="255" placeholder="e.g. Maria / 2013-05-14 / Female" required>
+                    </div>
+                    <div>
+                        <label class="pf-form-label">Reason / Basis</label>
+                        <input type="text" name="reason" class="form-control" maxlength="500" placeholder="e.g. Per my PSA birth certificate" required>
+                    </div>
+                    <div class="pf-corr-btn">
+                        <button type="submit" class="pf-btn pf-btn-primary w-100"><i class="fas fa-paper-plane"></i> Send Request</button>
+                    </div>
+                </form>
+                <?php if (!empty($sr_requests)): ?>
+                    <div class="table-responsive mt-3">
+                        <table class="table table-sm mb-0" style="font-size:14px;">
+                            <thead><tr><th>Information</th><th>Requested</th><th>Date</th><th>Status</th></tr></thead>
+                            <tbody>
+                            <?php foreach ($sr_requests as $rq): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars(srCorrectionFields()[$rq['field_name']] ?? $rq['field_name']); ?></td>
+                                    <td><?php echo htmlspecialchars($rq['new_value']); ?></td>
+                                    <td><?php echo date('M j, Y', strtotime($rq['created_at'])); ?></td>
+                                    <td><?php echo htmlspecialchars($rq['status']); ?><?php echo !empty($rq['review_note']) ? ' — ' . htmlspecialchars($rq['review_note']) : ''; ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            </div><!-- /.pf-page -->
         </div>
     </div>
 </div>
@@ -646,13 +777,23 @@ function toggleEdit() {
     if (viewMode.style.display === 'none') {
         viewMode.style.display = 'block';
         editMode.style.display = 'none';
-        btn.innerHTML = '<i class="fas fa-pen me-1"></i> Edit';
+        btn.innerHTML = '<i class="fas fa-pen"></i> Edit Profile';
     } else {
         viewMode.style.display = 'none';
         editMode.style.display = 'block';
-        btn.innerHTML = '<i class="fas fa-times me-1"></i> Cancel';
+        btn.innerHTML = '<i class="fas fa-times"></i> Cancel';
     }
 }
+// Show / hide password (display only -- the fields keep their names).
+document.querySelectorAll('.pf-eye').forEach(function (b) {
+    b.addEventListener('click', function () {
+        var input = b.parentNode.querySelector('input');
+        var show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        b.innerHTML = show ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+        b.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    });
+});
 // Sidebar toggle + topbar profile dropdown now live in the shared
 // static/js/student-portal-shell.js (linked in <head>).
 </script>

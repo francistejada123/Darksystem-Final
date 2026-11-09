@@ -49,33 +49,44 @@ foreach ($sync_students as $stu) {
     syncStudentRiskAnalysis($stu['student_id'], $sy_id);
 }
 
-// At-risk students (from the AI Analytics table) scoped the same way
-// modules/ai/index.php scopes them: teachers only see their own students.
-if ($is_teacher) {
-    $at_risk_students = getRecords("
-        SELECT DISTINCT s.student_id, s.lrn, s.first_name, s.last_name, s.grade_level,
-               a.risk_level, a.performance_score, a.analysis_data,
-               tp.plan_id, tp.status AS plan_status
-        FROM ai_analysis a
-        JOIN students s ON a.student_id = s.student_id
-        JOIN enrollments e ON s.student_id = e.student_id AND e.school_year_id = a.school_year_id
-        JOIN teacher_subjects ts ON e.section_id = ts.section_id AND ts.school_year_id = a.school_year_id
-        LEFT JOIN tutorial_plans tp ON tp.student_id = s.student_id AND tp.school_year_id = a.school_year_id AND tp.status IN ('Draft','Active')
-        WHERE ts.teacher_id = ? AND a.school_year_id = ? AND a.risk_level IN ('High','Medium')
-        ORDER BY a.risk_level = 'High' DESC, a.performance_score ASC
-    ", [$teacher_id, $sy_id]);
-} else {
-    $at_risk_students = getRecords("
-        SELECT s.student_id, s.lrn, s.first_name, s.last_name, s.grade_level,
-               a.risk_level, a.performance_score, a.analysis_data,
-               tp.plan_id, tp.status AS plan_status
-        FROM ai_analysis a
-        JOIN students s ON a.student_id = s.student_id
-        LEFT JOIN tutorial_plans tp ON tp.student_id = s.student_id AND tp.school_year_id = a.school_year_id AND tp.status IN ('Draft','Active')
-        WHERE a.school_year_id = ? AND a.risk_level IN ('High','Medium')
-        ORDER BY a.risk_level = 'High' DESC, a.performance_score ASC
-    ", [$sy_id]);
+// At-risk students -- the SAME rule as AI Analytics: a student is listed when
+// their overall risk is High/Medium (finalized grades) OR any subject is at risk
+// right now, including the ONGOING term (2+ missing assessments, repeated low
+// scores, current grade below passing). A teacher sees only the students and
+// subjects they handle; an Administrator sees everyone.
+$pass_mark_now = getGradingPassMark();
+$at_risk_students = [];
+foreach ($sync_students as $stu) {
+    $sid = (int) $stu['student_id'];
+    $a = getRecord("SELECT risk_level, performance_score FROM ai_analysis WHERE student_id = ? AND school_year_id = ?", [$sid, $sy_id]);
+    $subjects = tutorialAtRiskSubjects($sid, $sy_id, $is_teacher ? (int) $teacher_id : null);
+    $agg = in_array($a['risk_level'] ?? '', ['High', 'Medium'], true) ? $a['risk_level'] : null;
+    if (!$subjects && !$agg) continue;
+
+    if ($agg) {
+        $level = $agg;
+    } else {
+        $level = 'Medium';
+        foreach ($subjects as $sj) {
+            if ($sj['final_grade'] !== null && $sj['final_grade'] < $pass_mark_now - 5) $level = 'High';
+        }
+        if (count($subjects) >= 2) $level = 'High';
+    }
+    $info = getRecord("SELECT student_id, lrn, first_name, last_name, grade_level FROM students WHERE student_id = ?", [$sid]);
+    if (!$info) continue;
+    $plan = getRecord("SELECT plan_id, status FROM tutorial_plans WHERE student_id = ? AND school_year_id = ? AND status IN ('Draft','Active') ORDER BY plan_id DESC LIMIT 1", [$sid, $sy_id]);
+    $at_risk_students[] = $info + [
+        'risk_level' => $level,
+        'performance_score' => $a['performance_score'] ?? null,
+        'plan_id' => $plan['plan_id'] ?? null,
+        'plan_status' => $plan['status'] ?? null,
+        'risk_subjects' => $subjects,
+    ];
 }
+usort($at_risk_students, function ($x, $y) {
+    if ($x['risk_level'] !== $y['risk_level']) return $x['risk_level'] === 'High' ? -1 : 1;
+    return (float) ($x['performance_score'] ?? 999) <=> (float) ($y['performance_score'] ?? 999);
+});
 
 // Existing tutorial plans (any status) for the summary list below.
 $plan_filter_sql = "WHERE tp.school_year_id = ?";
@@ -240,6 +251,7 @@ include '../../includes/header.php';
                                 <th style="font-size:14.5px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Grade Level</th>
                                 <th style="font-size:14.5px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Risk Level</th>
                                 <th style="font-size:14.5px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Average</th>
+<th style="font-size:14.5px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">At-Risk Subjects</th>
                                 <?php if ($is_teacher): ?>
                                 <th style="font-size:14.5px;text-transform:uppercase;letter-spacing:0.04em;font-weight:700;color: var(--text-muted);border-bottom: 1px solid var(--border);padding:14px 16px;">Action</th>
                                 <?php endif; ?>
@@ -264,7 +276,15 @@ include '../../includes/header.php';
                                             <?php echo htmlspecialchars($s['risk_level']); ?>
                                         </span>
                                     </td>
-                                    <td style="border-bottom: 1px solid var(--border-soft);padding:14px 16px;font-weight:600;font-size:17px;color:#C94A4A;"><?php echo number_format($s['performance_score'], 2); ?>%</td>
+                                    <td style="border-bottom: 1px solid var(--border-soft);padding:14px 16px;font-weight:600;font-size:17px;color:#C94A4A;"><?php echo $s['performance_score'] !== null ? number_format((float) $s['performance_score'], 2) . '%' : '<span style="color: var(--text-muted);font-weight:500;font-size:15px;">No final grade yet</span>'; ?></td>
+                                    <td style="border-bottom: 1px solid var(--border-soft);padding:14px 16px;font-size:15px;color: var(--ink);">
+                                        <?php if (empty($s['risk_subjects'])): ?>
+                                            <span style="color: var(--text-muted);">Overall average</span>
+                                        <?php else: foreach ($s['risk_subjects'] as $rs): ?>
+                                            <div style="margin-bottom:4px;"><b><?php echo htmlspecialchars($rs['subject_name']); ?></b>
+                                                <span style="color: var(--text-muted);">&mdash; <?php echo htmlspecialchars($rs['reason']); ?></span></div>
+                                        <?php endforeach; endif; ?>
+                                    </td>
                                     <?php if ($is_teacher): ?>
                                     <td style="border-bottom: 1px solid var(--border-soft);padding:14px 16px;">
                                         <?php if ($s['plan_id']): ?>

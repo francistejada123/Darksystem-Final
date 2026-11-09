@@ -150,6 +150,11 @@ function spRequireStudent()
         header('Location: ../../../student_login.php');
         exit;
     }
+    // First login: the account still holds the temporary password issued when the
+    // Admin approved the enrollment. Every portal page that goes through this
+    // helper is therefore blocked until the password has been changed.
+    require_once __DIR__ . '/student_password.php';
+    if (spwRequireChangedPassword()) exit;
     $student = getRecord("SELECT * FROM students WHERE student_id = ?", [(int) $_SESSION['student_id']]) ?: [];
     $img = '';
     if (!empty($student['profile_image']) && file_exists(__DIR__ . '/../static/uploads/profiles/' . $student['profile_image'])) {

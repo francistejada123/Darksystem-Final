@@ -350,9 +350,7 @@ $term_calendar = [];
 foreach (gh_threeTerms() as $tc_term) {
     $tc_win = gh_getTermWindow($active_sy['sy_id'], $tc_term);
     $term_calendar[$tc_term] = [
-        'range'  => ($tc_win && !empty($tc_win['start_date']) && !empty($tc_win['end_date']))
-            ? date('M j', strtotime($tc_win['start_date'])) . ' – ' . date('M j, Y', strtotime($tc_win['end_date']))
-            : 'Dates not set',
+        'range'  => gh_termWindowRangeText($tc_win, 'Dates not set', 'M j', 'M j, Y'),
         'status' => gh_termWindowStatus($tc_win)['status'],
     ];
 }

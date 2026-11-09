@@ -30,6 +30,7 @@
 // never touches any existing table.
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/teacher_department.php';
 
 define('CLASS_STREAM_UPLOAD_DIR', __DIR__ . '/../static/uploads/class_stream/');
 define('CLASSWORK_UPLOAD_DIR', __DIR__ . '/../static/uploads/classwork/');
@@ -81,6 +82,16 @@ function classroomValidateAccess($teacherId, $sectionId, $subjectCode, $syId, $t
 
     if (!$row) {
         return ['success' => false, 'error' => 'You are not assigned to this class/subject for the selected term.'];
+    }
+
+    // Department / Level (saved at teacher registration) is the source of
+    // truth: a JHS teacher may only enter Grade 7-10 classes, an SHS teacher
+    // only Grade 11-12 ones. This closes the Classroom pages off for any
+    // assignment that sits outside its owner's department, so nothing is
+    // reachable even by calling the endpoints directly.
+    $dept = tdDepartmentFor($teacherId);
+    if (!tdGradeAllowed($dept, $row['section_grade_level'])) {
+        return ['success' => false, 'error' => tdCheckAssignment($dept, $row['section_grade_level'])['message']];
     }
 
     return ['success' => true, 'class' => $row];

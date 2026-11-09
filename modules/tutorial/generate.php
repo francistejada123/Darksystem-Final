@@ -42,7 +42,7 @@ if (!$student_id || !$sy_id) {
 $result = generateTutorialPlan($student_id, $sy_id, $_SESSION['user_id'], $risk_level);
 
 if (!$result) {
-    $_SESSION['error_message'] = 'This student has no subjects below 75 right now, so a tutorial plan could not be generated.';
+    $_SESSION['error_message'] = 'This student has no at-risk subject right now (no failing grade, Incomplete term, missing assessments or repeated low scores), so a tutorial plan could not be generated.';
     header('Location: index.php');
     exit;
 }

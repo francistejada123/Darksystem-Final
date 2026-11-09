@@ -168,12 +168,84 @@ $csrf_token = generateCSRFToken();
 include 'includes/header.php';
 ?>
 
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="mb-0"><i class="fas fa-user-circle text-primary me-2"></i>My Profile</h2>
-        </div>
-    </div>
+<style>
+/* ===== My Profile (layout only -- same data, forms and backend) ===== */
+.apf-head { margin: 24px 0 18px; }
+.apf-head h2 { margin: 0; font-size: 24px; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 10px; }
+.apf-head p { margin: 4px 0 0; color: var(--text-muted); font-size: 15px; }
+.apf-grid { display: grid; gap: 18px; }
+.apf-grid-top { grid-template-columns: 300px minmax(0, 1fr); align-items: start; }
+.apf-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 4px 14px rgba(20,33,61,0.05); padding: 18px 20px; margin-bottom: 18px; min-width: 0; }
+.apf-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.apf-card-head h5 { margin: 0; font-size: 16px; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 10px; }
+.apf-ic { width: 32px; height: 32px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; background: rgba(53,110,168,0.12); color: #356EA8; }
+.apf-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 24px; }
+.apf-field { min-width: 0; padding-bottom: 10px; border-bottom: 1px solid var(--border-soft); }
+.apf-span { grid-column: 1 / -1; }
+.apf-label { font-size: 12.5px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+.apf-label i { width: 14px; text-align: center; font-size: 12px; }
+.apf-value { font-size: 15px; font-weight: 600; color: var(--ink); line-height: 1.4; word-break: break-word; }
+.apf-empty { color: var(--text-muted); font-weight: 400; font-style: italic; }
+.apf-summary { text-align: center; }
+.apf-summary .profile-avatar { width: 104px; height: 104px; margin: 0 auto 12px; }
+.apf-summary .profile-name { margin-bottom: 2px; }
+.apf-role { font-size: 14px; color: var(--text-muted); margin-bottom: 10px; }
+.apf-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.apf-badge.ok { background: var(--success-tint); color: var(--success); }
+.apf-badge.off { background: rgba(201,74,74,0.10); color: #C94A4A; }
+.apf-id-box { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin: 14px 0 12px; }
+.apf-id-box .apf-label { justify-content: center; }
+.apf-id-value { font-size: 16px; font-weight: 700; color: var(--ink); word-break: break-all; }
+.apf-hint { font-size: 12.5px; color: var(--text-muted); margin-top: 8px; }
+.apf-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 600; border: 1px solid transparent; cursor: pointer; transition: background-color .15s, border-color .15s; white-space: nowrap; }
+.apf-btn-primary { background: #356EA8; color: #fff; }
+.apf-btn-primary:hover { background: #2B5C8D; color: #fff; }
+.apf-btn-outline { background: transparent; color: #356EA8; border-color: #356EA8; border-radius: 999px; padding: 6px 14px; }
+.apf-btn-outline:hover { background: rgba(53,110,168,0.08); }
+.apf-btn-light { background: transparent; color: var(--ink); border-color: var(--border); width: 100%; }
+.apf-btn-light:hover { background: var(--surface-hover); }
+.apf-form-label { display: block; font-size: 13.5px; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; }
+.apf-pw-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.apf-pw { position: relative; }
+.apf-pw .profile-form-input { width: 100%; padding-right: 40px; height: 42px; }
+.apf-eye { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); border: 0; background: transparent; color: var(--text-muted); width: 34px; height: 34px; border-radius: 6px; cursor: pointer; }
+.apf-eye:hover { color: var(--ink); }
+.apf-pw-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+.apf-pw-foot small { flex: 1 1 260px; color: var(--text-muted); font-size: 13.5px; }
+.apf-classes { margin: 0; padding-left: 18px; }
+.apf-badge.wait { background: rgba(183,121,31,0.12); color: #B7791F; }
+.apf-badge.dept { background: rgba(53,110,168,0.12); color: #356EA8; }
+.apf-badge.sec { background: var(--surface-hover); color: var(--ink); border: 1px solid var(--border); font-weight: 600; }
+.apf-sub-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 18px 0 10px; padding-top: 14px; border-top: 1px solid var(--border-soft); font-size: 14.5px; font-weight: 700; color: var(--ink); }
+.apf-sub-head i { color: #356EA8; margin-right: 6px; }
+.apf-count { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+.apf-assign-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; }
+.apf-assign { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; border: 1px solid var(--border-soft); border-radius: 8px; min-width: 0; }
+.apf-assign-subj { font-size: 14.5px; font-weight: 600; color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.apf-assign-subj i { color: var(--text-muted); font-size: 12.5px; margin-right: 4px; }
+@media (max-width: 900px) { .apf-assign-list { grid-template-columns: 1fr; } }
+@media (max-width: 420px) { .apf-assign { flex-direction: column; align-items: flex-start; } .apf-assign-subj { white-space: normal; } }
+@media (max-width: 900px) { .apf-grid-top { grid-template-columns: 1fr; } }
+@media (max-width: 600px) {
+    .apf-fields, .apf-pw-grid { grid-template-columns: 1fr; }
+    .apf-card { padding: 16px; }
+    .apf-pw-foot .apf-btn { width: 100%; }
+}
+</style>
+
+<?php
+// Display helper (no data changes).
+$apf_val = function ($v, $empty = 'Not provided') {
+    $v = trim((string) ($v ?? ''));
+    return $v === '' ? '<span class="apf-empty">' . $empty . '</span>' : htmlspecialchars($v);
+};
+?>
+
+<div class="apf-head">
+    <h2><i class="fas fa-user-circle text-primary"></i> My Profile</h2>
+    <p><?php echo ($user['role_name'] ?? '') === 'Teacher'
+        ? 'View and manage your personal, professional, and account information.'
+        : 'View and manage your personal and account information'; ?></p>
 </div>
 
 <?php if (isset($_GET['success'])): ?>
@@ -199,154 +271,169 @@ include 'includes/header.php';
     </div>
 <?php endif; ?>
 
-<div class="profile-row-cards mb-4">
-    <!-- Profile Summary -->
-    <div class="card shadow-sm rounded-3" style="flex: 0 0 320px;">
-        <div class="card-body text-center">
-            <div class="profile-avatar">
-                <?php if ($profile_image): ?>
-                    <img src="<?php echo $profile_image; ?>" alt="Profile Photo">
-                <?php else: ?>
-                    <i class="fas fa-user-circle"></i>
-                <?php endif; ?>
-                <div class="profile-upload-overlay">
-                    <form method="POST" action="" enctype="multipart/form-data" style="position:relative;">
-                        <input type="file" name="profile_image" accept="image/*" onchange="this.form.submit()">
-                        <i class="fas fa-camera"></i>
-                    </form>
-                </div>
-            </div>
-            <div class="profile-name"><?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?></div>
-            <div class="profile-meta"><?php echo htmlspecialchars($user['role_name']); ?></div>
-            <span class="profile-status-pill <?php echo $user['is_active'] ? 'active' : 'inactive'; ?>"><?php echo $user['is_active'] ? '✓ Active' : 'Inactive'; ?></span>
-            <div class="profile-summary-divider"></div>
-            <div class="profile-summary-id-label">Username</div>
-            <div class="profile-summary-id-value">@<?php echo htmlspecialchars($user['username']); ?></div>
-            <div class="profile-hint"><i class="fas fa-camera me-1"></i> Click the camera icon to upload &middot; JPG, PNG, GIF, WEBP &middot; Max 2MB</div>
-        </div>
-    </div>
-
-    <!-- Personal Information (merged with contact details) -->
-    <div class="card shadow-sm rounded-3">
-        <div class="profile-card-header">
-            <span><i class="fas fa-id-card me-1"></i> Personal Information</span>
-            <button type="button" class="profile-btn-edit-outline" id="toggleEditBtn" onclick="toggleEdit()"><i class="fas fa-pen me-1"></i> Edit Profile</button>
-        </div>
-        <div class="card-body">
-
-            <!-- View Mode -->
-            <div id="viewMode">
-                <div class="profile-info-row"><span class="profile-info-label"><i class="fas fa-user profile-info-icon"></i>Full Name</span><span class="profile-info-value"><?php echo htmlspecialchars(trim($user['first_name'] . ' ' . ($user['middle_name'] ?? '') . ' ' . $user['last_name'])); ?></span></div>
-                <div class="profile-info-row"><span class="profile-info-label"><i class="fas fa-venus-mars profile-info-icon"></i>Gender</span><span class="profile-info-value"><?php echo htmlspecialchars($user['sex'] ?? 'Not specified'); ?></span></div>
-                <div class="profile-info-row"><span class="profile-info-label"><i class="fas fa-envelope profile-info-icon"></i>Email</span><span class="profile-info-value"><?php echo htmlspecialchars($user['email']); ?></span></div>
-                <div class="profile-info-row"><span class="profile-info-label"><i class="fas fa-phone profile-info-icon"></i>Contact Number</span><span class="profile-info-value"><?php echo htmlspecialchars($user['contact_number'] ?? 'Not provided'); ?></span></div>
-            </div>
-
-            <!-- Edit Mode -->
-            <div id="editMode" style="display:none;">
-                <div class="profile-edit-notice"><i class="fas fa-info-circle me-1"></i> Update your account information below. Leave the password fields blank if you don't want to change your password.</div>
-                <form method="POST" action="">
-                    <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
-                    <input type="hidden" name="update_profile" value="1">
-
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <label class="profile-form-label">First Name</label>
-                            <input type="text" name="first_name" class="profile-form-input" value="<?php echo htmlspecialchars($user['first_name']); ?>" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="profile-form-label">Middle Name</label>
-                            <input type="text" name="middle_name" class="profile-form-input" value="<?php echo htmlspecialchars($user['middle_name'] ?? ''); ?>">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="profile-form-label">Last Name</label>
-                            <input type="text" name="last_name" class="profile-form-input" value="<?php echo htmlspecialchars($user['last_name']); ?>" required>
-                        </div>
-                        <div class="col-12">
-                            <label class="profile-form-label">Email</label>
-                            <input type="email" name="email" class="profile-form-input" value="<?php echo htmlspecialchars($user['email']); ?>" required>
-                        </div>
-                    </div>
-
-                    <div class="profile-section-label" style="margin-top:20px;"><i class="fas fa-lock"></i> Change Password</div>
-                    <p class="text-muted small mb-3">Leave blank if you don't want to change your password.</p>
-
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <label class="profile-form-label">Current Password</label>
-                            <input type="password" name="current_password" class="profile-form-input" placeholder="Enter current password">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="profile-form-label">New Password</label>
-                            <input type="password" name="new_password" class="profile-form-input" placeholder="Min 6 characters">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="profile-form-label">Confirm New Password</label>
-                            <input type="password" name="confirm_password" class="profile-form-input" placeholder="Confirm new password">
-                        </div>
-                    </div>
-
-                    <div class="d-flex justify-content-end gap-2 mt-4">
-                        <button type="button" class="profile-btn-cancel" onclick="toggleEdit()"><i class="fas fa-times me-1"></i> Cancel</button>
-                        <button type="submit" class="profile-btn-edit"><i class="fas fa-save me-1"></i> Save Changes</button>
-                    </div>
+<!-- Profile summary + Personal information -->
+<div class="apf-grid apf-grid-top">
+    <div class="apf-card apf-summary">
+        <div class="profile-avatar">
+            <?php if ($profile_image): ?>
+                <img src="<?php echo $profile_image; ?>" alt="Profile Photo">
+            <?php else: ?>
+                <i class="fas fa-user-circle"></i>
+            <?php endif; ?>
+            <div class="profile-upload-overlay" title="Change profile photo">
+                <form method="POST" action="" enctype="multipart/form-data" style="position:relative;">
+                    <input type="file" name="profile_image" id="apfImageInput" accept="image/*" onchange="this.form.submit()">
+                    <i class="fas fa-camera"></i>
                 </form>
             </div>
+        </div>
+        <div class="profile-name"><?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?></div>
+        <div class="apf-role"><?php echo htmlspecialchars($user['role_name']); ?></div>
+        <span class="apf-badge <?php echo $user['is_active'] ? 'ok' : 'off'; ?>"><?php echo $user['is_active'] ? '<i class="fas fa-check-circle"></i> Active' : 'Inactive'; ?></span>
+        <div class="apf-id-box">
+            <div class="apf-label">Username</div>
+            <div class="apf-id-value">@<?php echo htmlspecialchars($user['username']); ?></div>
+        </div>
+        <label for="apfImageInput" class="apf-btn apf-btn-light"><i class="fas fa-camera"></i> Change Photo</label>
+        <div class="apf-hint">JPG, PNG, GIF or WEBP &middot; Max 2MB</div>
+    </div>
+
+    <div class="apf-card">
+        <div class="apf-card-head">
+            <h5><span class="apf-ic"><i class="fas fa-id-card"></i></span> Personal Information</h5>
+            <button type="button" class="apf-btn apf-btn-outline" id="toggleEditBtn" onclick="toggleEdit()"><i class="fas fa-pen"></i> Edit Profile</button>
+        </div>
+
+        <!-- View Mode -->
+        <div id="viewMode">
+            <div class="apf-fields">
+                <div class="apf-field"><div class="apf-label"><i class="fas fa-user"></i> Full Name</div><div class="apf-value"><?php echo htmlspecialchars(trim($user['first_name'] . ' ' . ($user['middle_name'] ?? '') . ' ' . $user['last_name'])); ?></div></div>
+                <div class="apf-field"><div class="apf-label"><i class="fas fa-venus-mars"></i> Gender</div><div class="apf-value"><?php echo $apf_val($user['sex'] ?? '', 'Not specified'); ?></div></div>
+                <div class="apf-field"><div class="apf-label"><i class="fas fa-envelope"></i> Email</div><div class="apf-value"><?php echo $apf_val($user['email'] ?? ''); ?></div></div>
+                <div class="apf-field"><div class="apf-label"><i class="fas fa-phone"></i> Contact Number</div><div class="apf-value"><?php echo $apf_val($user['contact_number'] ?? ''); ?></div></div>
+            </div>
+        </div>
+
+        <!-- Edit Mode (same form and backend as before; password moved to its own card below) -->
+        <div id="editMode" style="display:none;">
+            <div class="profile-edit-notice"><i class="fas fa-info-circle me-1"></i> Update your account information below. To change your password, use the Change Password section.</div>
+            <form method="POST" action="">
+                <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
+                <input type="hidden" name="update_profile" value="1">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="profile-form-label">First Name</label>
+                        <input type="text" name="first_name" class="profile-form-input" value="<?php echo htmlspecialchars($user['first_name']); ?>" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="profile-form-label">Middle Name</label>
+                        <input type="text" name="middle_name" class="profile-form-input" value="<?php echo htmlspecialchars($user['middle_name'] ?? ''); ?>">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="profile-form-label">Last Name</label>
+                        <input type="text" name="last_name" class="profile-form-input" value="<?php echo htmlspecialchars($user['last_name']); ?>" required>
+                    </div>
+                    <div class="col-12">
+                        <label class="profile-form-label">Email</label>
+                        <input type="email" name="email" class="profile-form-input" value="<?php echo htmlspecialchars($user['email']); ?>" required>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <button type="button" class="profile-btn-cancel" onclick="toggleEdit()"><i class="fas fa-times me-1"></i> Cancel</button>
+                    <button type="submit" class="profile-btn-edit"><i class="fas fa-save me-1"></i> Save Changes</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 
-<?php if ($user['role_name'] === 'Teacher'): ?>
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card shadow-sm rounded-3">
-            <div class="profile-card-header"><span><i class="fas fa-chalkboard-teacher me-1"></i> Professional Information</span></div>
-            <div class="card-body">
-                <div class="profile-account-grid">
-                    <div class="profile-info-row"><span class="profile-info-label"><i class="fas fa-briefcase profile-info-icon"></i>Position</span><span class="profile-info-value"><?php echo htmlspecialchars($user['position_designation'] ?? 'Not specified'); ?></span></div>
-                    <div class="profile-info-row"><span class="profile-info-label"><i class="fas fa-flask profile-info-icon"></i>Specialization</span><span class="profile-info-value"><?php echo htmlspecialchars($user['specialization'] ?? 'Not specified'); ?></span></div>
-                    <div class="profile-info-row"><span class="profile-info-label"><i class="fas fa-graduation-cap profile-info-icon"></i>Degree/Course</span><span class="profile-info-value"><?php echo htmlspecialchars($user['degree_course'] ?? 'Not specified'); ?></span></div>
-                    <div class="profile-info-row"><span class="profile-info-label"><i class="fas fa-book-reader profile-info-icon"></i>Highest Educ. Attainment</span><span class="profile-info-value"><?php echo htmlspecialchars($user['highest_educ_attainment'] ?? 'Not specified'); ?></span></div>
-                    <div class="profile-info-row"><span class="profile-info-label"><i class="fas fa-id-badge profile-info-icon"></i>PRC License No.</span><span class="profile-info-value"><?php echo htmlspecialchars($user['prc_license_number'] ?? 'Not provided'); ?></span></div>
-                    <div class="profile-info-row"><span class="profile-info-label"><i class="fas fa-hourglass-half profile-info-icon"></i>Years of Experience</span><span class="profile-info-value"><?php echo (int)($user['years_experience'] ?? 0); ?></span></div>
-                    <div class="profile-info-row"><span class="profile-info-label"><i class="fas fa-certificate profile-info-icon"></i>Qualification Status</span><span class="profile-info-value"><?php echo htmlspecialchars($user['qualification_status'] ?? 'Pending'); ?></span></div>
-                    <div class="profile-info-row"><span class="profile-info-label"><i class="fas fa-user-check profile-info-icon"></i>SHS-Qualified</span><span class="profile-info-value"><?php echo !empty($user['can_handle_shs']) ? 'Yes' : 'No'; ?></span></div>
-                </div>
-                <div class="profile-info-row" style="border-top:1px solid var(--border-soft); margin-top:4px; padding-top:14px;">
-                    <span class="profile-info-label"><i class="fas fa-chalkboard profile-info-icon"></i>Assigned Subjects</span>
-                    <span class="profile-info-value">
-                        <?php if (!empty($my_classes)):
-                            $class_lines = [];
-                            foreach ($my_classes as $c) {
-                                $class_lines[] = htmlspecialchars($c['subject_name'] . ' — ' . $c['grade_level'] . ' ' . $c['section_name']);
-                            }
-                            echo implode('<br>', $class_lines);
-                        else: ?>
-                            No classes assigned yet.
-                        <?php endif; ?>
-                    </span>
-                </div>
-            </div>
-        </div>
+<?php if ($user['role_name'] === 'Teacher'):
+    // Department / Level exactly as registered (users.department_level) -- display only.
+    $apf_dept = strtoupper(trim((string)($user['department_level'] ?? '')));
+    $apf_dept_label = $apf_dept === 'JHS' ? 'JHS &mdash; Grades 7&ndash;10' : ($apf_dept === 'SHS' ? 'SHS &mdash; Grades 11&ndash;12' : '');
+?>
+<!-- Professional Information (teachers only -- same data as before) -->
+<div class="apf-card">
+    <div class="apf-card-head">
+        <h5><span class="apf-ic"><i class="fas fa-chalkboard-teacher"></i></span> Professional Information</h5>
     </div>
+    <div class="apf-fields">
+        <div class="apf-field"><div class="apf-label"><i class="fas fa-briefcase"></i> Position / Designation</div><div class="apf-value"><?php echo $apf_val($user['position_designation'] ?? '', 'Not specified'); ?></div></div>
+        <div class="apf-field"><div class="apf-label"><i class="fas fa-flask"></i> Specialization / Subject Area</div><div class="apf-value"><?php echo $apf_val($user['specialization'] ?? '', 'Not specified'); ?></div></div>
+        <div class="apf-field"><div class="apf-label"><i class="fas fa-graduation-cap"></i> Degree / Course</div><div class="apf-value"><?php echo $apf_val($user['degree_course'] ?? '', 'Not specified'); ?></div></div>
+        <div class="apf-field"><div class="apf-label"><i class="fas fa-book-reader"></i> Highest Educational Attainment</div><div class="apf-value"><?php echo $apf_val($user['highest_educ_attainment'] ?? '', 'Not specified'); ?></div></div>
+        <div class="apf-field"><div class="apf-label"><i class="fas fa-id-badge"></i> PRC License Number</div><div class="apf-value"><?php echo $apf_val($user['prc_license_number'] ?? ''); ?></div></div>
+        <div class="apf-field"><div class="apf-label"><i class="fas fa-hourglass-half"></i> Years of Teaching Experience</div><div class="apf-value"><?php echo (int)($user['years_experience'] ?? 0); ?> <?php echo (int)($user['years_experience'] ?? 0) === 1 ? 'year' : 'years'; ?></div></div>
+        <div class="apf-field"><div class="apf-label"><i class="fas fa-school"></i> Department / Level</div><div class="apf-value"><?php echo $apf_dept_label !== '' ? '<span class="apf-badge dept">' . $apf_dept_label . '</span>' : '<span class="apf-empty">Not set</span>'; ?></div></div>
+        <div class="apf-field"><div class="apf-label"><i class="fas fa-certificate"></i> Qualification Status</div><div class="apf-value"><?php $apf_q = $user['qualification_status'] ?? 'Pending'; ?><span class="apf-badge <?php echo $apf_q === 'Qualified' ? 'ok' : ($apf_q === 'Not Qualified' ? 'off' : 'wait'); ?>"><?php echo htmlspecialchars($apf_q); ?></span></div></div>
+    </div>
+
+    <!-- Teaching Assignments: the teacher's current assignments (teacher_subjects, active school year) -->
+    <div class="apf-sub-head">
+        <span><i class="fas fa-chalkboard"></i> Teaching Assignments</span>
+        <span class="apf-count"><?php echo count($my_classes); ?> class<?php echo count($my_classes) === 1 ? '' : 'es'; ?></span>
+    </div>
+    <?php if (!empty($my_classes)): ?>
+        <div class="apf-assign-list">
+            <?php foreach ($my_classes as $c): ?>
+                <div class="apf-assign">
+                    <span class="apf-assign-subj"><i class="fas fa-book"></i> <?php echo htmlspecialchars($c['subject_name']); ?></span>
+                    <span class="apf-badge sec"><?php echo htmlspecialchars($c['grade_level'] . ' – ' . $c['section_name']); ?><?php echo !empty($c['strand']) ? ' · ' . htmlspecialchars($c['strand']) : ''; ?></span>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    <?php else: ?>
+        <div class="apf-empty">No classes assigned yet.</div>
+    <?php endif; ?>
 </div>
 <?php endif; ?>
 
 <!-- Account Information -->
-<div class="row">
-    <div class="col-12">
-        <div class="card shadow-sm rounded-3">
-            <div class="profile-card-header"><span><i class="fas fa-shield-alt me-1"></i> Account Information</span></div>
-            <div class="card-body">
-                <div class="profile-account-grid">
-                    <div class="profile-info-row"><span class="profile-info-label"><i class="fas fa-user-tag profile-info-icon"></i>Username</span><span class="profile-info-value">@<?php echo htmlspecialchars($user['username']); ?></span></div>
-                    <div class="profile-info-row"><span class="profile-info-label"><i class="fas fa-calendar-plus profile-info-icon"></i>Date Created</span><span class="profile-info-value"><?php echo date('F d, Y', strtotime($user['created_at'])); ?></span></div>
-                    <div class="profile-info-row"><span class="profile-info-label"><i class="fas fa-user-shield profile-info-icon"></i>Account Type</span><span class="profile-info-value"><?php echo htmlspecialchars($user['role_name']); ?></span></div>
-                    <div class="profile-info-row"><span class="profile-info-label"><i class="fas fa-clock profile-info-icon"></i>Last Login</span><span class="profile-info-value"><?php echo $user['last_login'] ? date('F d, Y h:i A', strtotime($user['last_login'])) : 'Never'; ?></span></div>
-                </div>
+<div class="apf-card">
+    <div class="apf-card-head">
+        <h5><span class="apf-ic"><i class="fas fa-shield-alt"></i></span> Account Information</h5>
+    </div>
+    <div class="apf-fields">
+        <div class="apf-field"><div class="apf-label"><i class="fas fa-user-tag"></i> Username</div><div class="apf-value">@<?php echo htmlspecialchars($user['username']); ?></div></div>
+        <div class="apf-field"><div class="apf-label"><i class="fas fa-user-shield"></i> Account Type</div><div class="apf-value"><?php echo htmlspecialchars($user['role_name']); ?></div></div>
+        <div class="apf-field"><div class="apf-label"><i class="fas fa-toggle-on"></i> Account Status</div><div class="apf-value"><span class="apf-badge <?php echo $user['is_active'] ? 'ok' : 'off'; ?>"><?php echo $user['is_active'] ? '<i class="fas fa-check-circle"></i> Active' : 'Inactive'; ?></span></div></div>
+        <div class="apf-field"><div class="apf-label"><i class="fas fa-calendar-plus"></i> Date Created</div><div class="apf-value"><?php echo !empty($user['created_at']) ? date('F d, Y', strtotime($user['created_at'])) : '<span class="apf-empty">N/A</span>'; ?></div></div>
+        <div class="apf-field"><div class="apf-label"><i class="fas fa-clock"></i> Last Login</div><div class="apf-value"><?php echo $user['last_login'] ? date('F d, Y h:i A', strtotime($user['last_login'])) : 'Never'; ?></div></div>
+    </div>
+</div>
+
+<!-- Change Password: posts to the SAME profile-update handler above (current
+     name/email are sent unchanged, so only the password changes). -->
+<div class="apf-card">
+    <div class="apf-card-head">
+        <h5><span class="apf-ic"><i class="fas fa-lock"></i></span> Change Password</h5>
+    </div>
+    <form method="POST" action="" autocomplete="off">
+        <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
+        <input type="hidden" name="update_profile" value="1">
+        <input type="hidden" name="first_name" value="<?php echo htmlspecialchars($user['first_name']); ?>">
+        <input type="hidden" name="middle_name" value="<?php echo htmlspecialchars($user['middle_name'] ?? ''); ?>">
+        <input type="hidden" name="last_name" value="<?php echo htmlspecialchars($user['last_name']); ?>">
+        <input type="hidden" name="email" value="<?php echo htmlspecialchars($user['email']); ?>">
+        <div class="apf-pw-grid">
+            <div>
+                <label class="apf-form-label" for="apfCurPw">Current Password</label>
+                <div class="apf-pw"><input type="password" id="apfCurPw" name="current_password" class="profile-form-input" placeholder="Enter current password" required autocomplete="current-password"><button type="button" class="apf-eye" aria-label="Show password"><i class="fas fa-eye"></i></button></div>
+            </div>
+            <div>
+                <label class="apf-form-label" for="apfNewPw">New Password</label>
+                <div class="apf-pw"><input type="password" id="apfNewPw" name="new_password" class="profile-form-input" placeholder="Min 6 characters" required minlength="6" autocomplete="new-password"><button type="button" class="apf-eye" aria-label="Show password"><i class="fas fa-eye"></i></button></div>
+            </div>
+            <div>
+                <label class="apf-form-label" for="apfConfPw">Confirm New Password</label>
+                <div class="apf-pw"><input type="password" id="apfConfPw" name="confirm_password" class="profile-form-input" placeholder="Confirm new password" required minlength="6" autocomplete="new-password"><button type="button" class="apf-eye" aria-label="Show password"><i class="fas fa-eye"></i></button></div>
             </div>
         </div>
-    </div>
+        <div class="apf-pw-foot">
+            <small><i class="fas fa-shield-halved me-1"></i> Use at least 6 characters. Enter your current password to confirm the change.</small>
+            <button type="submit" class="apf-btn apf-btn-primary"><i class="fas fa-save"></i> Save Changes</button>
+        </div>
+    </form>
 </div>
 
 <script>
@@ -357,13 +444,23 @@ function toggleEdit() {
     if (editMode.style.display === 'none') {
         viewMode.style.display = 'none';
         editMode.style.display = 'block';
-        btn.innerHTML = '<i class="fas fa-times me-1"></i> Cancel';
+        btn.innerHTML = '<i class="fas fa-times"></i> Cancel';
     } else {
         viewMode.style.display = 'block';
         editMode.style.display = 'none';
-        btn.innerHTML = '<i class="fas fa-pen me-1"></i> Edit';
+        btn.innerHTML = '<i class="fas fa-pen"></i> Edit Profile';
     }
 }
+// Show / hide password (display only).
+document.querySelectorAll('.apf-eye').forEach(function (b) {
+    b.addEventListener('click', function () {
+        var input = b.parentNode.querySelector('input');
+        var show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        b.innerHTML = show ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+        b.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    });
+});
 </script>
 
 <?php include 'includes/footer.php'; ?>

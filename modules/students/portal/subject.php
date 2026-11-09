@@ -25,9 +25,11 @@
 
 session_start();
 require_once '../../../config/database.php';
+require_once '../../../includes/student_password.php';   // spwRequireChangedPassword()
 require_once '../../../includes/ai_quiz_gform_helpers.php'; // aiQuizSyncFormResponses(), aiQuizGetResponses()
 require_once '../../../includes/ai_resource_submission_helpers.php'; // aiResourceGetSubmission() — for the native in-app answer/manual-check case below
 require_once '../../../includes/student_portal_ui.php'; // spSubjectColor(), spInitial()
+require_once '../../../includes/student_portal_data.php'; // spdCurriculumClasses(), spdTeacherName()
 require_once '../../../includes/grading_helpers.php'; // gh_getCurrentTerm() for the automatic banner chip
 require_once '../../../includes/message_comment_helpers.php'; // comments under each message (teacher is notified)
 require_once '../../../includes/classwork_helpers.php'; // Classroom classwork -> "Your Work" (attach files, Turn In)
@@ -37,6 +39,12 @@ if (!isset($_SESSION['student_id']) || $_SESSION['role'] !== 'Student') {
     header('Location: ../../../student_login.php');
     exit;
 }
+
+// First login: the account still holds the temporary password issued when the
+// Admin approved the enrollment, so the portal may not be used until it is
+// changed (see includes/student_password.php).
+if (spwRequireChangedPassword()) exit;
+
 
 $student_id = $_SESSION['student_id'];
 $lrn = $_SESSION['student_lrn'];
@@ -53,17 +61,13 @@ $active_sy = getRecord("SELECT * FROM school_years WHERE is_active = 1");
 // ---- This student must actually be enrolled in a section this subject is
 // taught to, this school year — never trust the ?subject= query string on
 // its own just because it looks like a real subject code. ----
-$class = getRecord(
-        "SELECT sub.subject_code, sub.subject_name, u.first_name AS teacher_first, u.last_name AS teacher_last,
-            e.section_id, e.school_year_id, ts.teacher_id
-     FROM enrollments e
-     JOIN teacher_subjects ts ON ts.section_id = e.section_id AND ts.school_year_id = e.school_year_id
-     JOIN subjects sub ON sub.subject_code = ts.subject_code
-     JOIN users u ON u.user_id = ts.teacher_id
-     WHERE e.student_id = ? AND e.school_year_id = ? AND sub.subject_code = ?
-     LIMIT 1",
-    [$student_id, $active_sy['sy_id'] ?? 0, $subject_code]
-);
+// Open only a subject of the student's own curriculum (grade / strand /
+// section, or one already assigned to the section). It opens even before a
+// teacher is assigned ("To Be Assigned").
+$class = null;
+foreach (spdCurriculumClasses($student_id, $active_sy['sy_id'] ?? 0) as $cc) {
+    if ($cc['subject_code'] === $subject_code) { $class = $cc; break; }
+}
 if (!$class) {
     header('Location: dashboard.php');
     exit;
@@ -334,9 +338,9 @@ if (!empty($student['profile_image']) && file_exists('../../../static/uploads/pr
 }
 
 $subject_color = spSubjectColor($class['subject_code']);
-$teacher_name = trim($class['teacher_first'] . ' ' . $class['teacher_last']);
+$teacher_name = spdTeacherName($class);
 $current_term = gh_getCurrentTerm($active_sy['sy_id'] ?? 0);
-$class_schedule = getRecords("SELECT day_of_week, TIME_FORMAT(start_time, '%H:%i') AS start_time, TIME_FORMAT(end_time, '%H:%i') AS end_time FROM teacher_class_schedule WHERE teacher_id=? AND subject_code=? AND section_id=? AND school_year_id=? AND is_active=1 ORDER BY day_of_week, start_time", [(int)$class['teacher_id'], $class['subject_code'], (int)$class['section_id'], (int)$class['school_year_id']]);
+$class_schedule = empty($class['teacher_id']) ? [] : getRecords("SELECT day_of_week, TIME_FORMAT(start_time, '%H:%i') AS start_time, TIME_FORMAT(end_time, '%H:%i') AS end_time FROM teacher_class_schedule WHERE teacher_id=? AND subject_code=? AND section_id=? AND school_year_id=? AND is_active=1 ORDER BY day_of_week, start_time", [(int)$class['teacher_id'], $class['subject_code'], (int)$class['section_id'], (int)$class['school_year_id']]);
 $page_title = $class['subject_name'];
 ?>
 <!DOCTYPE html>
@@ -605,8 +609,8 @@ $page_title = $class['subject_name'];
                 <div class="subject-banner-icon"><i class="fas fa-book-open"></i></div>
                 <h2><?php echo htmlspecialchars($class['subject_name']); ?></h2>
                 <div class="subject-banner-meta">
-                    <div class="subject-avatar"><?php echo htmlspecialchars(spInitial($class['teacher_first'])); ?></div>
-                    <span><?php echo htmlspecialchars($class['teacher_first'] . ' ' . $class['teacher_last']); ?></span>
+                    <div class="subject-avatar"><?php echo !empty($class['teacher_id']) ? htmlspecialchars(spInitial($class['teacher_first'])) : '<i class="fas fa-user-clock"></i>'; ?></div>
+                    <span><?php echo htmlspecialchars(spdTeacherName($class)); ?></span>
                     <span class="subject-banner-chip">Student Class</span>
                     <?php if ($current_term): ?><span class="subject-banner-chip active"><?php echo htmlspecialchars($current_term); ?></span><?php endif; ?>
                     <span class="subject-banner-chip">SY <?php echo htmlspecialchars($active_sy['sy_name'] ?? ''); ?></span>
@@ -741,6 +745,14 @@ $page_title = $class['subject_name'];
                                     <div class="yw-note">Turned in <?php echo htmlspecialchars(date('M j, Y g:i A', strtotime($cw['submitted_at']))); ?></div>
                                     <?php if (!$cw_graded && $cw_g && $cw_myfiles && empty($cw['ai_checked_at']) && strtotime($cw['submitted_at']) > time() - 600): ?>
                                         <div class="yw-note"><i class="fas fa-spinner fa-spin me-1"></i>The AI is checking your work — refresh in a minute to see the score.</div>
+                                    <?php endif; ?>
+                                    <?php if (!$cw_graded && $cw_g && $cw_myfiles && empty($cw['ai_checked_at']) && strtotime($cw['submitted_at']) <= time() - 90): ?>
+                                        <form method="POST" action="classwork_action.php" class="mt-1">
+                                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
+                                            <input type="hidden" name="assignment_id" value="<?php echo (int) $cw['assignment_id']; ?>">
+                                            <input type="hidden" name="action" value="recheck">
+                                            <button type="submit" class="btn btn-sm btn-outline-primary"><i class="fas fa-robot me-1"></i>No score yet? Check again</button>
+                                        </form>
                                     <?php endif; ?>
                                 <?php elseif ($cw_state['key'] === 'missing' && $cw_closed): ?>
                                     <div class="yw-note yw-warn"><i class="fas fa-lock me-1"></i>Closed — your teacher does not accept work after the due date.</div>

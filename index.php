@@ -1431,9 +1431,7 @@ $__dash_badge_colors = [
     'warning'   => ['#FEF3E6', '#B54708'],
 ];
 list($__dash_bg, $__dash_fg) = $__dash_badge_colors[$__dash_status['badge']] ?? $__dash_badge_colors['secondary'];
-$__dash_range = ($__dash_window && !empty($__dash_window['start_date']) && !empty($__dash_window['end_date']))
-    ? formatDate($__dash_window['start_date']) . ' – ' . formatDate($__dash_window['end_date'])
-    : 'Dates not set';
+$__dash_range = gh_termWindowRangeText($__dash_window);
 ?>
 <div class="mb-3">
     <span class="btn btn-sm" title="<?php echo htmlspecialchars($__dash_status['label']); ?>"
@@ -1480,6 +1478,24 @@ $__dash_range = ($__dash_window && !empty($__dash_window['start_date']) && !empt
             </div>
         </div>
     </div>
+<?php
+// Adviser reminder: students of MY advisory section with pending requirements (status + names only).
+$__adv_section = getRecord("SELECT section_id FROM sections WHERE adviser_id = ? AND is_active = 1 LIMIT 1", [(int) $user_id]);
+if ($__adv_section):
+    require_once __DIR__ . '/includes/enrollment_helpers_online.php';
+    $__adv_inc = count(oeAdviserIncompleteRequirements($user_id));
+?>
+    <div class="col-xl-3 col-md-6">
+        <a href="modules/teachers/incomplete_requirements.php" class="dash-stat dash-anim-card" data-dashboard-order="4" style="text-decoration:none;">
+            <div class="dash-stat-icon" style="background:#FFF4E5;color:#B45309;"><i class="fas fa-file-circle-exclamation"></i></div>
+            <div>
+                <div class="dash-stat-label">Incomplete Requirements</div>
+                <div class="dash-stat-value" id="dashIncompleteReq" style="color:#B45309;"><?php echo number_format($__adv_inc); ?> <small style="font-size:14px;font-weight:600;">Student<?php echo $__adv_inc === 1 ? '' : 's'; ?></small></div>
+                <div style="font-size:12.5px;color:#667085;">View Students &rarr;</div>
+            </div>
+        </a>
+    </div>
+<?php endif; ?>
 </div>
 
 <!-- My Classes Table -->

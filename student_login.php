@@ -2,25 +2,75 @@
 // student_login.php
 // Student Portal Login: LRN + the student's own password (includes/student_password.php).
 // The password is created from the one-time link in the "Enrollment Approved" email.
+//
+// Security notes:
+//  - Every failed sign-in (LRN not enrolled, application not approved, no password
+//    created yet, wrong password, inactive record) shows the SAME message and the
+//    SAME help links, so the page cannot be used to find out which LRNs exist.
+//    The real reason is written to the audit log (Admin > Audit Trail) only.
+//  - Wrong tries are throttled per LRN + device, not by locking the student's
+//    account, so a classmate who knows the LRN cannot lock the student out
+//    (see spwLoginBlocked() in includes/student_password.php).
+//  - When nothing exists to check, a dummy password check runs so the response
+//    time does not reveal whether the LRN exists.
 
 session_start();
 require_once 'config/database.php';
 require_once 'includes/auth.php';
-require_once 'includes/enrollment_helpers_online.php'; // deleted_at column (Recycle Bin) used in the application status message
+require_once 'includes/enrollment_helpers_online.php'; // deleted_at column (Recycle Bin) used in the application lookup
 require_once 'includes/student_password.php';          // LRN + password
+require_once 'includes/parent_portal.php';             // Parent tab: LRN + parent name
 spwEnsureSchema();
+spwAttemptEnsureSchema();
 
 // If already logged in as student, redirect to dashboard
 if (isset($_SESSION['student_id']) && isset($_SESSION['role']) && $_SESSION['role'] === 'Student') {
     header('Location: modules/students/portal/dashboard.php');
     exit;
 }
+// Already signed in as a parent: go straight to the Parent Portal.
+if (!empty($_SESSION['parent_id']) && ($_SESSION['role'] ?? '') === 'Parent') {
+    header('Location: parent/index.php');
+    exit;
+}
 
 $error = '';
-$error_link = null; // optional [url, label] shown under the error
+$error_links = []; // optional list of [url, label] shown under the error
 $csrf_token = generateCSRFToken();
+// Which tab is active: 'student' (LRN + password) or 'parent' (LRN + parent/guardian name).
+$tab = ($_POST['login_as'] ?? '') === 'parent' || ($_GET['as'] ?? '') === 'parent' ? 'parent' : 'student';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $tab === 'parent') {
+    if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
+        die('Invalid security token. Please refresh the page and try again.');
+    }
+    $p_lrn = preg_replace('/\s+/', '', sanitize($_POST['lrn'] ?? ''));
+    $p_name = sanitize($_POST['parent_name'] ?? '');
+    if (empty($p_lrn)) {
+        $error = 'Please enter the student’s LRN.';
+    } elseif (!preg_match('/^\d{12}$/', $p_lrn)) {
+        $error = 'The LRN must be exactly 12 digits (numbers only).';
+    } elseif (trim($p_name) === '') {
+        $error = 'Please enter the Parent / Guardian name.';
+    } elseif (isStudentIpRateLimited()) {
+        $error = 'Too many attempts. Please try again in a few minutes.';
+    } else {
+        $res = ppLoginByLrnAndName($p_lrn, $p_name);
+        if (!empty($res['ok'])) {
+            ppStartSession($res['parent']);
+            // The LRN decides which child this sign-in is for: even when brothers
+            // or sisters share the same parent account, the portal opens on the
+            // learner whose LRN was typed -- never on a sibling chosen earlier.
+            $_SESSION['pp_child'] = (int) ($res['student_id'] ?? 0);
+            header('Location: parent/index.php');
+            exit;
+        }
+        logActivity(null, 'student', 'Failed login', 'Parent Portal (LRN login): ' . ($res['reason'] ?? 'no match') . ' for LRN ' . $p_lrn);
+        $error = 'Wrong LRN or Parent / Guardian name. Please check the name on record for this learner. '
+               . 'If you just enrolled, your application must be approved first.';
+        $error_links = [['enrollment_status.php', 'Check enrollment status']];
+    }
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
         die('Invalid security token. Please refresh the page and try again.');
     }
@@ -28,63 +78,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $lrn = preg_replace('/\s+/', '', sanitize($_POST['lrn'] ?? ''));
     $password = (string) ($_POST['password'] ?? '');
 
-    // The LRN must be the same one the learner entered under Personal
-    // Information in Online Enrollment -- no online application with this
-    // LRN means no portal access (and it must be approved first).
-    $application = null;
-    $walkin = null; // portal access given by the registrar (walk-in / older records, no online application)
-    if ($lrn !== '' && preg_match('/^\d{12}$/', $lrn)) {
-        require_once __DIR__ . '/includes/student_records_helpers.php';
-        srEnsureSchema();
-        $walkin = getRecord("SELECT student_id FROM students WHERE lrn = ? AND is_active = 1 AND portal_access = 1", [$lrn]);
-        $application = getRecord(
-            "SELECT reference_no, status FROM online_applications WHERE lrn = ? AND deleted_at IS NULL
-             ORDER BY FIELD(status, 'Approved', 'Under Review', 'Pending', 'Incomplete Requirements', 'Rejected'), application_id DESC LIMIT 1",
-            [$lrn]
-        );
-    }
-
     if (empty($lrn)) {
         $error = 'Please enter your LRN.';
     } elseif (!preg_match('/^\d{12}$/', $lrn)) {
         $error = 'Your LRN must be exactly 12 digits (numbers only).';
     } elseif ($password === '') {
         $error = 'Please enter your password.';
-    } elseif (isStudentIpRateLimited()) {
-        $error = 'Too many attempts from this device. Please try again in a few minutes.';
-    } elseif (!$walkin && !$application) {
-        logActivity(null, 'student', 'Failed login', "LRN not found in Online Enrollment: $lrn");
-        $error = 'This LRN is not registered in Online Enrollment. Please enroll first using the same LRN you will use to sign in.';
-        $error_link = ['online_enrollment.php', 'Go to Online Enrollment'];
-    } elseif (!$walkin && $application['status'] !== 'Approved') {
-        logActivity(null, 'student', 'Failed login', "LRN $lrn application not approved ({$application['status']})");
-        $error = in_array($application['status'], ['Incomplete Requirements', 'Rejected', 'For Correction'], true)
-            ? 'Your enrollment application (Ref. ' . $application['reference_no'] . ') has Incomplete Requirements. Submit the missing requirement on your Enrollment Tracking page, then you can sign in once it is approved.'
-            : 'Your enrollment application (Ref. ' . $application['reference_no'] . ') is still ' . $application['status'] . '. You can sign in once it is approved.';
-        $error_link = ['enrollment_status.php', 'Check enrollment status'];
+    } elseif (isStudentIpRateLimited() || spwLoginBlocked($lrn)) {
+        $error = 'Too many attempts. Please try again in a few minutes.';
     } else {
-        // Check if student exists with this LRN
-        $student = getRecord("
-            SELECT s.*, e.enrollment_status, e.section_id, sec.section_name, sec.grade_level
-            FROM students s
-            LEFT JOIN enrollments e ON s.student_id = e.student_id 
-                AND e.school_year_id = (SELECT sy_id FROM school_years WHERE is_active = 1)
-            LEFT JOIN sections sec ON e.section_id = sec.section_id
-            WHERE s.lrn = ? AND s.is_active = 1
-        ", [$lrn]);
-        
-        if ($student && empty($student['portal_password_hash'])) {
-            // Approved, but no password yet: it is created from the emailed link.
-            $error = 'You have not created your password yet. Open the "Create My Password" link in your Enrollment Approved email, or get a new link below.';
-            $error_link = ['student/forgot_password.php', 'Create / Forgot password'];
-        } elseif ($student && ($mins = spwLockedMinutes($student)) > 0) {
-            $error = "Too many wrong passwords. Please try again in $mins minute(s), or reset your password.";
-            $error_link = ['student/forgot_password.php', 'Create / Forgot password'];
-        } elseif ($student && !spwVerify($student, $password)) {
-            logActivity(null, 'student', 'Failed login', "Wrong password for LRN $lrn");
-            $error = 'Wrong LRN or password.';
-            $error_link = ['student/forgot_password.php', 'Forgot your password?'];
-        } elseif ($student) {
+        require_once __DIR__ . '/includes/student_records_helpers.php';
+        srEnsureSchema();
+
+        // Portal access: registrar-granted (walk-in / older records) OR an APPROVED
+        // online application with this LRN.
+        $walkin = getRecord("SELECT student_id FROM students WHERE lrn = ? AND is_active = 1 AND portal_access = 1", [$lrn]);
+        $application = getRecord(
+            "SELECT reference_no, status FROM online_applications WHERE lrn = ? AND deleted_at IS NULL
+             ORDER BY FIELD(status, 'Approved', 'Under Review', 'Pending', 'Incomplete Requirements', 'Rejected'), application_id DESC LIMIT 1",
+            [$lrn]
+        );
+        $eligible = $walkin || ($application && in_array($application['status'], ['Approved', 'Incomplete Requirements'], true));
+
+        $student = null;
+        if ($eligible) {
+            $student = getRecord("
+                SELECT s.*, e.enrollment_status, e.section_id, sec.section_name, sec.grade_level
+                FROM students s
+                LEFT JOIN enrollments e ON s.student_id = e.student_id
+                    AND e.school_year_id = (SELECT sy_id FROM school_years WHERE is_active = 1)
+                LEFT JOIN sections sec ON e.section_id = sec.section_id
+                WHERE s.lrn = ? AND s.is_active = 1
+            ", [$lrn]);
+        }
+
+        $hash = $student['portal_password_hash'] ?? '';
+        if ($hash === '') {
+            spwFakeVerify($password);              // same time cost as a real check
+            $password_ok = false;
+        } else {
+            $password_ok = password_verify($password, $hash);
+        }
+
+        if ($student && $password_ok) {
+            spwLoginSucceeded($lrn, (int) $student['student_id']);
             session_regenerate_id(true);
             // Set student session
             $_SESSION['student_id'] = $student['student_id'];
@@ -95,9 +132,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['enrollment_status'] = $student['enrollment_status'] ?? 'Not Enrolled';
             $_SESSION['role'] = 'Student';
             $_SESSION['is_student_portal'] = true;
-            
+            $_SESSION['last_activity'] = time();
+
             // Log the login
             logActivity(null, 'student', 'Portal login', "Student $lrn logged in");
+
+            // First login with the temporary password issued on approval: the
+            // authentication succeeded, but the student may not use the portal
+            // until the password has been changed. No other page is reachable
+            // in the meantime (see modules/students/portal/dashboard.php).
+            if (spwMustChangePassword($student)) {
+                header('Location: student/change_password.php');
+                exit;
+            }
 
             // One-time flash — shown once on the dashboard right after the
             // loading screen fades, then cleared (see dashboard.php +
@@ -108,10 +155,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Redirect to student dashboard
             header('Location: modules/students/portal/dashboard.php');
             exit;
-        } else {
-            logActivity(null, 'student', 'Failed login', "Approved application but no active student record: $lrn");
-            $error = 'Your enrollment was approved, but your student account is not active yet. Please contact the registrar.';
         }
+
+        // Failed. The real reason goes to the audit log only, never to the screen.
+        if (!$walkin && !$application) {
+            $why = 'LRN not found in Online Enrollment';
+        } elseif (!$eligible) {
+            $why = 'application not approved (' . $application['status'] . ')';
+        } elseif (!$student) {
+            $why = 'approved but no active student record';
+        } elseif ($hash === '') {
+            $why = 'password not created yet';
+        } else {
+            $why = 'wrong password';
+        }
+        logActivity(null, 'student', 'Failed login', "LRN $lrn: $why");   // also feeds isStudentIpRateLimited()
+        spwLoginFailed($lrn);
+
+        // One message for every failure, with the same help links for everyone.
+        $error = 'Wrong LRN or password. First time signing in, or forgot your password? Use the links below. '
+               . 'If you just enrolled, your application must be approved first.';
+        $error_links = [
+            ['student/forgot_password.php', 'Create / Forgot password'],
+            ['enrollment_status.php', 'Check enrollment status'],
+        ];
     }
 }
 ?>
@@ -335,6 +402,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         hr {
             border-color: rgba(255,255,255,0.2);
         }
+        /* Student / Parent selector */
+        .login-tabs {
+            display: flex;
+            gap: 6px;
+            padding: 5px;
+            margin-bottom: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 12px;
+        }
+        .login-tab {
+            flex: 1;
+            border: none;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.85);
+            font-weight: 600;
+            font-size: 15px;
+            padding: 10px 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.25s;
+            text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+        }
+        .login-tab:hover { color: #ffffff; background: rgba(255, 255, 255, 0.1); }
+        .login-tab.on {
+            background: #1565c0;
+            color: #ffffff;
+            box-shadow: 0 4px 14px rgba(21, 101, 192, 0.4);
+        }
+        .login-pane[hidden] { display: none; }
     </style>
     <?php include __DIR__ . '/includes/pwa_head.php'; ?>
 </head>
@@ -343,23 +440,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="login-card">
             <div class="login-header">
                 <img src="static/images/logo.png" alt="Imelda Integrated Secondary School" class="logo-img">
-                <h3>Student Portal</h3>
-                <p>Sign in with your LRN and password</p>
+                <h3 id="loginTitle"><?php echo $tab === 'parent' ? 'Parent Portal' : 'Student Portal'; ?></h3>
+                <p id="loginSub"><?php echo $tab === 'parent' ? 'Sign in with your child’s LRN and your name' : 'Sign in with your LRN and password'; ?></p>
             </div>
-            
+
+            <div class="login-tabs" role="tablist" aria-label="Choose portal">
+                <button type="button" class="login-tab<?php echo $tab === 'student' ? ' on' : ''; ?>" data-tab="student" role="tab" aria-selected="<?php echo $tab === 'student' ? 'true' : 'false'; ?>">
+                    <i class="fas fa-user-graduate me-1"></i>Student
+                </button>
+                <button type="button" class="login-tab<?php echo $tab === 'parent' ? ' on' : ''; ?>" data-tab="parent" role="tab" aria-selected="<?php echo $tab === 'parent' ? 'true' : 'false'; ?>">
+                    <i class="fas fa-people-roof me-1"></i>Parent
+                </button>
+            </div>
+
             <?php if ($error): ?>
                 <div class="alert alert-danger alert-dismissible fade show">
                     <i class="fas fa-exclamation-circle me-2"></i>
                     <?php echo htmlspecialchars($error); ?>
-                    <?php if ($error_link): ?>
-                        <div class="mt-2"><a class="login-error-link" href="<?php echo htmlspecialchars($error_link[0]); ?>"><?php echo htmlspecialchars($error_link[1]); ?> <i class="fas fa-arrow-right ms-1"></i></a></div>
-                    <?php endif; ?>
+                    <?php foreach ($error_links as $el): ?>
+                        <div class="mt-2"><a class="login-error-link" href="<?php echo htmlspecialchars($el[0]); ?>"><?php echo htmlspecialchars($el[1]); ?> <i class="fas fa-arrow-right ms-1"></i></a></div>
+                    <?php endforeach; ?>
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             <?php endif; ?>
-            
-            <form method="POST" action="">
+
+            <form method="POST" action="" id="studentForm" class="login-pane"<?php echo $tab === 'parent' ? ' hidden' : ''; ?>>
                 <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
+                <input type="hidden" name="login_as" value="student">
                 <div class="field">
                     <label class="form-label fw-semibold" for="lrnInput">LRN</label>
                     <div class="input-group">
@@ -384,21 +491,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <a href="student/forgot_password.php" class="forgot-link"><i class="fas fa-key me-1"></i>Forgot password?</a>
                     </div>
                 </div>
-                
+
                 <button type="submit" class="btn btn-login">
                     <i class="fas fa-sign-in-alt me-2"></i> Sign In
                 </button>
             </form>
 
+            <form method="POST" action="" id="parentForm" class="login-pane"<?php echo $tab === 'student' ? ' hidden' : ''; ?>>
+                <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
+                <input type="hidden" name="login_as" value="parent">
+                <div class="field">
+                    <label class="form-label fw-semibold" for="pLrnInput">Student's LRN</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-id-card"></i></span>
+                        <input type="text" name="lrn" class="form-control" id="pLrnInput"
+                               placeholder="Enter your child's 12-digit LRN"
+                               inputmode="numeric" pattern="\d{12}" minlength="12" maxlength="12"
+                               title="Enter the student's 12-digit LRN (numbers only)"
+                               value="<?php echo htmlspecialchars(preg_replace('/\D/', '', (string) ($_POST['lrn'] ?? ''))); ?>"
+                               required autocomplete="off">
+                    </div>
+                    <div class="field-note"><div class="lrn-help" id="pLrnHelp" style="margin-top:0;">The LRN your child used in Online Enrollment.</div></div>
+                </div>
+                <div class="field">
+                    <label class="form-label fw-semibold" for="parentNameInput">Parent / Guardian Name</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-user"></i></span>
+                        <input type="text" name="parent_name" class="form-control" id="parentNameInput"
+                               placeholder="Full name of the parent / guardian"
+                               value="<?php echo htmlspecialchars((string) ($_POST['parent_name'] ?? '')); ?>"
+                               required autocomplete="name">
+                    </div>
+                    <div class="field-note"><div class="lrn-help" style="margin-top:0;">The Parent / Guardian name on record for this learner.</div></div>
+                </div>
+                <button type="submit" class="btn btn-login">
+                    <i class="fas fa-sign-in-alt me-2"></i> Sign In as Parent
+                </button>
+            </form>
+
             <hr class="my-4">
-            
+
             <div class="text-center text-muted small">
                 <p>© <?php echo date('Y'); ?> EGRADEPRO. All rights reserved.</p>
                 <p class="mb-0">Imelda Integrated Secondary School</p>
             </div>
         </div>
     </div>
-    
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="static/js/theme.js"></script>
     <script>
@@ -409,6 +548,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             b.innerHTML = '<i class="fas fa-eye' + (i.type === 'password' ? '' : '-slash') + '"></i>';
         });
     })();
+    // Student / Parent tabs: show one form at a time and update the header text.
+    (function () {
+        var tabs = document.querySelectorAll('.login-tab');
+        var panes = { student: document.getElementById('studentForm'), parent: document.getElementById('parentForm') };
+        var title = document.getElementById('loginTitle'), sub = document.getElementById('loginSub');
+        var COPY = {
+            student: { t: 'Student Portal', s: 'Sign in with your LRN and password' },
+            parent:  { t: 'Parent Portal',  s: 'Sign in with your child’s LRN and your name' }
+        };
+        function show(which) {
+            tabs.forEach(function (t) {
+                var on = t.getAttribute('data-tab') === which;
+                t.classList.toggle('on', on);
+                t.setAttribute('aria-selected', on ? 'true' : 'false');
+            });
+            Object.keys(panes).forEach(function (k) { if (panes[k]) panes[k].hidden = k !== which; });
+            if (title && COPY[which]) title.textContent = COPY[which].t;
+            if (sub && COPY[which]) sub.textContent = COPY[which].s;
+        }
+        tabs.forEach(function (t) { t.addEventListener('click', function () { show(t.getAttribute('data-tab')); }); });
+    })();
     // Digits only, exactly 12 -- the server checks the same rule.
     (function () {
         var input = document.getElementById('lrnInput'), help = document.getElementById('lrnHelp');
@@ -418,6 +578,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (digits !== input.value) input.value = digits;
             help.textContent = digits.length === 0 || digits.length === 12
                 ? 'Use the same LRN you entered in Online Enrollment.'
+                : digits.length + ' of 12 digits';
+            help.classList.toggle('is-bad', digits.length > 0 && digits.length < 12);
+        });
+    })();
+    // Parent tab: the child's LRN, digits only, exactly 12.
+    (function () {
+        var input = document.getElementById('pLrnInput'), help = document.getElementById('pLrnHelp');
+        if (!input) return;
+        input.addEventListener('input', function () {
+            var digits = input.value.replace(/\D/g, '').slice(0, 12);
+            if (digits !== input.value) input.value = digits;
+            help.textContent = digits.length === 0 || digits.length === 12
+                ? 'The LRN your child used in Online Enrollment.'
                 : digits.length + ' of 12 digits';
             help.classList.toggle('is-bad', digits.length > 0 && digits.length < 12);
         });

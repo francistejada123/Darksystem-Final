@@ -30,7 +30,7 @@ if (!hasRole('Administrator')) {
 }
 
 $page_title = 'Subject Management';
-$page_subtitle = 'Manage all subjects, track teacher assignments, and organize subjects by grade level.';
+$page_subtitle = 'Manage the curriculum: which subjects belong to each grade level, strand and term. Teachers are assigned in Teacher Management.';
 $current_page = 'subjects';
 $base_url = '../../';
 
@@ -45,6 +45,9 @@ $selected_grade = isset($_GET['grade']) ? sanitize($_GET['grade']) : '';
 $selected_strand_raw = isset($_GET['strand']) ? sanitize($_GET['strand']) : '';
 $selected_strand = in_array($selected_strand_raw, $active_shs_strands, true) ? $selected_strand_raw : '';
 $selected_section = isset($_GET['section']) ? sanitize($_GET['section']) : '';
+// Senior High subjects run per term: the section view shows one term at a time (Term 1 by default).
+$selected_term = (isset($_GET['term']) && in_array((string)$_GET['term'], ['1', '2', '3'], true)) ? (string)$_GET['term'] : '1';
+$term_counts = ['1' => 0, '2' => 0, '3' => 0];
 
 // Get active school year
 $active_sy = getRecord("SELECT sy_id, sy_name FROM school_years WHERE is_active = 1");
@@ -57,6 +60,17 @@ $all_sections = getRecords("
     WHERE is_active = 1 
     ORDER BY grade_level, section_name
 ");
+
+// The old HUMSS sections (11/12-HUMSS A-C) are no longer offered: Grade 11/12
+// list only the ASSH Cluster and GAS sections. They stay in the database
+// (historical records); they are just not listed or assignable here.
+if (!function_exists('isRetiredHumssSection')) {
+    function isRetiredHumssSection($sec) {
+        return strtoupper(trim((string)($sec['strand'] ?? ''))) === 'HUMSS'
+            || stripos((string)($sec['section_name'] ?? ''), 'HUMSS') !== false;
+    }
+}
+$all_sections = array_values(array_filter($all_sections, function ($sec) { return !isRetiredHumssSection($sec); }));
 
 // Legacy 'HUMSS' sections belong to the ASSH Cluster (see normalizeStrandKey).
 foreach ($all_sections as &$sec) {
@@ -91,6 +105,7 @@ $all_teachers = getRecords("SELECT user_id, first_name, last_name, specializatio
 
 if ($selected_section) {
     $section_info = getRecord("SELECT * FROM sections WHERE section_id = ?", [$selected_section]);
+    if ($section_info && isRetiredHumssSection($section_info)) $section_info = null;
     if ($section_info) {
         $section_info['strand'] = normalizeStrandKey($section_info['strand']);
         // Get subjects with teacher assignments
@@ -114,7 +129,7 @@ if ($selected_section) {
                 // ASSH Cluster: the current ASSH subjects, plus any older
                 // HUMSS-labelled subject that already has a teacher assigned in
                 // this section, so existing assignments are not lost from view.
-                $sql = str_replace('WHERE s.is_active = 1', 'WHERE (s.is_active = 1 OR ts.ts_id IS NOT NULL)', $sql);
+                // Curriculum view: active subjects only (assignments are listed in Teacher Management).
                 $sql .= " AND s.strand IN ('ASSH', 'HUMSS')";
             } elseif (!empty($section_info['strand'])) {
                 $sql .= " AND s.strand = ?";
@@ -126,6 +141,17 @@ if ($selected_section) {
         
         $sql .= " ORDER BY s.subject_name";
         $section_subjects = getRecords($sql, $params);
+        // SHS: only the subjects of the chosen term. A subject with no term on file
+        // (older records) is shown in every term so its assignment is never hidden.
+        if ($section_info['grade_level'] === 'Grade 11' || $section_info['grade_level'] === 'Grade 12') {
+            foreach ($section_subjects as $row) {
+                if (preg_match('/([123])/', (string)($row['term'] ?? ''), $tm)) $term_counts[$tm[1]]++;
+            }
+            $section_subjects = array_values(array_filter($section_subjects, function ($row) use ($selected_term) {
+                $t = trim((string)($row['term'] ?? ''));
+                return $t === '' || (preg_match('/([123])/', $t, $tm) && $tm[1] === $selected_term);
+            }));
+        }
         $section_schedule_map = [];
         if ($section_subjects) {
             $tsIds = array_values(array_filter(array_map('intval', array_column($section_subjects, 'ts_id'))));
@@ -603,37 +629,6 @@ include '../../includes/header.php';
     .subj-page .sp-action-icon.danger:hover { background: #FDECEF; color: #C23A57; }
     .subj-page .sp-action-icon.view:hover { background: #EAF1FE; color: #1957C2; }
 
-    /* Time-slot picker (Assign Teacher + Set Scheduling): shows the selected
-       teacher's free / occupied class periods for the chosen day/s and shift. */
-    .subj-page .slot-picker { margin-bottom: 12px; }
-    .subj-page .slot-picker-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px; margin-bottom: 6px; }
-    .subj-page .slot-picker-title { font-size: 14.5px; font-weight: 600; color: var(--text); }
-    .subj-page .slot-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12.5px; color: var(--text-muted); }
-    .subj-page .slot-legend span::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; border: 1px solid var(--border); background: #fff; }
-    .subj-page .slot-legend .lg-free::before { border-color: #9AD5BC; background: var(--success-tint); }
-    .subj-page .slot-legend .lg-sel::before { border-color: var(--primary); background: var(--primary); }
-    .subj-page .slot-legend .lg-occ::before { border-color: #E4B4B4; background: var(--danger-tint); }
-    .subj-page .slot-view { display: inline-flex; gap: 4px; margin-bottom: 6px; }
-    .subj-page .slot-view button { font-size: 13.5px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--border); background: #fff; color: var(--text-muted); }
-    .subj-page .slot-view button.active { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); font-weight: 600; }
-    .subj-page .slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
-    .subj-page .slot-btn { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; text-align: left; padding: 6px 9px; line-height: 1.25;
-        border: 1px solid #9AD5BC; background: var(--success-tint); color: var(--text); border-radius: var(--radius-sm); cursor: pointer; transition: box-shadow .12s, background .12s; }
-    .subj-page .slot-btn .slot-time { font-size: 14px; font-weight: 600; }
-    .subj-page .slot-btn .slot-state { font-size: 12.5px; color: var(--success); font-weight: 500; }
-    .subj-page .slot-btn:hover { box-shadow: 0 0 0 2px rgba(91,95,239,0.18); }
-    .subj-page .slot-btn.is-selected { background: var(--primary); border-color: var(--primary); color: #fff; }
-    .subj-page .slot-btn.is-selected .slot-state { color: #fff; }
-    .subj-page .slot-btn.is-occupied, .subj-page .slot-btn.is-section { background: var(--danger-tint); border-color: #E4B4B4; color: var(--text-muted); cursor: not-allowed; }
-    .subj-page .slot-btn.is-occupied .slot-time, .subj-page .slot-btn.is-section .slot-time { text-decoration: line-through; font-weight: 500; }
-    .subj-page .slot-btn.is-occupied .slot-state, .subj-page .slot-btn.is-section .slot-state { color: var(--danger); font-weight: 600; }
-    .subj-page .slot-btn.is-section { background: var(--warning-tint); border-color: #E8CF9B; }
-    .subj-page .slot-btn.is-section .slot-state { color: var(--warning); }
-    .subj-page .slot-btn.is-break, .subj-page .slot-btn.is-idle { background: var(--surface-muted); border-color: var(--border); color: var(--text-muted); cursor: not-allowed; }
-    .subj-page .slot-btn.is-break .slot-state, .subj-page .slot-btn.is-idle .slot-state { color: var(--text-muted); font-weight: 400; }
-    .subj-page .slot-btn.is-occupied:hover, .subj-page .slot-btn.is-section:hover, .subj-page .slot-btn.is-break:hover, .subj-page .slot-btn.is-idle:hover { box-shadow: none; }
-    .subj-page .slot-msg { font-size: 13.5px; color: var(--text-muted); margin-top: 6px; }
-    .subj-page .slot-msg.is-warn { color: var(--danger); }
 
     /* ---- Bigger, easier-to-read text ---- */
     .subj-page .sp-header h2 { font-size: 30px !important; }
@@ -839,7 +834,8 @@ include '../../includes/header.php';
                 <?php endif; ?>
                 <div class="alert alert-light border mt-3 mb-0 small">
                     <i class="fas fa-circle-info text-primary me-1"></i>
-                    Pumili ng grade level sa taas para i-manage ang subjects at teacher assignments per section.
+                    Read-only list. Teachers are assigned per section in
+                    <a href="../teachers/index.php" class="fw-semibold">Teacher Management</a>.
                 </div>
             </div>
         </div>
@@ -979,7 +975,6 @@ include '../../includes/header.php';
                             <button type="button" class="sp-action-icon view" title="View" data-bs-toggle="modal" data-bs-target="#subjectViewModal"
                                     data-detail='<?php echo $detail; ?>'><i class="fas fa-eye"></i></button>
                             <a href="edit.php?code=<?php echo urlencode($asub['subject_code']); ?>" class="sp-action-icon" title="Edit"><i class="fas fa-edit"></i></a>
-                            <a href="?grade=<?php echo urlencode($asub['grade_level']); ?>" class="sp-action-icon" title="Assign Teacher (open this grade's sections)"><i class="fas fa-user-plus"></i></a>
                             <a href="delete.php?code=<?php echo urlencode($asub['subject_code']); ?>" class="sp-action-icon danger" title="Delete"
                                onclick="return confirm('Delete subject <?php echo htmlspecialchars(addslashes($asub['subject_name'])); ?>? This cannot be undone.');"><i class="fas fa-trash"></i></a>
                         </td>
@@ -1208,9 +1203,22 @@ document.querySelectorAll('.subj-page .sp-more-teachers').forEach(function (m) {
         <div class="card-header bg-white border-0 pt-3 d-flex justify-content-between align-items-center">
             <h5 class="mb-0">
                 <i class="fas fa-list text-primary me-2"></i>
-                Subjects in <?php echo htmlspecialchars($section_info['section_name']); ?>
+                Subjects in <?php echo htmlspecialchars($section_info['section_name']); ?><?php echo $is_shs ? ' &middot; Term ' . $selected_term : ''; ?>
                 <span class="badge bg-secondary ms-2"><?php echo count($section_subjects); ?></span>
             </h5>
+            <?php if ($is_shs): ?>
+                <form method="GET" class="d-flex align-items-center gap-2 ms-auto me-2" action="#subjects-section">
+                    <input type="hidden" name="grade" value="<?php echo htmlspecialchars($selected_grade); ?>">
+                    <input type="hidden" name="strand" value="<?php echo htmlspecialchars($selected_strand); ?>">
+                    <input type="hidden" name="section" value="<?php echo htmlspecialchars($selected_section); ?>">
+                    <label for="termSelect" class="small fw-semibold text-muted mb-0"><i class="fas fa-calendar-alt me-1"></i>Term</label>
+                    <select id="termSelect" name="term" class="form-select form-select-sm" style="width:auto" onchange="this.form.submit()">
+                        <?php foreach (['1', '2', '3'] as $tn): ?>
+                            <option value="<?php echo $tn; ?>" <?php echo $selected_term === $tn ? 'selected' : ''; ?>>Term <?php echo $tn; ?> (<?php echo (int)$term_counts[$tn]; ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+                </form>
+            <?php endif; ?>
             <div>
                 <?php if ($selected_grade && ($selected_grade === 'Grade 11' || $selected_grade === 'Grade 12')): ?>
                     <a href="?grade=<?php echo urlencode($selected_grade); ?>&strand=<?php echo urlencode($selected_strand); ?>&section=0" class="btn btn-sm btn-outline-secondary">
@@ -1224,9 +1232,14 @@ document.querySelectorAll('.subj-page .sp-more-teachers').forEach(function (m) {
                 <a href="?grade=0&strand=&section=0" class="btn btn-sm btn-outline-secondary">
                     <i class="fas fa-times me-1"></i> Clear
                 </a>
+                <a href="../teachers/index.php?grade=<?php echo urlencode($selected_grade); ?>&strand=<?php echo urlencode($selected_strand); ?>&section=<?php echo (int)$selected_section; ?>"
+                   class="btn btn-sm btn-outline-primary" title="Teacher assignment for this section is done in Teacher Management">
+                    <i class="fas fa-chalkboard-teacher me-1"></i> Manage Teachers
+                </a>
             </div>
         </div>
         <div class="card-body">
+            <p class="text-muted small mb-3"><i class="fas fa-circle-info me-1"></i>These are the curriculum subjects of this section's grade level<?php echo $is_shs ? ', strand and term' : ''; ?>. Every enrolled student of the section has them automatically. Teachers are assigned in Teacher Management.</p>
             <?php if (count($section_subjects) > 0): ?>
                 <div class="table-responsive">
                     <table class="table table-hover">
@@ -1235,26 +1248,23 @@ document.querySelectorAll('.subj-page .sp-more-teachers').forEach(function (m) {
                                 <th>#</th>
                                 <th>Subject Code</th>
                                 <th>Subject Name</th>
+                                <th>Grade</th>
                                 <?php if ($is_shs): ?>
                                     <th>Strand</th>
+                                    <th>Term</th>
                                 <?php endif; ?>
-                                <th>Assigned Teacher</th>
-                                <th>Specialization</th>
+                                <th>Type</th>
                                 <th>Status</th>
-                                <th class="text-center">Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php $counter = 1; ?>
-                            <?php foreach ($section_subjects as $subject): 
-                                $has_teacher = !empty($subject['teacher_id']);
-                                $teacher_name = $has_teacher ? $subject['teacher_first'] . ' ' . $subject['teacher_last'] : 'Not Assigned';
-                                $specialization = $subject['specialization'] ?? 'N/A';
-                            ?>
+                            <?php foreach ($section_subjects as $subject): ?>
                                 <tr>
                                     <td><?php echo $counter++; ?></td>
                                     <td><strong><?php echo htmlspecialchars($subject['subject_code']); ?></strong></td>
                                     <td><?php echo htmlspecialchars($subject['subject_name']); ?></td>
+                                    <td><?php echo htmlspecialchars($subject['grade_level']); ?></td>
                                     <?php if ($is_shs): ?>
                                         <td>
                                             <?php if (!empty($subject['strand'])): ?>
@@ -1265,76 +1275,11 @@ document.querySelectorAll('.subj-page .sp-more-teachers').forEach(function (m) {
                                                 <span class="text-muted">N/A</span>
                                             <?php endif; ?>
                                         </td>
+                                        <td><?php echo !empty($subject['term']) ? htmlspecialchars($subject['term']) : '<span class="text-muted">All terms</span>'; ?></td>
                                     <?php endif; ?>
+                                    <td><?php echo htmlspecialchars($subject['subject_type'] ?? ''); ?></td>
                                     <td>
-                                        <?php if ($has_teacher): ?>
-                                            <span class="teacher-badge">
-                                                <i class="fas fa-user-check text-success me-1"></i>
-                                                <?php echo htmlspecialchars($teacher_name); ?>
-                                            </span>
-                                            <?php $saved_schedule = $section_schedule_map[(int)$subject['ts_id']] ?? []; ?>
-                                            <?php if ($saved_schedule): ?>
-                                                <?php $day_labels = [1=>'Mon',2=>'Tue',3=>'Wed',4=>'Thu',5=>'Fri']; ?>
-                                                <div class="small text-muted mt-1">
-                                                    <?php echo htmlspecialchars(implode('-', array_map(function ($row) use ($day_labels) { return $day_labels[(int)$row['day_of_week']] ?? ''; }, $saved_schedule))); ?>
-                                                    &middot; <?php echo date('g:i A', strtotime($saved_schedule[0]['start_time'])); ?>–<?php echo date('g:i A', strtotime($saved_schedule[0]['end_time'])); ?>
-                                                </div>
-                                            <?php endif; ?>
-                                        <?php else: ?>
-                                            <span class="teacher-badge no-teacher">
-                                                <i class="fas fa-user-times text-danger me-1"></i>
-                                                Not Assigned
-                                            </span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <?php if ($has_teacher && $specialization != 'N/A'): ?>
-                                            <span class="badge bg-light text-dark border">
-                                                <?php echo htmlspecialchars($specialization); ?>
-                                            </span>
-                                        <?php else: ?>
-                                            <span class="text-muted">-</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <?php if ($has_teacher): ?>
-                                            <span class="badge bg-success">Assigned</span>
-                                        <?php else: ?>
-                                            <span class="badge bg-warning">Unassigned</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td class="text-center">
-                                        <?php if ($has_teacher): ?>
-                                            <button type="button" class="btn btn-sm btn-outline-primary me-1 js-open-assignment"
-                                                    data-bs-toggle="modal" data-bs-target="#assignModal"
-                                                    data-teacher-id="<?php echo (int)$subject['teacher_id']; ?>"
-                                                    data-ts-id="<?php echo (int)$subject['ts_id']; ?>"
-                                                    data-subject-code="<?php echo htmlspecialchars($subject['subject_code']); ?>"
-                                                    data-subject-name="<?php echo htmlspecialchars($subject['subject_name']); ?>"
-                                                    data-section-id="<?php echo $selected_section; ?>"
-                                                    data-grade-level="<?php echo htmlspecialchars($selected_grade); ?>"
-                                                    data-strand="<?php echo htmlspecialchars($selected_strand); ?>"
-                                                    title="Change the teacher or class schedule for this subject">
-                                                <i class="fas fa-user-pen"></i> Teacher &amp; Schedule
-                                            </button>
-                                            <a href="remove_from_section.php?subject=<?php echo urlencode($subject['subject_code']); ?>&section=<?php echo $selected_section; ?>&grade=<?php echo urlencode($selected_grade); ?>&strand=<?php echo urlencode($selected_strand); ?>" 
-                                               class="btn btn-sm btn-outline-danger"
-                                               onclick="return confirm('Unassign <?php echo htmlspecialchars($subject['subject_name']); ?> from this section?');"
-                                               title="Unassign Teacher">
-                                                <i class="fas fa-user-minus"></i> Unassign
-                                            </a>
-                                        <?php else: ?>
-                                            <button type="button" class="btn btn-sm btn-primary" 
-                                                    data-bs-toggle="modal" 
-                                                    data-bs-target="#assignModal"
-                                                    data-subject-code="<?php echo htmlspecialchars($subject['subject_code']); ?>"
-                                                    data-subject-name="<?php echo htmlspecialchars($subject['subject_name']); ?>"
-                                                    data-section-id="<?php echo $selected_section; ?>"
-                                                    data-grade-level="<?php echo htmlspecialchars($selected_grade); ?>"
-                                                    data-strand="<?php echo htmlspecialchars($selected_strand); ?>">
-                                                <i class="fas fa-user-plus"></i> Assign
-                                            </button>
-                                        <?php endif; ?>
+                                        <span class="badge <?php echo !empty($subject['is_active']) ? 'bg-success' : 'bg-secondary'; ?>"><?php echo !empty($subject['is_active']) ? 'Active' : 'Inactive'; ?></span>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -1351,527 +1296,9 @@ document.querySelectorAll('.subj-page .sp-more-teachers').forEach(function (m) {
         </div>
     </div>
 
-    <!-- Set Scheduling Modal: schedules existing teacher_subjects assignments only -->
-    <div class="modal fade" id="scheduleModal" tabindex="-1" aria-labelledby="scheduleModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="scheduleModalLabel"><i class="fas fa-calendar-alt text-primary me-2"></i>Set Scheduling</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="alert alert-light border mb-3 py-2">
-                        <strong>Flow:</strong> Assign Teacher first, then set the schedule here. Only existing teacher-subject-section assignments are listed.
-                    </div>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold" for="schedule_teacher_id">Teacher</label>
-                            <select class="form-select" id="schedule_teacher_id">
-                                <option value="">-- Select Teacher --</option>
-                                <?php foreach ($all_teachers as $t): ?>
-                                    <option value="<?php echo (int)$t['user_id']; ?>"><?php echo htmlspecialchars($t['last_name'] . ', ' . $t['first_name']); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold" for="schedule_assignment_id">Assigned Subject / Section</label>
-                            <select class="form-select" id="schedule_assignment_id" disabled>
-                                <option value="">-- Select teacher first --</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div id="schedule_for_box" class="rounded-3 border bg-light p-3 mt-3 d-none">
-                        <div class="small text-muted">Setting schedule for:</div>
-                        <div class="fw-bold fs-5" id="schedule_for_text">—</div>
-                        <div class="text-muted" id="schedule_subject_text">—</div>
-                    </div>
-
-                    <div id="schedule_fields" class="d-none mt-3">
-                        <label class="form-label fw-semibold">Day/s</label>
-                        <div class="d-flex flex-wrap gap-2 mb-3" id="schedule_days">
-                            <?php foreach ([1=>'Monday',2=>'Tuesday',3=>'Wednesday',4=>'Thursday',5=>'Friday',6=>'Saturday'] as $dn=>$dayName): ?>
-                                <label class="btn btn-outline-secondary btn-sm">
-                                    <input type="checkbox" class="form-check-input me-1 schedule-day" value="<?php echo $dn; ?>"> <?php echo $dayName; ?>
-                                </label>
-                            <?php endforeach; ?>
-                        </div>
-                        <div class="slot-picker" id="schedule_slot_picker">
-                            <div class="slot-picker-head">
-                                <span class="slot-picker-title"><i class="fas fa-clock text-primary me-1"></i>Available time slots</span>
-                                <span class="slot-legend"><span class="lg-free">Free</span><span class="lg-sel">Selected</span><span class="lg-occ">Occupied</span></span>
-                            </div>
-                            <div class="slot-view d-none"></div>
-                            <div class="slot-grid"></div>
-                            <div class="slot-msg"></div>
-                        </div>
-                        <div class="row g-3">
-                            <div class="col-md-4">
-                                <label class="form-label fw-semibold" for="schedule_start_time">Start Time</label>
-                                <input type="time" class="form-control" id="schedule_start_time">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-semibold" for="schedule_end_time">End Time</label>
-                                <input type="time" class="form-control" id="schedule_end_time">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-semibold" for="schedule_shift">Shift</label>
-                                <select class="form-select" id="schedule_shift">
-                                    <option value="AM">AM Shift</option>
-                                    <option value="PM">PM Shift</option>
-                                    <option value="SHS">SHS</option>
-                                </select>
-                                <div class="form-text" id="schedule_shift_help"></div>
-                            </div>
-                        </div>
-                        <div id="schedule_validation" class="alert mt-3 mb-0 d-none" role="alert"></div>
-                        <div id="schedule_existing" class="mt-3 small text-muted"></div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="save_schedule_btn" disabled><i class="fas fa-save me-1"></i> Save Schedule</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Assign Teacher Modal -->
-    <div class="modal fade" id="assignModal" tabindex="-1" aria-labelledby="assignModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form action="assignment_api.php" method="POST" id="assignmentForm">
-                    <input type="hidden" name="csrf_token" value="<?php echo generateCSRFToken(); ?>">
-                    <input type="hidden" name="action" id="modal_assignment_action" value="assign">
-                    <input type="hidden" name="ts_id" id="modal_ts_id" value="0">
-                    <input type="hidden" name="subject_code" id="modal_subject_code">
-                    <input type="hidden" name="section_id" id="modal_section_id">
-                    <input type="hidden" name="grade_level" id="modal_grade_level">
-                    <input type="hidden" name="strand" id="modal_strand">
-                    <div class="modal-header">
-                        <h5 class="modal-title"><i class="fas fa-user-plus text-primary me-2"></i>Assign Teacher</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <p>Assign a teacher to <strong id="modal_subject_display"></strong>:</p>
-                        <div class="mb-3">
-                            <label for="teacher_id" class="form-label">Select Teacher</label>
-                            <select name="teacher_id" id="teacher_id" class="form-select" required>
-                                <option value="">-- Choose a Teacher --</option>
-                                <?php foreach ($all_teachers as $t): ?>
-                                    <option value="<?php echo $t['user_id']; ?>">
-                                        <?php echo htmlspecialchars($t['last_name'] . ', ' . $t['first_name']); ?>
-                                        <?php if (!empty($t['specialization'])): ?>
-                                            (<?php echo htmlspecialchars($t['specialization']); ?>)
-                                        <?php endif; ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="border rounded-3 p-3 bg-light">
-                            <div class="fw-semibold mb-2"><i class="fas fa-calendar-alt text-primary me-1"></i>Class Schedule</div>
-                            <label class="form-label mb-1">Select Day/s</label>
-                            <div class="d-flex flex-wrap gap-2 mb-3">
-                                <label class="btn btn-outline-secondary btn-sm"><input type="checkbox" class="form-check-input me-1 modal-day" name="days[]" value="1"> Monday</label>
-                                <label class="btn btn-outline-secondary btn-sm"><input type="checkbox" class="form-check-input me-1 modal-day" name="days[]" value="2"> Tuesday</label>
-                                <label class="btn btn-outline-secondary btn-sm"><input type="checkbox" class="form-check-input me-1 modal-day" name="days[]" value="3"> Wednesday</label>
-                                <label class="btn btn-outline-secondary btn-sm"><input type="checkbox" class="form-check-input me-1 modal-day" name="days[]" value="4"> Thursday</label>
-                                <label class="btn btn-outline-secondary btn-sm"><input type="checkbox" class="form-check-input me-1 modal-day" name="days[]" value="5"> Friday</label>
-                                <label class="btn btn-outline-primary btn-sm"><input type="checkbox" class="form-check-input me-1" id="modal_weekdays"> Mon–Fri</label>
-                            </div>
-                            <div class="slot-picker" id="assign_slot_picker">
-                                <div class="slot-picker-head">
-                                    <span class="slot-picker-title"><i class="fas fa-clock text-primary me-1"></i>Available time slots</span>
-                                    <span class="slot-legend"><span class="lg-free">Free</span><span class="lg-sel">Selected</span><span class="lg-occ">Occupied</span></span>
-                                </div>
-                                <div class="slot-view d-none"></div>
-                                <div class="slot-grid"></div>
-                                <div class="slot-msg"></div>
-                            </div>
-                            <div class="row g-2">
-                                <div class="col-md-4"><label class="form-label mb-1" for="modal_start_time">Start Time</label><input type="time" class="form-control" name="start_time" id="modal_start_time" required></div>
-                                <div class="col-md-4"><label class="form-label mb-1" for="modal_end_time">End Time</label><input type="time" class="form-control" name="end_time" id="modal_end_time" required></div>
-                                <div class="col-md-4"><label class="form-label mb-1" for="modal_shift">Shift</label><input type="text" class="form-control" id="modal_shift" name="shift" readonly></div>
-                            </div>
-                            <div class="form-text" id="modal_duration_help">Grades 7–10 use 45-minute class periods. End time is suggested automatically and remains editable.</div>
-                            <div id="assignment_validation" class="alert d-none mt-3 mb-0 py-2"></div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary" id="save_assignment_btn"><i class="fas fa-check me-1"></i> Save Assignment</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
 <?php endif; ?>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    if (!document.getElementById('assignModal')) return;   // the modals below are only on a section's page
-
-    // ---------------- Time-slot picker (shared by both modals) ----------------
-    // Shows the selected teacher's class periods for the chosen day/s + shift.
-    // Occupied periods (teacher already has a class, or the section is taken) are
-    // marked and cannot be selected; clicking free periods fills Start/End Time.
-    function createSlotPicker(cfg) {
-        var root = cfg.root;
-        if (!root) return { refresh: function () {}, sync: function () {}, reset: function () {} };
-        var grid = root.querySelector('.slot-grid'), msg = root.querySelector('.slot-msg'), viewBox = root.querySelector('.slot-view');
-        var slots = [], ready = false, seq = 0, timer = null, viewShift = '', shiftName = '';
-        var SHIFT_LABEL = { AM: 'AM Shift', PM: 'PM Shift', SHS: 'SHS hours' };
-
-        function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
-        function toMin(hm) { if (!hm) return null; var p = String(hm).split(':'); return parseInt(p[0], 10) * 60 + parseInt(p[1] || '0', 10); }
-        function fmt12(hm) { var m = toMin(hm), h = Math.floor(m / 60), mm = m % 60; return ((h % 12) || 12) + ':' + String(mm).padStart(2, '0') + ' ' + (h < 12 ? 'AM' : 'PM'); }
-        function rangeLabel(a, b) { var x = fmt12(a), y = fmt12(b); if (x.slice(-2) === y.slice(-2)) x = x.slice(0, -3); return x + ' – ' + y; }
-        function setMsg(text, warn) { msg.textContent = text || ''; msg.className = 'slot-msg' + (warn ? ' is-warn' : ''); }
-        function freeSlot(i) { return slots[i] && slots[i].status === 'free'; }
-
-        function overlapping() {
-            var s = toMin(cfg.startEl.value), e = toMin(cfg.endEl.value), out = [];
-            if (s === null || e === null || e <= s) return out;
-            slots.forEach(function (sl, i) { if (sl.status !== 'break' && toMin(sl.start) < e && toMin(sl.end) > s) out.push(i); });
-            return out;
-        }
-        function sync() {
-            var cur = ready ? overlapping() : [], clash = [];
-            var buttons = grid.querySelectorAll('.slot-btn');
-            buttons.forEach(function (b, i) { b.classList.toggle('is-selected', cur.indexOf(i) >= 0 && freeSlot(i)); });
-            cur.forEach(function (i) { if (!freeSlot(i)) clash.push(i); });
-            if (!slots.length) return;
-            if (!ready) { setMsg('Select a teacher and at least one day to see which time slots are free.'); return; }
-            if (clash.length) { setMsg('The selected time overlaps an occupied slot (' + clash.map(function (i) { return slots[i].label; }).join(', ') + '). Choose a free slot.', true); return; }
-            if (cur.length) { setMsg('Selected: ' + rangeLabel(cfg.startEl.value, cfg.endEl.value)); return; }
-            if (!slots.some(function (sl) { return sl.status === 'free'; })) { setMsg('No free time slots left for this teacher on the selected day/s' + (shiftName ? ' in the ' + (SHIFT_LABEL[shiftName] || shiftName) : '') + '.', true); return; }
-            setMsg('Click a free slot to set the time. Click the next free slot to make a longer class period.');
-        }
-        function render(data) {
-            slots = data.slots || []; ready = !!data.ready; shiftName = data.shift || '';
-            if (cfg.viewToggle && (data.shifts || []).length > 1) {
-                viewShift = data.shift;
-                viewBox.innerHTML = data.shifts.map(function (sh) { return '<button type="button" data-shift="' + sh + '" class="' + (sh === data.shift ? 'active' : '') + '">' + esc(SHIFT_LABEL[sh] || sh) + '</button>'; }).join('');
-                viewBox.classList.remove('d-none');
-            } else { viewBox.classList.add('d-none'); viewBox.innerHTML = ''; }
-            grid.innerHTML = slots.map(function (sl, i) {
-                var cls = '', state = 'Free', title = sl.detail || '';
-                if (sl.status === 'break') { cls = 'is-break'; state = 'Break'; }
-                else if (!ready) { cls = 'is-idle'; state = '—'; title = 'Select a teacher and day/s first'; }
-                else if (sl.status === 'occupied') { cls = 'is-occupied'; state = 'Occupied'; }
-                else if (sl.status === 'section') { cls = 'is-section'; state = 'Section busy'; }
-                return '<button type="button" class="slot-btn ' + cls + '" data-i="' + i + '" title="' + esc(title) + '" aria-disabled="' + (cls ? 'true' : 'false') + '">'
-                    + '<span class="slot-time">' + esc(sl.label) + '</span><span class="slot-state">' + state + '</span></button>';
-            }).join('');
-            sync();
-        }
-        function refresh() {
-            clearTimeout(timer);
-            timer = setTimeout(function () {
-                var st = cfg.getState();
-                if (!st || !st.sectionId) { grid.innerHTML = ''; viewBox.classList.add('d-none'); setMsg(''); slots = []; return; }
-                var mine = ++seq;
-                var url = 'schedule_api.php?action=availability&teacher_id=' + encodeURIComponent(st.teacherId || '') + '&section_id=' + encodeURIComponent(st.sectionId)
-                    + '&ts_id=' + encodeURIComponent(st.tsId || '0') + '&days=' + encodeURIComponent((st.days || []).join(',')) + '&shift=' + encodeURIComponent(st.shift || '');
-                fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-                    .then(function (r) { return r.json(); })
-                    .then(function (data) { if (mine !== seq) return; if (!data.ok) { grid.innerHTML = ''; setMsg(data.message || 'Could not load time slots.', true); return; } render(data); })
-                    .catch(function () { if (mine !== seq) return; setMsg('Could not load available time slots. You can still type the time; saving is validated on the server.', true); });
-            }, 120);
-        }
-        function reset() { slots = []; ready = false; viewShift = ''; grid.innerHTML = ''; viewBox.classList.add('d-none'); viewBox.innerHTML = ''; setMsg(''); }
-        function fire(el) { el.dispatchEvent(new Event('change', { bubbles: true })); }
-        function setRange(a, b) { cfg.startEl.value = slots[a].start; cfg.endEl.value = slots[b].end; fire(cfg.startEl); fire(cfg.endEl); }
-
-        grid.addEventListener('click', function (ev) {
-            var b = ev.target.closest('.slot-btn');
-            if (!b || !ready) return;
-            var i = parseInt(b.getAttribute('data-i'), 10);
-            if (!freeSlot(i)) return;                       // Occupied / Section busy / Break: not selectable
-            var cur = overlapping();
-            var curFree = cur.length && cur.every(freeSlot);
-            if (curFree) {
-                var first = cur[0], last = cur[cur.length - 1];
-                if (cur.length === 1 && first === i) { cfg.startEl.value = ''; cfg.endEl.value = ''; fire(cfg.startEl); fire(cfg.endEl); return; }
-                if (slots[i].start === slots[last].end) { setRange(first, i); return; }      // extend after
-                if (slots[i].end === slots[first].start) { setRange(i, last); return; }      // extend before
-            }
-            setRange(i, i);
-        });
-        viewBox.addEventListener('click', function (ev) {
-            var b = ev.target.closest('button[data-shift]');
-            if (!b) return;
-            viewShift = b.getAttribute('data-shift');
-            cfg.startEl.value = ''; cfg.endEl.value = ''; fire(cfg.startEl); fire(cfg.endEl);
-            refresh();
-        });
-        [cfg.startEl, cfg.endEl].forEach(function (el) { if (el) el.addEventListener('change', sync); });
-        return { refresh: refresh, sync: sync, reset: reset, getViewShift: function () { return viewShift; } };
-    }
-
-    var assignModal = document.getElementById('assignModal');
-    if (assignModal) {
-        assignModal.addEventListener('show.bs.modal', function(event) {
-            var button = event.relatedTarget;
-            var subjectCode = button.getAttribute('data-subject-code');
-            var subjectName = button.getAttribute('data-subject-name');
-            var sectionId = button.getAttribute('data-section-id');
-            var gradeLevel = button.getAttribute('data-grade-level');
-            var strand = button.getAttribute('data-strand');
-            var teacherId = button.getAttribute('data-teacher-id') || '';
-            var tsId = button.getAttribute('data-ts-id') || '0';
-
-            document.getElementById('modal_subject_code').value = subjectCode;
-            document.getElementById('modal_section_id').value = sectionId;
-            document.getElementById('modal_grade_level').value = gradeLevel;
-            document.getElementById('modal_strand').value = strand;
-            document.getElementById('modal_subject_display').textContent = subjectName + ' (' + subjectCode + ')';
-            document.getElementById('modal_ts_id').value = tsId;
-            document.getElementById('modal_assignment_action').value = tsId === '0' ? 'assign' : 'edit';
-            document.getElementById('save_assignment_btn').innerHTML = tsId === '0' ? '<i class="fas fa-check me-1"></i> Assign + Save Schedule' : '<i class="fas fa-save me-1"></i> Save Assignment';
-            document.querySelectorAll('.modal-day').forEach(function (day) { day.checked = false; });
-            document.getElementById('modal_weekdays').checked = false;
-            document.getElementById('modal_start_time').value = '';
-            document.getElementById('modal_end_time').value = '';
-            document.getElementById('modal_shift').value = ['Grade 7','Grade 8'].indexOf(gradeLevel) >= 0 ? 'AM Shift' : (['Grade 9','Grade 10'].indexOf(gradeLevel) >= 0 ? 'PM Shift' : 'SHS');
-            // Editing: show the teacher that is currently assigned (was left on whatever was picked last).
-            if (tsId !== '0' && teacherId) document.getElementById('teacher_id').value = teacherId;
-            assignSlots.reset();
-            assignSlots.refresh();
-            if (tsId !== '0') {
-                fetch('schedule_api.php?teacher_id=' + encodeURIComponent(teacherId), {headers:{'X-Requested-With':'XMLHttpRequest'}})
-                    .then(function (r) { return r.json(); })
-                    .then(function (data) {
-                        var assignment = (data.assignments || []).find(function (item) { return String(item.ts_id) === String(tsId); });
-                        if (!assignment || !assignment.schedules || !assignment.schedules.length) return;
-                        assignment.schedules.forEach(function (row) { var day = document.querySelector('.modal-day[value="' + row.day_of_week + '"]'); if (day) day.checked = true; });
-                        document.getElementById('modal_start_time').value = assignment.schedules[0].start_time || '';
-                        document.getElementById('modal_end_time').value = assignment.schedules[0].end_time || '';
-                        document.getElementById('modal_weekdays').checked = assignment.schedules.length === 5;
-                        assignSlots.refresh();   // days were just filled in: re-check availability
-                    });
-            }
-        });
-    }
-
-    var assignmentForm = document.getElementById('assignmentForm');
-    var assignmentValidation = document.getElementById('assignment_validation');
-    var assignmentStart = document.getElementById('modal_start_time');
-    var assignmentEnd = document.getElementById('modal_end_time');
-    var assignmentDays = document.querySelectorAll('.modal-day');
-    var weekdays = document.getElementById('modal_weekdays');
-    var assignmentTimer;
-    // Time-slot picker: availability of the selected teacher for the selected day/s (+ shift for Senior High).
-    var assignSlots = createSlotPicker({
-        root: document.getElementById('assign_slot_picker'),
-        startEl: assignmentStart, endEl: assignmentEnd, viewToggle: true,
-        getState: function () {
-            return {
-                teacherId: document.getElementById('teacher_id').value,
-                sectionId: document.getElementById('modal_section_id').value,
-                tsId: document.getElementById('modal_ts_id').value,
-                days: Array.from(assignmentDays).filter(function (d) { return d.checked; }).map(function (d) { return d.value; }),
-                shift: assignSlots.getViewShift()
-            };
-        }
-    });
-    function assignmentPayload(validateOnly) {
-        return {
-            csrf_token: assignmentForm.querySelector('[name="csrf_token"]').value,
-            action: document.getElementById('modal_assignment_action').value,
-            ts_id: document.getElementById('modal_ts_id').value,
-            teacher_id: document.getElementById('teacher_id').value,
-            subject_code: document.getElementById('modal_subject_code').value,
-            section_id: document.getElementById('modal_section_id').value,
-            days: Array.from(assignmentDays).filter(function (day) { return day.checked; }).map(function (day) { return day.value; }),
-            start_time: assignmentStart.value,
-            end_time: assignmentEnd.value,
-            shift: document.getElementById('modal_shift').value.replace(' Shift',''),
-            validate_only: validateOnly ? 1 : 0
-        };
-    }
-    function showAssignmentValidation(type, message) {
-        assignmentValidation.className = 'alert alert-' + type + ' mt-3 mb-0 py-2';
-        assignmentValidation.textContent = message;
-        assignmentValidation.classList.remove('d-none');
-    }
-    function validateAssignmentLive() {
-        var payload = assignmentPayload(true);
-        if (!payload.teacher_id || !payload.days.length || !payload.start_time || !payload.end_time) { assignmentValidation.classList.add('d-none'); return; }
-        fetch('assignment_api.php', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)})
-            .then(function (r) { return r.json().then(function (data) { return {ok:r.ok && data.ok, data:data}; }); })
-            .then(function (result) { showAssignmentValidation(result.ok ? 'success' : 'danger', result.data.message || (result.ok ? 'No schedule conflict detected.' : 'Schedule conflict.')); })
-            .catch(function () { showAssignmentValidation('warning', 'Unable to validate right now. Server validation will still run before saving.'); });
-    }
-    function queueAssignmentValidation() { clearTimeout(assignmentTimer); assignmentTimer = setTimeout(validateAssignmentLive, 250); }
-    assignmentDays.forEach(function (day) { day.addEventListener('change', function () { queueAssignmentValidation(); assignSlots.refresh(); }); });
-    weekdays.addEventListener('change', function () { assignmentDays.forEach(function (day) { day.checked = weekdays.checked; }); queueAssignmentValidation(); assignSlots.refresh(); });
-    // Changing the teacher changes whose schedule is checked: refresh the slots and re-validate.
-    document.getElementById('teacher_id').addEventListener('change', function () { queueAssignmentValidation(); assignSlots.refresh(); });
-    assignmentStart.addEventListener('change', function () {
-        if (assignmentStart.value && !assignmentEnd.value) {
-            var parts = assignmentStart.value.split(':'); var minutes = parseInt(parts[0],10) * 60 + parseInt(parts[1],10) + 45;
-            assignmentEnd.value = String(Math.floor(minutes / 60)).padStart(2,'0') + ':' + String(minutes % 60).padStart(2,'0');
-        }
-        queueAssignmentValidation();
-    });
-    assignmentEnd.addEventListener('change', queueAssignmentValidation);
-    assignmentForm.addEventListener('submit', function (event) {
-        event.preventDefault();
-        var button = document.getElementById('save_assignment_btn');
-        var payload = assignmentPayload(false);
-        if (!payload.teacher_id || !payload.days.length || !payload.start_time || !payload.end_time) { showAssignmentValidation('danger', 'Select a teacher, at least one day, start time, and end time.'); return; }
-        button.disabled = true;
-        fetch('assignment_api.php', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)})
-            .then(function (r) { return r.json().then(function (data) { return {ok:r.ok && data.ok, data:data}; }); })
-            .then(function (result) { if (!result.ok) { showAssignmentValidation('danger', result.data.message || 'Unable to save assignment.'); return; } window.location.reload(); })
-            .catch(function () { showAssignmentValidation('danger', 'Could not save the assignment. Please try again.'); })
-            .finally(function () { button.disabled = false; });
-    });
-
-    // ---------------- Master Schedule modal ----------------
-    var scheduleModal = document.getElementById('scheduleModal');
-    var teacherSelect = document.getElementById('schedule_teacher_id');
-    var assignmentSelect = document.getElementById('schedule_assignment_id');
-    var fields = document.getElementById('schedule_fields');
-    var forBox = document.getElementById('schedule_for_box');
-    var forText = document.getElementById('schedule_for_text');
-    var subjectText = document.getElementById('schedule_subject_text');
-    var startInput = document.getElementById('schedule_start_time');
-    var endInput = document.getElementById('schedule_end_time');
-    var shiftSelect = document.getElementById('schedule_shift');
-    var shiftHelp = document.getElementById('schedule_shift_help');
-    var validation = document.getElementById('schedule_validation');
-    var existing = document.getElementById('schedule_existing');
-    var saveBtn = document.getElementById('save_schedule_btn');
-    var assignments = [];
-    var schedSlots = createSlotPicker({
-        root: document.getElementById('schedule_slot_picker'),
-        startEl: startInput, endEl: endInput, viewToggle: false,
-        getState: function () {
-            var a = currentAssignment();
-            if (!a) return null;
-            return { teacherId: teacherSelect.value, sectionId: a.section_id, tsId: a.ts_id, days: selectedDays(), shift: shiftSelect.value };
-        }
-    });
-    var requestedTs = '';
-    var validateTimer = null;
-    var csrf = <?php echo json_encode(generateCSRFToken()); ?>;
-
-    function selectedDays() {
-        return Array.from(document.querySelectorAll('.schedule-day:checked')).map(function(el){ return parseInt(el.value,10); });
-    }
-    function showValidation(type, message) {
-        validation.className = 'alert mt-3 mb-0 alert-' + type;
-        validation.textContent = message;
-        validation.classList.remove('d-none');
-    }
-    function clearValidation() { validation.classList.add('d-none'); validation.textContent=''; }
-    function currentAssignment() {
-        return assignments.find(function(a){ return String(a.ts_id) === String(assignmentSelect.value); }) || null;
-    }
-    function formatExisting(rows) {
-        if (!rows || !rows.length) return '<i class="fas fa-circle-info me-1"></i>No schedule saved yet for this assignment.';
-        var names={1:'Mon',2:'Tue',3:'Wed',4:'Thu',5:'Fri',6:'Sat',7:'Sun'};
-        return '<strong>Current:</strong> ' + rows.map(function(r){ return names[r.day_of_week]+' '+r.start_time+'–'+r.end_time+(r.shift?' ('+r.shift+')':''); }).join(' · ');
-    }
-    function sectionLabel(a) {
-        if (!a) return '';
-        var gradeNum = String(a.grade_level || '').replace('Grade ','').trim();
-        var sec = String(a.section_name || '').trim();
-        if (gradeNum && sec.toLowerCase().indexOf(gradeNum.toLowerCase()) === 0) return 'Grade ' + sec;
-        return (a.grade_level || '') + (sec ? ' ' + sec : '');
-    }
-    function applyAssignment(a) {
-        if (!a) { fields.classList.add('d-none'); forBox.classList.add('d-none'); saveBtn.disabled=true; return; }
-        forText.textContent = sectionLabel(a);
-        subjectText.textContent = a.subject_name + ' (' + a.subject_code + ')';
-        forBox.classList.remove('d-none'); fields.classList.remove('d-none');
-        document.querySelectorAll('.schedule-day').forEach(function(c){ c.checked=false; });
-        startInput.value=''; endInput.value='';
-        if (a.schedules && a.schedules.length) {
-            a.schedules.forEach(function(r){ var c=document.querySelector('.schedule-day[value="'+r.day_of_week+'"]'); if(c)c.checked=true; });
-            startInput.value=a.schedules[0].start_time || '';
-            endInput.value=a.schedules[0].end_time || '';
-            if (a.schedules[0].shift) shiftSelect.value=a.schedules[0].shift;
-        }
-        if (a.default_shift) {
-            shiftSelect.value=a.default_shift;
-            shiftSelect.disabled=true;
-            shiftHelp.textContent = a.grade_level + ' automatically uses ' + a.default_shift + ' Shift. Change the school shift times in Attendance Settings if needed.';
-        } else {
-            shiftSelect.disabled=false;
-            shiftHelp.textContent = 'Senior High scheduling remains supported and is not restricted by the JHS AM/PM rule.';
-        }
-        existing.innerHTML=formatExisting(a.schedules);
-        saveBtn.disabled=false;
-        clearValidation();
-        queueValidation();
-        schedSlots.reset();
-        schedSlots.refresh();
-    }
-    function loadAssignments(teacherId, preferredTs) {
-        assignments=[]; assignmentSelect.disabled=true; fields.classList.add('d-none'); forBox.classList.add('d-none'); saveBtn.disabled=true;
-        assignmentSelect.innerHTML='<option value="">Loading assignments…</option>';
-        if (!teacherId) { assignmentSelect.innerHTML='<option value="">-- Select teacher first --</option>'; return; }
-        fetch('schedule_api.php?teacher_id='+encodeURIComponent(teacherId), {headers:{'X-Requested-With':'XMLHttpRequest'}})
-            .then(function(r){return r.json();})
-            .then(function(data){
-                assignments=data.assignments || [];
-                assignmentSelect.innerHTML='<option value="">-- Select assigned subject / section --</option>' + assignments.map(function(a){
-                    return '<option value="'+a.ts_id+'">'+sectionLabel(a)+' — '+a.subject_name+'</option>';
-                }).join('');
-                assignmentSelect.disabled=false;
-                if (preferredTs) { assignmentSelect.value=String(preferredTs); applyAssignment(currentAssignment()); requestedTs=''; }
-            })
-            .catch(function(){ assignmentSelect.innerHTML='<option value="">Could not load assignments</option>'; showValidation('danger','Could not load teacher assignments.'); });
-    }
-    function payload(validateOnly) {
-        var a=currentAssignment();
-        if(!a) return null;
-        return {csrf_token:csrf, ts_id:a.ts_id, days:selectedDays(), start_time:startInput.value, end_time:endInput.value, shift:shiftSelect.value, validate_only:validateOnly?1:0};
-    }
-    function validateSchedule() {
-        var p=payload(true);
-        if(!p || !p.days.length || !p.start_time || !p.end_time) { clearValidation(); return; }
-        fetch('schedule_api.php',{method:'POST',headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},body:JSON.stringify(p)})
-            .then(async function(r){ var d=await r.json(); return {ok:r.ok && d.ok,data:d}; })
-            .then(function(res){ showValidation(res.ok?'success':'danger', res.data.message || (res.ok?'No schedule conflict detected.':'Schedule conflict.')); })
-            .catch(function(){ showValidation('warning','Unable to validate right now. Saving will still run full server-side validation.'); });
-    }
-    function queueValidation(){ clearTimeout(validateTimer); validateTimer=setTimeout(validateSchedule,250); }
-
-    if (teacherSelect) teacherSelect.addEventListener('change',function(){ loadAssignments(this.value,''); });
-    if (assignmentSelect) assignmentSelect.addEventListener('change',function(){ applyAssignment(currentAssignment()); });
-    document.querySelectorAll('.schedule-day').forEach(function(c){c.addEventListener('change',function(){ queueValidation(); schedSlots.refresh(); });});
-    [startInput,endInput,shiftSelect].forEach(function(el){ if(el) el.addEventListener('change',queueValidation); });
-    // A different shift shows a different set of periods.
-    if (shiftSelect) shiftSelect.addEventListener('change', function(){ schedSlots.refresh(); });
-
-    if (scheduleModal) scheduleModal.addEventListener('show.bs.modal',function(e){
-        var btn=e.relatedTarget;
-        var teacherId=btn && btn.getAttribute('data-teacher-id');
-        var tsId=btn && btn.getAttribute('data-ts-id');
-        if(teacherId){ teacherSelect.value=teacherId; requestedTs=tsId||''; loadAssignments(teacherId,requestedTs); }
-    });
-    document.querySelectorAll('.js-open-schedule').forEach(function(btn){ btn.addEventListener('click',function(){ requestedTs=this.getAttribute('data-ts-id')||''; }); });
-
-    if (saveBtn) saveBtn.addEventListener('click',function(){
-        var p=payload(false);
-        if(!p || !p.days.length || !p.start_time || !p.end_time){ showValidation('danger','Select day/s, start time, and end time before saving.'); return; }
-        saveBtn.disabled=true; saveBtn.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span> Saving…';
-        fetch('schedule_api.php',{method:'POST',headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},body:JSON.stringify(p)})
-            .then(async function(r){var d=await r.json();return {ok:r.ok&&d.ok,data:d};})
-            .then(function(res){
-                showValidation(res.ok?'success':'danger',res.data.message||'Unable to save schedule.');
-                if(res.ok){ var a=currentAssignment(); loadAssignments(teacherSelect.value,a?a.ts_id:''); }
-            })
-            .catch(function(){showValidation('danger','Could not save the schedule. Please try again.');})
-            .finally(function(){saveBtn.disabled=false;saveBtn.innerHTML='<i class="fas fa-save me-1"></i> Save Schedule';});
-    });
-});
-</script>
+<!-- Teacher assignment and class schedules are managed in Teacher Management (modules/teachers/index.php). -->
 
 </div><!-- /.subj-page -->
 

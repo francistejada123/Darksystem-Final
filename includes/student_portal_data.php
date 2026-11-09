@@ -17,18 +17,110 @@ function spdContext($studentId)
           WHERE e.student_id = ? AND e.school_year_id = ?",
         [(int) $studentId, $syId]
     );
-    $classes = getRecords(
-        "SELECT DISTINCT sub.subject_code, sub.subject_name, ts.teacher_id, e.section_id, e.school_year_id,
-                u.first_name AS teacher_first, u.last_name AS teacher_last
-           FROM enrollments e
-           JOIN teacher_subjects ts ON ts.section_id = e.section_id AND ts.school_year_id = e.school_year_id
-           JOIN subjects sub ON sub.subject_code = ts.subject_code
-           JOIN users u ON u.user_id = ts.teacher_id
-          WHERE e.student_id = ? AND e.school_year_id = ?
-          ORDER BY sub.subject_name",
-        [(int) $studentId, $syId]
-    );
+    $classes = spdCurriculumClasses($studentId, $syId);
     return ['sy' => $sy, 'sy_id' => $syId, 'enrollment' => $enrollment, 'classes' => $classes];
+}
+
+/**
+ * The student's classes = the CURRICULUM of their enrollment, matched with
+ * the teacher assignments of their section. A subject never depends on having
+ * a teacher: it is listed with teacher_id NULL ("To Be Assigned") until the
+ * Admin assigns one in Teacher Management (teacher_subjects: teacher +
+ * subject + section + school year). No per-student subject rows are needed.
+ *
+ *   1. active enrollment  -> grade level, strand (SHS), section, school year
+ *   2. curriculum         -> active subjects of that grade (+ strand; for
+ *                            Senior High only the section's current term,
+ *                            plus subjects that run all terms)
+ *   3. teacher            -> teacher_subjects for subject + section + school year
+ * Subjects already assigned to the section that are outside that list (older
+ * records) are kept, so no existing class disappears.
+ *
+ * @return array rows: subject_code, subject_name, term, ts_id, teacher_id|null,
+ *               teacher_first, teacher_last, section_id, school_year_id, teacher_assigned(bool)
+ */
+function spdCurriculumClasses($studentId, $syId)
+{
+    $e = getRecord(
+        "SELECT e.grade_level, e.strand, e.section_id, e.school_year_id, sec.grade_level AS section_grade, sec.strand AS section_strand
+           FROM enrollments e LEFT JOIN sections sec ON sec.section_id = e.section_id
+          WHERE e.student_id = ? AND e.school_year_id = ? AND e.enrollment_status NOT IN ('Rejected', 'Transferred')
+          ORDER BY e.enrollment_id DESC LIMIT 1",
+        [(int) $studentId, (int) $syId]
+    );
+    if (!$e || empty($e['section_id'])) return [];
+    $sectionId = (int) $e['section_id'];
+    $grade = $e['grade_level'] ?: $e['section_grade'];
+    $isShs = in_array($grade, ['Grade 11', 'Grade 12'], true);
+    $strand = strtoupper(trim((string) ($e['strand'] ?: $e['section_strand'])));
+    if (in_array($strand, ['HUMSS', 'ASSH CLUSTER'], true)) $strand = 'ASSH';
+
+    $where = "sub.is_active = 1 AND sub.grade_level = ?";
+    $params = [$sectionId, (int) $syId, $grade];
+    $term = null;
+    if ($isShs) {
+        if ($strand === 'ASSH') {
+            $where .= " AND sub.strand IN ('ASSH', 'HUMSS')";
+        } elseif ($strand !== '') {
+            $where .= " AND sub.strand = ?";
+            $params[] = $strand;
+        }
+        // The section's current term = the first term not Completed yet (Term 3 once all are done).
+        $done = [];
+        $t = getRecord("SELECT COUNT(*) AS n FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'section_term_status'");
+        if ($t && (int) $t['n'] > 0) {
+            $done = array_column(getRecords("SELECT term FROM section_term_status WHERE section_id = ? AND school_year_id = ?", [$sectionId, (int) $syId]) ?: [], 'term');
+        }
+        $term = 'Term 3';
+        foreach (['Term 1', 'Term 2', 'Term 3'] as $tt) { if (!in_array($tt, $done, true)) { $term = $tt; break; } }
+        $where .= " AND (sub.term IS NULL OR sub.term = '' OR sub.term = ?)";
+        $params[] = $term;
+    } else {
+        $where .= " AND (sub.strand IS NULL OR sub.strand = '')";
+    }
+
+    $rows = getRecords(
+        "SELECT sub.subject_code, sub.subject_name, sub.term, ts.ts_id, ts.teacher_id,
+                u.first_name AS teacher_first, u.last_name AS teacher_last
+           FROM subjects sub
+           LEFT JOIN teacher_subjects ts ON ts.subject_code = sub.subject_code AND ts.section_id = ? AND ts.school_year_id = ?
+           LEFT JOIN users u ON u.user_id = ts.teacher_id
+          WHERE $where
+          ORDER BY sub.subject_name, ts.ts_id",
+        $params
+    ) ?: [];
+
+    // Subjects already assigned to this section (kept even if outside the list above).
+    $extra = getRecords(
+        "SELECT sub.subject_code, sub.subject_name, sub.term, ts.ts_id, ts.teacher_id,
+                u.first_name AS teacher_first, u.last_name AS teacher_last
+           FROM teacher_subjects ts
+           JOIN subjects sub ON sub.subject_code = ts.subject_code
+           LEFT JOIN users u ON u.user_id = ts.teacher_id
+          WHERE ts.section_id = ? AND ts.school_year_id = ?" . ($term !== null ? " AND (sub.term IS NULL OR sub.term = '' OR sub.term = ?)" : "") . "
+          ORDER BY sub.subject_name, ts.ts_id",
+        $term !== null ? [$sectionId, (int) $syId, $term] : [$sectionId, (int) $syId]
+    ) ?: [];
+
+    $out = [];
+    foreach (array_merge($rows, $extra) as $r) {
+        $code = $r['subject_code'];
+        if (isset($out[$code]) && !empty($out[$code]['teacher_id'])) continue;   // one row per subject
+        $r['section_id'] = $sectionId;
+        $r['school_year_id'] = (int) $syId;
+        $r['teacher_id'] = !empty($r['teacher_id']) ? (int) $r['teacher_id'] : null;
+        $r['teacher_assigned'] = $r['teacher_id'] !== null;
+        $out[$code] = $r;
+    }
+    uasort($out, function ($a, $b) { return strcasecmp($a['subject_name'], $b['subject_name']); });
+    return array_values($out);
+}
+
+/** Teacher label for a class row: the teacher's name, or "To Be Assigned". */
+function spdTeacherName(array $c)
+{
+    $n = trim(($c['teacher_first'] ?? '') . ' ' . ($c['teacher_last'] ?? ''));
+    return (!empty($c['teacher_id']) && $n !== '') ? $n : 'To Be Assigned';
 }
 
 /** Average of the student's final grades this school year (0 when none). */

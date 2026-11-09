@@ -174,6 +174,14 @@ $cls = $status_class[$st] ?? 'pending';
                 </a>
                 <?php endif; ?>
             <?php endif; ?>
+            <?php if ($enrollment['enrollment_status'] === 'Approved'): ?>
+                <a href="registration.php?id=<?php echo (int) $enrollment['enrollment_id']; ?>" class="btn-back">
+                    <i class="fas fa-file-lines"></i> View Enrollment Registration
+                </a>
+                <a href="registration.php?id=<?php echo (int) $enrollment['enrollment_id']; ?>&amp;print=1" class="btn-back" target="_blank" rel="noopener">
+                    <i class="fas fa-print"></i> Print Enrollment Registration
+                </a>
+            <?php endif; ?>
             <a href="index.php" class="btn-back">
                 <i class="fas fa-arrow-left"></i> Back
             </a>
@@ -319,7 +327,7 @@ $cls = $status_class[$st] ?? 'pending';
 
     <?php if ($enrollment['enrollment_status'] === 'Approved' && empty($enrollment['section_id'])):
         $available_sections = getRecords(
-            "SELECT section_id, section_name FROM sections WHERE grade_level = ? AND academic_year = (SELECT sy_name FROM school_years WHERE sy_id = ?) ORDER BY section_name",
+            "SELECT section_id, section_name FROM sections WHERE grade_level = ? AND academic_year = (SELECT sy_name FROM school_years WHERE sy_id = ?) AND UPPER(COALESCE(strand, '')) <> 'HUMSS' ORDER BY section_name",
             [$enrollment['grade_level'], $enrollment['school_year_id']]
         );
     ?>
@@ -351,4 +359,4 @@ $cls = $status_class[$st] ?? 'pending';
 
 </div>
 
-<?php include '../../includes/footer.php'; ?>
+<?php include '../../includes/footer.php'; ?> 

@@ -1,7 +1,7 @@
 <?php
 // parent/forgot.php -- Forgot PIN, in three steps on this page:
-//   1. mobile number or email      -> a 6-digit code is emailed to the account's email
-//   2. the code                    -> 10 minutes, 5 tries, 60 s between codes, 3 per hour
+//   1. mobile number or email      -> a 6-digit code: texted (SMS) to a mobile number, emailed to an email
+//   2. the code                    -> 10 minutes, 5 tries, 60 s between codes
 //   3. a new 6-digit PIN           -> saved, signed in, "PIN changed" email
 // The screens are the same whether or not the account exists. An account
 // without an email (or no email sender on the server): ask the adviser or
@@ -26,27 +26,38 @@ if (isset($_GET['restart'])) {
     exit;
 }
 if (!empty($fp['parent_id']) && (int) ($fp['until'] ?? 0) < time()) {   // took too long after the code
-    $fp = ['login' => $fp['login'], 'target' => $fp['target']];
+    $fp = ['login' => $fp['login'], 'target' => $fp['target'], 'channel' => $fp['channel'] ?? 'email'];
     $_SESSION['pp_fp'] = $fp;
     $error = $en ? 'That took too long. Please ask for a new code.' : 'Masyadong natagalan. Humingi ng bagong code.';
 }
 
-/** Email a code for what was typed (only when that account has an email). */
+/** Send a code for what was typed: an email -> emailed; a mobile number -> texted (SMS) to that number. */
 function fpSend($login)
 {
     $p = ppFindParentByLogin($login);
-    if ($p && !empty($p['email'])) {
-        $target = $p['email'];
-        $r = ppCodeSend('reset', $target, $p['email'], (int) $p['parent_id']);
+    if (strpos($login, '@') !== false) {
+        if ($p && !empty($p['email'])) {
+            $target = $p['email'];
+            $r = ppCodeSend('reset', $target, $p['email'], (int) $p['parent_id']);
+        } else {
+            $target = ppNormEmail($login);
+            $r = ppCodeSend('reset', $target, null);
+            logActivity(null, 'student', 'Failed login', 'Parent Forgot PIN: no account (' . ppMaskEmail($target) . ')');
+        }
     } else {
-        $target = strpos($login, '@') !== false ? ppNormEmail($login) : smsNormalizeNumber($login);
-        $r = ppCodeSend('reset', $target, null);
-        logActivity(null, 'student', 'Failed login', 'Parent Forgot PIN: ' . ($p ? 'account has no email' : 'no account') . ' (' . (strpos($login, '@') !== false ? ppMaskEmail($target) : smsMask($target)) . ')');
+        $target = smsNormalizeNumber($login);
+        if ($p && smsNormalizeNumber($p['mobile']) !== '') {
+            $r = ppCodeSend('reset', $target, null, (int) $p['parent_id'], $target);
+        } else {
+            $r = ppCodeSend('reset', $target, null);
+            logActivity(null, 'student', 'Failed login', 'Parent Forgot PIN: no account (' . smsMask($target) . ')');
+        }
     }
     return [$target, $r];
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ppMailReady()) {
+$canSend = ppMailReady() || smsReady();   // email and/or SMS sender is set up
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $canSend) {
     $action = $_POST['action'] ?? '';
     if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
         $error = $en ? 'Your session expired. Please try again.' : 'Nag-expire ang session. Pakisubukan ulit.';
@@ -59,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ppMailReady()) {
             $error = $is_email ? ($en ? 'Enter a valid email.' : 'Ilagay ang tamang email.') : ppMobileFormatError();
         } else {
             [$target, $r] = fpSend($login);
-            $fp = ['login' => $login, 'target' => $target];
+            $fp = ['login' => $login, 'target' => $target, 'channel' => $is_email ? 'email' : 'sms'];
             $_SESSION['pp_fp'] = $fp;
             if (!$r['ok']) {
                 $error = $r['wait'] > PP_OTP_GAP
@@ -97,20 +108,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ppMailReady()) {
             unset($_SESSION['pp_fp'], $_SESSION['parent_id'], $_SESSION['pp_child']);
             session_regenerate_id(true);
             $_SESSION['pp_login_prefill'] = $prefill;
-            header('Location: login.php?pin_changed=1');
+            header('Location: ../student_login.php?as=parent&pin_changed=1');
             exit;
         }
     }
 }
 
-$step = !ppMailReady() ? 'none' : (!empty($fp['parent_id']) ? 'pin' : (!empty($fp['target']) ? 'code' : 'id'));
+$sms = ($fp['channel'] ?? 'email') === 'sms';
+$step = !$canSend ? 'none' : (!empty($fp['parent_id']) ? 'pin' : (!empty($fp['target']) ? 'code' : 'id'));
 $wait = $step === 'code' ? ppCodeWait($fp['target']) : 0;
 $csrf = generateCSRFToken();
 
 $titles = [
     'none' => [ppT('forgot_pin'), $en ? 'We will help you choose a new PIN.' : 'Tutulungan namin kayong gumawa ng bagong PIN.'],
-    'id' => [ppT('forgot_pin'), $en ? 'Enter your mobile number or email. We will email you a 6-digit code.' : 'Ilagay ang cellphone number o email ninyo. Magpapadala kami ng 6-digit na code sa email ninyo.'],
-    'code' => [$en ? 'Check your email' : 'Tingnan ang email ninyo', sprintf($en ? 'If this account has an email, we sent a 6-digit code to it. It works for %d minutes. Check Spam too.' : 'Kung may email ang account na ito, nagpadala kami ng 6-digit na code doon. Gagana ito sa loob ng %d minuto. Tingnan din ang Spam.', PP_OTP_MINUTES)],
+    'id' => [ppT('forgot_pin'), $en ? 'Enter your mobile number or email. We will send you a 6-digit code (by text for a mobile number, by email for an email).' : 'Ilagay ang cellphone number o email ninyo. Magpapadala kami ng 6-digit na code (sa text kung number, sa email kung email).'],
+    'code' => $sms
+        ? [$en ? 'Check your messages' : 'Tingnan ang text message ninyo', sprintf($en ? 'If this account has this number, we texted a 6-digit code to it. It works for %d minutes.' : 'Kung may account na may ganitong number, nagpadala kami ng 6-digit na code sa text. Gagana ito sa loob ng %d minuto.', PP_OTP_MINUTES)]
+        : [$en ? 'Check your email' : 'Tingnan ang email ninyo', sprintf($en ? 'If this account has an email, we sent a 6-digit code to it. It works for %d minutes. Check Spam too.' : 'Kung may email ang account na ito, nagpadala kami ng 6-digit na code doon. Gagana ito sa loob ng %d minuto. Tingnan din ang Spam.', PP_OTP_MINUTES)],
     'pin' => [$en ? 'Choose a new PIN' : 'Gumawa ng bagong PIN', $en ? 'The code is correct. Create your new 6-digit PIN.' : 'Tama ang code. Gumawa ng bagong 6-digit na PIN.'],
 ];
 ppHead(ppT('forgot_pin'), true);
@@ -130,12 +144,12 @@ if ($step !== 'none') ppSteps(['id' => 1, 'code' => 2, 'pin' => 3][$step]);
         <label class="pp-lbl" for="m"><?php echo ppT('login_id'); ?></label>
         <div class="pp-field mb-4"><i class="fas fa-user"></i>
             <input type="text" id="m" class="form-control" name="login" maxlength="120" placeholder="09XXXXXXXXX / name@gmail.com" required autocomplete="username" autocapitalize="none" spellcheck="false"></div>
-        <button class="btn btn-primary w-100 btn-go"><i class="fas fa-paper-plane me-1"></i> <?php echo $en ? 'Email me a code' : 'Ipadala ang code sa email'; ?></button>
+        <button class="btn btn-primary w-100 btn-go"><i class="fas fa-paper-plane me-1"></i> <?php echo $en ? 'Send me a code' : 'Ipadala ang code'; ?></button>
     </form>
 
 <?php elseif ($step === 'code'): ?>
     <?php ppCodeForm($csrf, 'verify', 'resend', $wait, 'forgot.php?restart=1', $en ? 'Change' : 'Palitan'); ?>
-    <p class="pp-note" style="text-align:left"><i class="fas fa-circle-info me-1"></i><?php echo $en ? 'No email on your account, or no code after a few minutes? Ask the adviser or registrar for a Reset PIN slip.' : 'Walang email ang account, o walang dumating na code? Humingi ng Reset PIN slip sa adviser o registrar.'; ?></p>
+    <p class="pp-note" style="text-align:left"><i class="fas fa-circle-info me-1"></i><?php echo $sms ? ($en ? 'No code after a few minutes? Ask the adviser or registrar for a Reset PIN slip.' : 'Walang dumating na code pagkalipas ng ilang minuto? Humingi ng Reset PIN slip sa adviser o registrar.') : ($en ? 'No email on your account, or no code after a few minutes? Ask the adviser or registrar for a Reset PIN slip.' : 'Walang email ang account, o walang dumating na code? Humingi ng Reset PIN slip sa adviser o registrar.'); ?></p>
 
 <?php else: ?>
     <form method="POST" autocomplete="off">
@@ -149,5 +163,5 @@ if ($step !== 'none') ppSteps(['id' => 1, 'code' => 2, 'pin' => 3][$step]);
     </form>
 <?php endif; ?>
     <div class="divider"></div>
-    <p class="foot mb-0"><a href="login.php"><i class="fas fa-arrow-left me-1"></i><?php echo $en ? 'Back to Sign in' : 'Bumalik sa Mag-login'; ?></a></p>
+    <p class="foot mb-0"><a href="../student_login.php?as=parent"><i class="fas fa-arrow-left me-1"></i><?php echo $en ? 'Back to Sign in' : 'Bumalik sa Mag-login'; ?></a></p>
 <?php ppAuthEnd('<i class="fas fa-shield-halved me-1"></i>' . ($en ? 'The school will never ask for this code. Do not give it to anyone.' : 'Hindi hihingin ng school ang code na ito. Huwag itong ibigay kaninuman.'));

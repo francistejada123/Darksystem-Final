@@ -26,7 +26,7 @@ $sec = $ctx['enrollment'];
 spPageStart('My Classes', count($ctx['classes']) . ' class(es)' . ($sec ? ' · ' . ($sec['grade_level'] ?? '') . ' – ' . ($sec['section_name'] ?? '') : ''), $student, $profile_image);
 ?>
             <?php if (!$ctx['classes']): ?>
-                <div class="card-portal"><div class="empty-state"><i class="fas fa-chalkboard"></i><h5>No classes yet</h5><p class="mb-0">Your subjects show up here once they are assigned.</p></div></div>
+                <div class="card-portal"><div class="empty-state"><i class="fas fa-chalkboard"></i><h5>No classes yet</h5><p class="mb-0">Your subjects show up here once you are enrolled in a section.</p></div></div>
             <?php else: ?>
                 <div class="sp-list">
                     <?php foreach ($ctx['classes'] as $c): $color = spSubjectColor($c['subject_code']); $n = $unread[$c['subject_code']] ?? 0; $w = $todo[$c['subject_code']] ?? 0; ?>
@@ -35,7 +35,7 @@ spPageStart('My Classes', count($ctx['classes']) . ' class(es)' . ($sec ? ' · '
                             <span class="sp-class-avatar"><?php echo htmlspecialchars(spInitial($c['subject_name'])); ?></span>
                             <span class="sp-class-main">
                                 <strong><?php echo htmlspecialchars($c['subject_name']); ?></strong>
-                                <small><i class="fas fa-user-tie me-1"></i><?php echo htmlspecialchars(trim($c['teacher_first'] . ' ' . $c['teacher_last'])); ?></small>
+                                <small><i class="fas fa-user-tie me-1"></i>Teacher: <?php echo htmlspecialchars(spdTeacherName($c)); ?></small>
                                 <span class="sp-class-tags">
                                     <?php if ($w): ?><span class="sp-tag warn"><i class="fas fa-clipboard-list"></i> <?php echo $w; ?> to do</span><?php endif; ?>
                                     <?php if ($n): ?><span class="sp-tag info"><i class="fas fa-bell"></i> <?php echo $n; ?> new</span><?php endif; ?>

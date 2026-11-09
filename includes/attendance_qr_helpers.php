@@ -235,14 +235,16 @@ function attQrNormalizeTime($t)
 }
 
 /**
- * When does this class start today?
- *   1. the class's own meeting in teacher_class_schedule (Assign Teacher /
- *      Schedule) for today's weekday -- the current or next meeting;
- *   2. otherwise the school's configured program start from Settings ->
- *      Attendance Schedule (JHS morning/afternoon, SHS), so scanning still
- *      works for a class nobody has scheduled yet. The page says which one
- *      is being used.
- * @return array{start:string,end:?string,source:string,label:string}
+ * When does this class start on the given day ($ts, default now)?
+ * ONLY from the class's own meeting in teacher_class_schedule -- the schedule
+ * the Administrator sets in Teacher Management (Schedule) -- matched by
+ * teacher + subject + section + school year + weekday; the current or next
+ * meeting that day. Admin schedule edits show up immediately (read live).
+ *
+ * No schedule for that weekday -> source 'none' and start NULL. There is no
+ * silent fallback to the school program start (e.g. 12:30 PM) any more, so a
+ * wrong start time can never decide Present/Late.
+ * @return array{start:?string,end:?string,source:string,label:string}
  */
 function attQrResolveClassStart($teacherId, $subjectCode, $sectionId, $schoolYearId, $ts = null)
 {
@@ -274,19 +276,31 @@ function attQrResolveClassStart($teacherId, $subjectCode, $sectionId, $schoolYea
         ];
     }
 
-    $section = getRecord("SELECT is_senior_high FROM sections WHERE section_id = ?", [$sectionId]);
-    $cfg = getAttendanceScheduleSettings();
-    if ($section && (int) $section['is_senior_high'] === 1) {
-        $start = $cfg['shs_start'];
-    } else {
-        $start = ($now < attQrNormalizeTime($cfg['jhs_afternoon_start'])) ? $cfg['jhs_morning_start'] : $cfg['jhs_afternoon_start'];
-    }
     return [
-        'start'  => attQrNormalizeTime($start),
+        'start'  => null,
         'end'    => null,
-        'source' => 'program',
-        'label'  => 'School program start (no class schedule set for today)',
+        'source' => 'none',
+        'label'  => 'No class schedule set for this day',
     ];
+}
+
+/**
+ * Every weekly meeting of this class (same match as above), for showing
+ * "This class meets: Tue 3:15 PM - 4:00 PM" when the chosen day has none.
+ * @return string[]
+ */
+function attQrClassWeekSchedule($teacherId, $subjectCode, $sectionId, $schoolYearId)
+{
+    $days = [1 => 'Mon', 2 => 'Tue', 3 => 'Wed', 4 => 'Thu', 5 => 'Fri', 6 => 'Sat', 7 => 'Sun'];
+    $out = [];
+    foreach (getRecords("
+        SELECT day_of_week, start_time, end_time FROM teacher_class_schedule
+        WHERE teacher_id = ? AND subject_code = ? AND section_id = ? AND school_year_id = ? AND is_active = 1
+        ORDER BY day_of_week, start_time
+    ", [$teacherId, $subjectCode, $sectionId, $schoolYearId]) ?: [] as $r) {
+        $out[] = ($days[(int) $r['day_of_week']] ?? '') . ' ' . attQrFormatTime($r['start_time']) . ' - ' . attQrFormatTime($r['end_time']);
+    }
+    return $out;
 }
 
 /** Present when the scan is on/before the start time, Late after it. */
@@ -449,6 +463,11 @@ function attQrStartSession($teacherId, $subjectCode, $sectionId, $schoolYearId)
         }
     } else {
         $start = attQrResolveClassStart($teacherId, $subjectCode, $sectionId, $schoolYearId);
+        if ($start['source'] !== 'schedule' || $start['start'] === null) {
+            // No meeting for this class today in the Admin schedule -> do not
+            // open a session with a made-up start time.
+            return ['success' => false, 'error' => 'No class schedule set for this day. Ask the administrator to set this class\'s schedule in Teacher Management.'];
+        }
         executeQuery(
             "INSERT IGNORE INTO attendance_sessions (teacher_id, subject_code, section_id, school_year_id, session_date, schedule_start, start_source, status, started_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, 'Open', ?)",

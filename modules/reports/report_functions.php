@@ -8,17 +8,17 @@
 //
 // What each report is for (also shown on the Reports page):
 //   SF1  School Register          -- official list of enrolled learners per section (start of the year, LIS)
-//   SF5  Promotion & Learning Progress -- end-of-year Promoted / Conditionally Promoted / Retained per section
+//   SF5  Promotion & Learning Progress -- end-of-year Completed / Promoted or Not Promoted per section
 //   SF9  Learner's Progress Report Card -- given to the parent every term and at year end
 //   Grade Summary                 -- per-term monitoring of a section's averages (adviser / principal)
 //   At-Risk Student Report        -- one learner's weak subjects + recommended interventions
 //
 // The DepEd forms follow the SF layouts: DepEd header (School ID, Region,
 // Division, District -- from Settings > General), males first then females
-// with counts, and signature lines. Promotion follows DepEd Order No. 8,
-// s. 2015: all learning areas passed = Promoted; 1-2 failed = Conditionally
-// Promoted (remedial); 3 or more failed = Retained (Senior High: failed
-// subjects are back subjects).
+// with counts, and signature lines. Grade descriptors come from
+// getGradeDescriptor() and the promotion status is the official finalized
+// year status (student_year_status: Completed / Promoted or Not Promoted),
+// i.e. exactly what Grade Management and the Admin screens show.
 
 require_once __DIR__ . '/../../includes/pdf_helpers.php';
 require_once __DIR__ . '/../../includes/grading_helpers.php';
@@ -124,6 +124,57 @@ function rpStyles() {
 }
 
 /**
+ * Styles for the SF9 Learner's Performance Report Card ONLY (no other form
+ * is affected). Single-page A4 portrait reference layout: white background,
+ * dark-blue section headers, light-blue table headings, thin blue borders.
+ * Dompdf-safe: side-by-side blocks are tables (no flex/float), and no
+ * border-radius is used on inline elements inside table cells.
+ */
+function rpStylesSf9() {
+    return '<style>
+        .sf9-frame { border:2px solid #1F4788; padding:10px 12px; }
+        .sf9-hd { width:100%; border-collapse:collapse; }
+        .sf9-hd td { border:none; vertical-align:middle; padding:0; }
+        .sf9-deped-mark { font-size:26px; font-weight:bold; color:#1F4788; line-height:1; }
+        .sf9-deped-mark span { color:#D32F2F; }
+        .sf9-deped-sub { font-size:7px; color:#1F4788; letter-spacing:1px; }
+        .sf9-hd-c { text-align:center; }
+        .sf9-hd-c .l1 { font-size:10px; color:#172033; }
+        .sf9-hd-c .l2 { font-size:11px; font-weight:bold; color:#172033; }
+        .sf9-hd-c .l3 { font-size:9px; color:#172033; }
+        .sf9-hd-c .l4 { font-size:9px; color:#172033; }
+        .sf9-hd-c .school { font-size:17px; font-weight:bold; color:#1F4788; margin:1px 0; }
+        .sf9-hd-c .city { font-size:9px; color:#172033; }
+        .sf9-seal { width:78px; height:78px; }
+        .sf9-rule { border:none; border-top:1.5px solid #1F4788; margin:6px 0 8px; }
+        .sf9-banner { background:#1F4788; color:#fff; text-align:center; padding:7px 6px; margin:0 0 8px; }
+        .sf9-banner .t { font-size:15px; font-weight:bold; letter-spacing:.5px; }
+        .sf9-banner .s { font-size:10.5px; margin-top:2px; }
+        .sf9-sec { background:#1F4788; color:#fff; font-size:10.5px; font-weight:bold; padding:4px 8px; margin:8px 0 0; letter-spacing:.3px; }
+        table.sf9-box { width:100%; border-collapse:collapse; }
+        table.sf9-box td, table.sf9-box th { border:1px solid #4A6FA5; }
+        .sf9-info { font-size:9.5px; padding:3px 7px; color:#172033; vertical-align:middle; }
+        .sf9-info .k { display:inline-block; width:118px; }
+        .sf9-info .ln { display:inline-block; width:180px; border-bottom:1px solid #1F4788; min-height:11px; }
+        .sf9-info .ln-sm { display:inline-block; width:120px; border-bottom:1px solid #1F4788; min-height:11px; }
+        table.sf9-gr { width:100%; border-collapse:collapse; }
+        table.sf9-gr th { background:#D9E2F3; color:#172033; font-size:9px; font-weight:bold; padding:4px 3px; border:1px solid #4A6FA5; }
+        table.sf9-gr td { border:1px solid #4A6FA5; font-size:9.5px; padding:3px 5px; color:#172033; }
+        table.sf9-gr td.c { text-align:center; }
+        table.sf9-gr td.sub { padding-left:16px; }
+        table.sf9-gr tr.sf9-ga td { background:#D9E2F3; font-weight:bold; }
+        table.sf9-outer { width:100%; border-collapse:collapse; }
+        table.sf9-outer > tbody > tr > td { border:none; vertical-align:top; padding:0; }
+        .sf9-blank { border-bottom:1px solid #1F4788; display:inline-block; min-height:11px; }
+        .sf9-lines { font-size:9.5px; color:#172033; line-height:2.1; }
+        .sf9-cert { font-size:8.5px; color:#172033; line-height:1.5; }
+        .sf9-sig { text-align:center; font-size:9px; color:#172033; margin-top:16px; }
+        .sf9-sig .rule { border-top:1px solid #172033; margin:0 14px 2px; padding-top:2px; }
+        .sf9-fail { color:#C0392B; font-weight:bold; }
+    </style>';
+}
+
+/**
  * DepEd form header: Republic / DepEd lines, form title and the school
  * block (School ID, School Name, Region, Division, District, School Year),
  * plus any extra cells (Grade Level, Section, Adviser...).
@@ -222,27 +273,32 @@ function rpAge($birth, $onDate) {
     }
 }
 
-/** DepEd descriptor of a (rounded) grade. */
+/** Descriptor of a (rounded) grade -- the centralized rule in grading_helpers.php (Advancing ... Emerging). */
 function rpDescriptor($grade) {
     if ($grade === null || $grade === '') return '';
-    $g = (int)round((float)$grade);
-    if ($g >= 90) return 'Outstanding';
-    if ($g >= 85) return 'Very Satisfactory';
-    if ($g >= 80) return 'Satisfactory';
-    if ($g >= 75) return 'Fairly Satisfactory';
-    return 'Did Not Meet Expectations';
+    return getGradeDescriptor((int)round((float)$grade));
 }
 
 /**
  * One learner's year: term grades, Final Grade and remark per learning area,
- * General Average, descriptor and the DepEd action taken. Uses the same
+ * General Average, descriptor and the promotion status. Uses the same
  * rules as the grading module (computeSubjectFinalGrade, computeGeneralAverage,
- * getPassFailRemark). Learning areas = the subjects assigned to the section
- * this school year (or, without a section, the subjects the learner has grades in).
+ * getPassFailRemark, getGradeDescriptor). The status and General Average are
+ * the OFFICIAL finalized ones from student_year_status (the same rows the
+ * Admin screens read); a learner without one is "Incomplete" (not finalized yet).
+ * Learning areas = the subjects assigned to the section this school year
+ * (or, without a section, the subjects the learner has grades in).
  */
 function rpYearResult($student_id, $section_id, $grade_level) {
     $sy = rpActiveSy();
     $sy_id = (int)$sy['sy_id'];
+    // Same catch-up the Admin pages run, so a finished section is never missing its official status here.
+    gh_ensureStudentYearStatusTable();
+    gh_sweepYearStatuses($sy_id);
+    $official = $grade_level ? getRecord(
+        "SELECT status, general_average, failed_subjects FROM student_year_status
+          WHERE student_id = ? AND school_year_id = ? AND grade_level = ? LIMIT 1",
+        [(int)$student_id, $sy_id, $grade_level]) : null;
     $subjects = $section_id ? (getRecords(
         "SELECT DISTINCT sub.subject_code, sub.subject_name, sub.term, sub.terms_required, sub.units
            FROM teacher_subjects ts JOIN subjects sub ON sub.subject_code = ts.subject_code
@@ -278,7 +334,7 @@ function rpYearResult($student_id, $section_id, $grade_level) {
         if (!$complete) $incomplete++;
         elseif (!$passed) $failed[] = $sub['subject_name'];
         if ($complete) $finals[] = ['final_grade' => $final, 'units' => $sub['units'] ?? null];
-        $rows[] = ['name' => $sub['subject_name'], 'terms' => $term_grades, 'valid_terms' => $valid_terms,
+        $rows[] = ['code' => $sub['subject_code'], 'name' => $sub['subject_name'], 'terms' => $term_grades, 'valid_terms' => $valid_terms,
                    'final' => $final, 'complete' => $complete, 'passed' => $passed];
     }
     $ga = null;
@@ -288,18 +344,20 @@ function rpYearResult($student_id, $section_id, $grade_level) {
         $ga = $r['general_average'];
         if ($ga === null && !empty($r['message'])) $ga_note = $r['message'];
     }
+    // Official finalized result wins, so reports and the Admin screens always agree.
+    if ($official && $official['general_average'] !== null) $ga = (float)$official['general_average'];
     if (!$rows) $action = 'No grades';
-    elseif ($incomplete > 0) $action = 'Incomplete';
-    elseif (!$failed) $action = 'Promoted';
-    elseif ($is_shs) $action = 'With Back Subject' . (count($failed) > 1 ? 's' : '');
-    elseif (count($failed) <= 2) $action = 'Conditionally Promoted';
-    else $action = 'Retained';
+    elseif ($official && in_array($official['status'], [gh_yearStatusPromotedLabel(), 'Not Promoted'], true)) {
+        $action = $official['status'];
+        if ($action === 'Not Promoted' && !$failed && !empty($official['failed_subjects'])) $failed[] = $official['failed_subjects'];
+    }
+    else $action = 'Incomplete';   // not finalized yet
     return ['subjects' => $rows, 'ga' => $ga, 'ga_note' => $ga_note, 'failed' => $failed, 'incomplete' => $incomplete,
             'action' => $action, 'descriptor' => $ga !== null ? rpDescriptor($ga) : '', 'is_shs' => $is_shs];
 }
 
 function rpActionBadge($action) {
-    $v = ['Promoted' => 'success', 'Conditionally Promoted' => 'warning', 'Retained' => 'danger', 'Incomplete' => 'gray'][$action] ?? (strpos($action, 'Back') !== false ? 'warning' : 'gray');
+    $v = [gh_yearStatusPromotedLabel() => 'success', 'Not Promoted' => 'danger', 'Incomplete' => 'gray'][$action] ?? 'gray';
     return pdfBadge($action, $v);
 }
 
@@ -401,8 +459,8 @@ function generateSF5($section_id) {
     }
     $learners = rpLearners($section_id, '');
 
-    $actions = ['Promoted', 'Conditionally Promoted', 'Retained', 'Incomplete'];
-    $descriptors = ['Outstanding' => '90-100', 'Very Satisfactory' => '85-89', 'Satisfactory' => '80-84', 'Fairly Satisfactory' => '75-79', 'Did Not Meet Expectations' => 'Below 75'];
+    $actions = [gh_yearStatusPromotedLabel(), 'Not Promoted', 'Incomplete'];
+    $descriptors = ['Advancing' => '90-100', 'Benchmarking' => '80-89', 'Connecting' => '75-79', 'Developing' => '65-74', 'Emerging' => '0-64'];
     $sumAct = [];
     $sumDesc = [];
     $groups = ['MALE' => [], 'FEMALE' => [], 'NOT SET' => []];
@@ -412,7 +470,7 @@ function generateSF5($section_id) {
         $key = rpSexKey($st['gender']);
         $res = rpYearResult($st['student_id'], $section_id, $section['grade_level']);
         $act = $res['action'];
-        if (strpos($act, 'Back') !== false) $act = 'Conditionally Promoted';   // SHS back subjects counted with "conditional"
+        if ($act === 'No grades') $act = 'Incomplete';
         $sumAct[$act][$key] = ($sumAct[$act][$key] ?? 0) + 1;
         if ($res['descriptor'] !== '') $sumDesc[$res['descriptor']][$key] = ($sumDesc[$res['descriptor']][$key] ?? 0) + 1;
         $count[$key]++;
@@ -452,9 +510,9 @@ function generateSF5($section_id) {
           . '<td style="width:48%;vertical-align:top;border:none;padding:0 8px 0 0"><div class="rp-h">Summary Table</div>' . $mk('Status', $actions, $sumAct) . '</td>'
           . '<td style="width:52%;vertical-align:top;border:none;padding:0 0 0 8px"><div class="rp-h">Level of Proficiency</div>' . $mk('Descriptor (Grading Scale)', $descriptors, $sumDesc) . '</td>'
           . '</tr></table>';
-    $body .= '<p class="rp-note">Promoted: passed all learning areas. Conditionally Promoted: did not meet expectations in 1-2 learning areas (must pass remedial classes)'
-          . ($is_shs ? '; for Senior High, failed subjects are back subjects' : '') . '. Retained: did not meet expectations in 3 or more learning areas (DepEd Order No. 8, s. 2015). '
-          . 'Incomplete: some final grades are not complete yet (all three terms must be graded).</p>';
+    $body .= '<p class="rp-note">' . gh_yearStatusPromotedLabel() . ': passed all learning areas. Not Promoted: at least one learning area failed or without a final grade when the year was finalized. '
+          . 'Incomplete: the school year result is not finalized yet (all three terms must be finalized and graded). '
+          . 'Status and General Average are the official finalized results shown in the Admin portal.</p>';
     $body .= rpSignatures([
         ['Prepared by:', $section['adviser_name'] ?? '', 'Class Adviser'],
         ['Certified correct &amp; submitted:', rpSchoolInfo()['school_head'], 'School Head'],
@@ -495,6 +553,24 @@ function rpMonthlyAttendance($student_id, $section_id) {
     return $months;
 }
 
+/**
+ * The signature block: Class Adviser, School Head, Parent / Guardian.
+ * Kept as its own helper so page 1 has room to push it to the bottom.
+ */
+function rpSf9Signatures($adviserName) {
+    $head = rpSchoolInfo()['school_head'];
+    $cell = function ($name, $title) {
+        return '<div class="rule">&nbsp;</div>'
+             . '<div class="nm">' . ($name !== '' ? htmlspecialchars(mb_strtoupper($name)) : '<span class="bl">&nbsp;</span>') . '</div>'
+             . '<div class="tt">' . $title . '</div>';
+    };
+    return '<table class="rp-sign2"><tr>'
+         . '<td>' . $cell($adviserName, 'Class Adviser') . '</td>'
+         . '<td>' . $cell($head, 'School Head') . '</td>'
+         . '<td><div class="rule">&nbsp;</div><div class="nm">&nbsp;</div><div class="tt">Parent / Guardian\'s Signature</div></td>'
+         . '</tr></table>';
+}
+
 function generateSF9($student_id) {
     // Accepts either the internal Student ID or the LRN — the form
     // field and every place in the UI that shows a student actually
@@ -505,80 +581,200 @@ function generateSF9($student_id) {
         return;
     }
     $sy = rpActiveSy();
+    list($body, $filename) = rpSf9CardBody($student, $sy);
+    streamReportPdf('SF9 - Report Card', 'SY ' . $sy['sy_name'], $body, $filename, 'A4', 'portrait', false);
+}
+
+/**
+ * MAPEH-style component rows for one learning area, read from the saved
+ * grade_components records (same table Encode Grades writes). Component
+ * finals use the existing computeSubjectFinalGrade() — nothing is computed
+ * independently here. Returns [] when the subject has no saved components.
+ */
+function rpSf9SubjectComponents($student_id, $subject_code, $sy_id, $valid_terms) {
+    $rows = getRecords(
+        "SELECT component, term, transmuted_grade, remarks FROM grade_components
+          WHERE student_id = ? AND subject_code = ? AND school_year_id = ?",
+        [(int)$student_id, $subject_code, (int)$sy_id]) ?: [];
+    $by_comp = [];
+    foreach ($rows as $r) {
+        if (!gh_isValidGradeRow($r)) continue;
+        $by_comp[$r['component']][$r['term']] = (float)$r['transmuted_grade'];
+    }
+    if (!$by_comp) return [];
+    $out = [];
+    foreach ($by_comp as $comp => $cterms) {
+        $fg = computeSubjectFinalGrade($cterms, $valid_terms, $sy_id);
+        $out[] = ['name' => $comp, 'terms' => $cterms,
+                  'final' => !empty($fg['is_complete']) ? $fg['final_grade'] : null,
+                  'complete' => !empty($fg['is_complete']),
+                  'passed' => !empty($fg['is_complete']) && getPassFailRemark($fg['final_grade']) === 'Passed'];
+    }
+    return $out;
+}
+
+/**
+ * Builds the single-page SF9 reference card markup. Split out of
+ * generateSF9() purely so it can be rendered/inspected on its own; it
+ * changes no computation — every grade, average, descriptor and attendance
+ * figure still comes from the same helpers as before (rpYearResult(),
+ * computeSubjectFinalGrade(), computeGeneralAverage(), rpMonthlyAttendance()).
+ *
+ * @return array{0:string,1:string} [html, filename]
+ */
+function rpSf9CardBody(array $student, array $sy) {
     $enr = rpStudentEnrollment($student['student_id']);
     $section_id = $enr['section_id'] ?? null;
     $section = rpSectionInfo($section_id);
     $grade_level = $enr['grade_level'] ?? $student['grade_level'];
-    $terms = getActiveTerms();
+    $terms = getActiveTerms(); // Term 1, Term 2, Term 3 only
     $res = rpYearResult($student['student_id'], $section_id, $grade_level);
+    $s = rpSchoolInfo();
+    $strand = trim((string)($student['strand'] ?? ''));
+    $sy_id = (int)$sy['sy_id'];
+    $is_shs = gh_isSeniorHigh($grade_level);
 
-    $body = rpFormHeader("School Form 9 (SF9) Learner's Progress Report Card", 'Report on learning progress and achievement, and attendance');
-    $body .= '<table class="rp-meta"><tr>'
-          . '<td colspan="2"><span>Name:</span> <b>' . htmlspecialchars(rpFullName($student)) . '</b></td>'
-          . '<td><span>LRN:</span> <b>' . htmlspecialchars($student['lrn']) . '</b></td></tr><tr>'
-          . '<td><span>Age:</span> <b>' . rpVal(rpAge($student['birth_date'], $sy['start_date'] ?? null)) . '</b></td>'
-          . '<td><span>Sex:</span> <b>' . rpVal($student['gender']) . '</b></td>'
-          . '<td><span>Grade &amp; Section:</span> <b>' . rpVal(trim($grade_level . ($section ? ' - ' . $section['section_name'] : ''))) . '</b></td></tr><tr>'
-          . '<td colspan="2"><span>Adviser:</span> <b>' . rpVal($section['adviser_name'] ?? '') . '</b></td>'
-          . '<td><span>Track/Strand:</span> <b>' . rpVal($student['strand'] ?? '') . '</b></td></tr></table>';
+    $css = rpStylesSf9();
+    $h = $css . '<div class="sf9-frame">';
 
-    // Learning progress
-    $body .= '<div class="rp-h">Report on Learning Progress and Achievement</div>';
-    $head = '<table class="rp-t rp-big"><thead><tr><th>Learning Areas</th>';
-    foreach ($terms as $t) $head .= '<th style="text-align:center">' . htmlspecialchars($t) . '</th>';
-    $head .= '<th style="text-align:center">Final Grade</th><th style="text-align:center">Remarks</th></tr></thead><tbody>';
-    $trs = '';
+    // ---- 1. DepEd + school header (existing logo asset for the seal)
+    $seal = pdfLogoDataUri();
+    $h .= '<table class="sf9-hd"><tr>'
+        . '<td style="width:17%"><div class="sf9-deped-mark">Dep<span>Ed</span></div><div class="sf9-deped-sub">DEPARTMENT OF EDUCATION</div></td>'
+        . '<td style="width:66%" class="sf9-hd-c">'
+        . '<div class="l1">Republic of the Philippines</div>'
+        . '<div class="l2">Department of Education</div>'
+        . '<div class="l3">NATIONAL CAPITAL REGION<br>SCHOOLS DIVISION OFFICE OF MALABON CITY</div>'
+        . '<div class="school">' . htmlspecialchars(mb_strtoupper($s['school_name'])) . '</div>'
+        . '<div class="city">Malabon City, National Capital Region</div>'
+        . '</td>'
+        . '<td style="width:17%;text-align:right">' . ($seal ? '<img src="' . $seal . '" class="sf9-seal" alt="">' : '') . '</td>'
+        . '</tr></table><hr class="sf9-rule">';
+
+    // ---- 2. Blue title banner (dynamic school year)
+    $h .= '<div class="sf9-banner"><div class="t">LEARNER\'S PERFORMANCE REPORT</div>'
+        . '<div class="s">School Year: ' . htmlspecialchars(str_replace('-', ' – ', $sy['sy_name'])) . '</div></div>';
+
+    // ---- 3. Learner information (from existing student records)
+    $h .= '<table class="sf9-box"><tr>'
+        . '<td class="sf9-info" style="width:60%"><span class="k">Learner\'s Name</span>: '
+        . '<span class="ln">' . htmlspecialchars(rpFullName($student)) . '</span></td>'
+        . '<td class="sf9-info" style="width:40%"><span class="k">Grade Level</span>: '
+        . '<span class="ln-sm">' . htmlspecialchars($grade_level) . '</span></td></tr>'
+        . '<tr><td class="sf9-info"><span class="k">LRN</span>: '
+        . '<span class="ln">' . htmlspecialchars($student['lrn']) . '</span></td>'
+        . '<td class="sf9-info"><span class="k">Section</span>: '
+        . '<span class="ln-sm">' . htmlspecialchars($section['section_name'] ?? '') . '</span></td></tr>'
+        . '<tr><td class="sf9-info"><span class="k">Age</span>: '
+        . '<span class="ln">' . htmlspecialchars(rpAge($student['birth_date'] ?? null, $sy['start_date'] ?? null)) . '</span></td>'
+        . '<td class="sf9-info" rowspan="2" style="vertical-align:top"><span class="k">Track/Strand (SHS only)</span>: '
+        . '<span class="ln-sm">' . ($is_shs ? htmlspecialchars($strand) : '') . '</span></td></tr>'
+        . '<tr><td class="sf9-info"><span class="k">Sex</span>: '
+        . '<span class="ln">' . htmlspecialchars($student['gender'] ?? '') . '</span></td></tr>'
+        . '</table>';
+
+    // ---- 4. Learning Progress and Achievement (saved records only)
+    $h .= '<div class="sf9-sec">LEARNING PROGRESS AND ACHIEVEMENT</div>';
+    $h .= '<table class="sf9-gr"><thead><tr><th style="width:34%">Learning Areas</th>';
+    foreach ($terms as $t) $h .= '<th style="text-align:center">' . htmlspecialchars($t) . '</th>';
+    $h .= '<th style="text-align:center">Final Grade</th><th style="text-align:center">Remarks</th></tr></thead><tbody>';
     foreach ($res['subjects'] as $sub) {
-        $trs .= '<tr><td>' . htmlspecialchars($sub['name']) . '</td>';
+        $h .= '<tr><td><b>' . htmlspecialchars($sub['name']) . '</b></td>';
         foreach ($terms as $t) {
             $g = $sub['terms'][$t] ?? null;
-            $trs .= '<td style="text-align:center">' . ($g !== null ? (int)round($g) : (in_array($t, $sub['valid_terms'], true) ? '' : '<span style="color:#98A2B3">n/a</span>')) . '</td>';
+            $h .= '<td class="c">' . ($g !== null ? (int)round($g) : (in_array($t, $sub['valid_terms'], true) ? '' : '<span style="color:#98A2B3">n/a</span>')) . '</td>';
         }
-        $trs .= '<td style="text-align:center;font-weight:bold">' . ($sub['final'] !== null ? (int)round($sub['final']) : '') . '</td>'
-             . '<td style="text-align:center">' . ($sub['complete'] ? ($sub['passed'] ? 'Passed' : '<b style="color:#C94A4A">Failed</b>') : '') . '</td></tr>';
+        $h .= '<td class="c"><b>' . ($sub['final'] !== null ? (int)round($sub['final']) : '') . '</b></td>'
+            . '<td class="c">' . ($sub['complete'] ? ($sub['passed'] ? 'Passed' : '<span class="sf9-fail">Failed</span>') : '') . '</td></tr>';
+        // MAPEH-style saved components as indented sub-rows (when on file).
+        foreach (rpSf9SubjectComponents($student['student_id'], $sub['code'] ?? '', $sy_id, $sub['valid_terms']) as $comp) {
+            $h .= '<tr><td class="sub">' . htmlspecialchars($comp['name']) . '</td>';
+            foreach ($terms as $t) {
+                $g = $comp['terms'][$t] ?? null;
+                $h .= '<td class="c">' . ($g !== null ? (int)round($g) : '') . '</td>';
+            }
+            $h .= '<td class="c"><b>' . ($comp['final'] !== null ? (int)round($comp['final']) : '') . '</b></td>'
+                . '<td class="c">' . ($comp['complete'] ? ($comp['passed'] ? 'Passed' : '<span class="sf9-fail">Failed</span>') : '') . '</td></tr>';
+        }
     }
-    if (!$res['subjects']) $trs .= '<tr><td colspan="' . (count($terms) + 3) . '" style="text-align:center;color:#98A2B3;padding:12px;font-style:italic">No learning areas or grades yet for this school year.</td></tr>';
-    $trs .= '<tr class="rp-sub"><td colspan="' . (count($terms) + 1) . '" style="text-align:right">General Average</td>'
-         . '<td style="text-align:center">' . ($res['ga'] !== null ? number_format($res['ga'], 2) : '') . '</td>'
-         . '<td style="text-align:center">' . ($res['ga'] !== null ? (getPassFailRemark($res['ga']) === 'Passed' ? 'Passed' : 'Failed') : '') . '</td></tr>';
-    $body .= $head . $trs . '</tbody></table>';
-    if ($res['ga'] === null) $body .= '<p class="rp-note">' . ($res['ga_note'] !== '' ? htmlspecialchars($res['ga_note']) : 'The General Average appears when every learning area has its final grade (all terms graded).') . '</p>';
+    if (!$res['subjects']) {
+        $h .= '<tr><td colspan="' . (count($terms) + 3) . '" style="text-align:center;color:#98A2B3;padding:10px;font-style:italic">No learning areas or grades yet for this school year.</td></tr>';
+    }
+    $h .= '<tr class="sf9-ga"><td style="text-align:right"><b>General Average</b></td><td class="c"></td><td class="c"></td><td class="c"></td>'
+        . '<td class="c"><b>' . ($res['ga'] !== null ? number_format($res['ga'], 2) : '') . '</b></td>'
+        . '<td class="c">' . ($res['ga'] !== null ? (getPassFailRemark($res['ga']) === 'Passed' ? 'Passed' : '<span class="sf9-fail">Failed</span>') : '') . '</td></tr>';
+    $h .= '</tbody></table>';
 
-    // Descriptors legend + action taken
-    $body .= '<table style="width:100%;border-collapse:collapse"><tr><td style="width:55%;vertical-align:top;border:none;padding:0 8px 0 0">'
-          . '<table class="rp-t"><thead><tr><th>Descriptors</th><th style="text-align:center">Grading Scale</th><th style="text-align:center">Remarks</th></tr></thead><tbody>'
-          . '<tr><td>Outstanding</td><td style="text-align:center">90-100</td><td style="text-align:center">Passed</td></tr>'
-          . '<tr><td>Very Satisfactory</td><td style="text-align:center">85-89</td><td style="text-align:center">Passed</td></tr>'
-          . '<tr><td>Satisfactory</td><td style="text-align:center">80-84</td><td style="text-align:center">Passed</td></tr>'
-          . '<tr><td>Fairly Satisfactory</td><td style="text-align:center">75-79</td><td style="text-align:center">Passed</td></tr>'
-          . '<tr><td>Did Not Meet Expectations</td><td style="text-align:center">Below 75</td><td style="text-align:center">Failed</td></tr></tbody></table></td>'
-          . '<td style="width:45%;vertical-align:top;border:none;padding:0 0 0 8px"><table class="rp-t"><tbody>'
-          . '<tr><td style="color:#667085">Descriptor</td><td><b>' . rpVal($res['descriptor']) . '</b></td></tr>'
-          . '<tr><td style="color:#667085">Action taken</td><td>' . ($res['action'] === 'Incomplete' || $res['action'] === 'No grades' ? '<span style="color:#98A2B3">at the end of the school year</span>' : rpActionBadge($res['action'])) . '</td></tr>'
-          . ($res['failed'] ? '<tr><td style="color:#667085">Not passed</td><td>' . htmlspecialchars(implode(', ', $res['failed'])) . '</td></tr>' : '')
-          . '</tbody></table></td></tr></table>';
-
-    // Attendance
-    $months = rpMonthlyAttendance($student['student_id'], $section_id);
-    $body .= '<div class="rp-h">Report on Attendance</div><table class="rp-t"><thead><tr><th></th>';
-    foreach ($months as $m) $body .= '<th style="text-align:center">' . $m['label'] . '</th>';
-    $body .= '<th style="text-align:center">Total</th></tr></thead><tbody>';
-    foreach (['days' => 'No. of school days', 'present' => 'No. of days present', 'absent' => 'No. of days absent'] as $k => $label) {
-        $body .= '<tr><td>' . $label . '</td>';
+    // ---- 5. Performance Descriptors + Attendance Record, side by side.
+    // Descriptor labels come from the centralized school policy rule
+    // (getGradeDescriptor / DO 015, s. 2026); pass/fail per band from
+    // getPassFailRemark. Attendance from saved records (rpMonthlyAttendance).
+    $bands = [[90, '90 – 100'], [80, '80 – 89'], [75, '75 – 79'], [65, '65 – 74'], [0, '0 – 64']];
+    $desc = '<div class="sf9-sec">PERFORMANCE DESCRIPTORS</div>'
+          . '<table class="sf9-gr"><thead><tr><th>Percentage Range</th><th>Descriptor (Remarks)</th></tr></thead><tbody>';
+    foreach ($bands as [$floor, $range]) {
+        $desc .= '<tr><td class="c">' . $range . '</td><td class="c">' . htmlspecialchars(getGradeDescriptor($floor) . ' (' . getPassFailRemark($floor) . ')') . '</td></tr>';
+    }
+    $desc .= '</tbody></table>';
+    $amonths = rpMonthlyAttendance($student['student_id'], $section_id);
+    $by_num = [];
+    foreach ($amonths as $k => $m) { $by_num[(int)substr($k, 5, 2)] = $m; }
+    $att_cols = [[6, 'Jun'], [7, 'Jul'], [8, 'Aug'], [9, 'Sep'], [10, 'Oct'], [11, 'Nov'], [12, 'Dec'], [1, 'Jan'], [2, 'Feb'], [3, 'Mar'], [4, 'Apr']];
+    $att = '<div class="sf9-sec">ATTENDANCE RECORD</div>'
+         . '<table class="sf9-gr"><thead><tr><th>Month</th>';
+    foreach ($att_cols as [, $ml]) $att .= '<th style="text-align:center">' . $ml . '</th>';
+    $att .= '<th style="text-align:center">Total</th></tr></thead><tbody>';
+    foreach (['days' => 'No. of Class Days', 'present' => 'No. of Days Present', 'absent' => 'No. of Days Absent'] as $k => $label) {
         $tot = 0;
-        foreach ($months as $m) { $tot += $m[$k]; $body .= '<td style="text-align:center">' . ($m[$k] ?: '') . '</td>'; }
-        $body .= '<td style="text-align:center;font-weight:bold">' . $tot . '</td></tr>';
+        $att .= '<tr><td>' . $label . '</td>';
+        foreach ($att_cols as [$mn]) {
+            $v = isset($by_num[$mn]) ? (int)$by_num[$mn][$k] : 0;
+            $tot += $v;
+            $att .= '<td class="c">' . ($v ?: '') . '</td>';
+        }
+        $att .= '<td class="c"><b>' . ($tot ?: '') . '</b></td></tr>';
     }
-    $body .= '</tbody></table><p class="rp-note">School days are the days the section had attendance taken in EGRADEPRO. A day counts as present when the learner was present or late in any class that day.</p>';
+    $att .= '</tbody></table>';
+    $h .= '<table class="sf9-outer"><tbody><tr>'
+        . '<td style="width:38%;padding-right:6px">' . $desc . '</td>'
+        . '<td style="width:62%;padding-left:6px">' . $att . '</td>'
+        . '</tr></tbody></table>';
 
-    $body .= rpSignatures([
-        ['', $section['adviser_name'] ?? '', 'Class Adviser'],
-        ['', rpSchoolInfo()['school_head'], 'School Head'],
-        ['', '', "Parent / Guardian's Signature"],
-    ]);
+    // ---- 6. Teacher's Comments + Parent/Guardian's Signature (printable blanks)
+    $blank3 = '<div class="sf9-lines">Term 1&nbsp;&nbsp;: <span class="sf9-blank" style="width:78%">&nbsp;</span><br>'
+            . 'Term 2&nbsp;&nbsp;: <span class="sf9-blank" style="width:78%">&nbsp;</span><br>'
+            . 'Term 3&nbsp;&nbsp;: <span class="sf9-blank" style="width:78%">&nbsp;</span></div>';
+    $h .= '<table class="sf9-outer"><tbody><tr>'
+        . '<td style="width:50%;padding-right:6px"><div class="sf9-sec">TEACHER\'S COMMENTS / REMARKS</div>'
+        . '<table class="sf9-box"><tr><td style="padding:6px 8px">' . $blank3 . '</td></tr></table></td>'
+        . '<td style="width:50%;padding-left:6px"><div class="sf9-sec">PARENTS / GUARDIAN\'S SIGNATURE</div>'
+        . '<table class="sf9-box"><tr><td style="padding:6px 8px">' . $blank3 . '</td></tr></table></td>'
+        . '</tr></tbody></table>';
+
+    // ---- 7. Certificate of Transfer + Cancellation (printable blanks)
+    $h .= '<table class="sf9-outer"><tbody><tr>'
+        . '<td style="width:50%;padding-right:6px"><div class="sf9-sec">CERTIFICATE OF TRANSFER</div>'
+        . '<table class="sf9-box"><tr><td style="padding:6px 8px">'
+        . '<div class="sf9-cert">Pinatutunayan na nakatupad ang mag-aaral na ito sa mga kinakailangang pamantayan para sa kasalukuyang baitang.</div>'
+        . '<div class="sf9-lines">Admitted to Grade&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: <span class="sf9-blank" style="width:46%">&nbsp;</span><br>'
+        . 'Eligible for Admission to Grade&nbsp;&nbsp;: <span class="sf9-blank" style="width:46%">&nbsp;</span></div>'
+        . '<table style="width:100%;border-collapse:collapse"><tr>'
+        . '<td class="sf9-sig" style="width:50%"><div class="rule">&nbsp;</div>School Head</td>'
+        . '<td class="sf9-sig" style="width:50%"><div class="rule">&nbsp;</div>Adviser</td>'
+        . '</tr></table>'
+        . '</td></tr></table></td>'
+        . '<td style="width:50%;padding-left:6px"><div class="sf9-sec">CANCELLATION OF ELIGIBILITY TO TRANSFER</div>'
+        . '<table class="sf9-box"><tr><td style="padding:6px 8px">'
+        . '<div class="sf9-lines">Admitted in&nbsp;&nbsp;: <span class="sf9-blank" style="width:72%">&nbsp;</span><br>'
+        . 'Date&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: <span class="sf9-blank" style="width:72%">&nbsp;</span></div>'
+        . '<div class="sf9-sig"><div class="rule">&nbsp;</div>School Head</div>'
+        . '</td></tr></table></td>'
+        . '</tr></tbody></table>';
+
+    $h .= '</div>'; // .sf9-frame
 
     $filename = 'SF9_Report_Card_' . preg_replace('/[^A-Za-z0-9_-]/', '_', $student['lrn']) . '.pdf';
-    streamReportPdf('SF9 - Report Card', 'SY ' . $sy['sy_name'], $body, $filename);
+    return [$h, $filename];
 }
 
 // ============================================================

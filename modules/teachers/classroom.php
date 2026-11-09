@@ -572,6 +572,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($assignment_id && $topic !== '') {
             executeQuery("UPDATE classwork_assignments SET topic = ? WHERE assignment_id = ?", [$topic, (int) $assignment_id]);
         }
+        if ($assignment_id && empty($_POST['post_to_stream'])) {
+            executeQuery("UPDATE classwork_assignments SET post_to_stream = 0 WHERE assignment_id = ?", [(int) $assignment_id]);
+        }
         if ($assignment_id && $quiz_questions) {
             executeQuery("UPDATE classwork_assignments SET quiz_questions_json = ? WHERE assignment_id = ?",
                 [json_encode($quiz_questions, JSON_UNESCAPED_UNICODE), (int) $assignment_id]);
@@ -805,6 +808,10 @@ if ($authorized) {
             foreach ($cw_rows_by[(int) $c['assignment_id']] ?? [] as $r) {
                 $st = classworkStatus($r, $c);
                 $c['counts'][$st['key']]++;
+                // Cumulative like Google Classroom: a graded or late student has also turned in,
+                // and a graded student who turned in after the due date also counts as late.
+                if (in_array($st['key'], ['late', 'graded'], true)) $c['counts']['turned_in']++;
+                if ($st['key'] === 'graded' && !empty($r['is_late'])) $c['counts']['late']++;
                 $r['status_info'] = $st;
                 $r['files'] = $cw_files[(int) $c['assignment_id'] . '|' . (int) $r['student_id']] ?? [];
                 $c['students'][] = $r;
@@ -910,6 +917,17 @@ include '../../includes/header.php';
     .pm-modal .pm-note { font-size:13.5px; color:var(--gc-muted, #667085); background:var(--surface-muted, #f8fafc); border-radius:8px; padding:8px 10px; }
     .pm-modal .pm-warn { font-size:14.5px; color:#92400e; background:#fef3c7; border:1px solid #fcd34d; border-radius:8px; padding:8px 10px; }
     .cw-work-panel + .cw-mail-line { margin-top:10px; padding-top:8px; border-top:1px solid var(--gc-line, #e5e7eb); }
+    /* Stream = short notices; Classwork = full details + filters */
+    .gc-view-cw { margin-left:auto; font-size:13.5px; font-weight:700; color:var(--gc-accent); white-space:nowrap; }
+    .cw-filter-bar { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:16px; }
+    .cw-chip { border:1px solid var(--gc-line, #e5e7eb); background:var(--gc-card, #fff); color:var(--gc-text, #1f2937); border-radius:20px; padding:5px 14px; font-size:14px; font-weight:600; }
+    .cw-chip span { opacity:.6; margin-left:4px; }
+    .cw-chip.active { background:var(--gc-accent, #2563eb); border-color:var(--gc-accent, #2563eb); color:#fff; }
+    .cw-topic-select { width:auto; max-width:240px; margin-left:auto; }
+    .cw-due-split { display:flex; gap:8px; max-width:320px; }
+    .cw-due-split input { min-width:0; }
+    .cw-due-split input[type=date] { flex:1.2 1 0; }
+    .cw-due-split input[type=time] { flex:1 1 0; }
     .cw-list { display:flex; flex-direction:column; }
     .cw-toggle-card { cursor:pointer; transition:box-shadow .15s ease, border-color .15s ease; }
     .cw-toggle-card:hover { border-color:var(--gc-accent, #2563eb); box-shadow:0 1px 6px rgba(37,99,235,.12); }
@@ -986,20 +1004,7 @@ include '../../includes/header.php';
     .cr-comment-body { font-size:15px; margin:4px 0; white-space:pre-line; }
     .cr-comment-state { font-size:13px; font-weight:600; color:#1D4ED8; }
     .cr-comment-state.is-replied { color:#0F7B4E; }
-    body:has(.classroom-banner) .sidebar {
-        width: 188px !important;
-        max-width: 188px !important;
-        flex-basis: 188px !important;
-    }
-    body:has(.classroom-banner) .sidebar .nav-link {
-        padding-left: 18px !important;
-        padding-right: 12px !important;
-    }
-    body:has(.classroom-banner) .main-content {
-        width: calc(100% - 188px) !important;
-        max-width: calc(100% - 188px) !important;
-        margin-left: 188px !important;
-    }
+    /* Sidebar: no override here -- the Classroom page uses the same collapsed rail / hover-expand as every other portal page (see static/css/style.css). */
     .classroom-banner {
         position: relative;
         min-height: 224px;
@@ -1296,6 +1301,9 @@ include '../../includes/header.php';
     html[data-theme="dark"] .cw-src-ai { background: rgba(197,138,249,0.16); color: #d7aefb; }
     html[data-theme="dark"] .cw-src-t { background: rgba(129,201,149,0.18); color: #a8dab5; }
     .cw-ai-fb { font-size: 13.5px; color: var(--gc-muted); margin-top: 4px; max-width: 360px; }
+    .cw-see-more { font-weight:700; color:var(--gc-accent, #2563eb); text-decoration:none; white-space:nowrap; cursor:pointer; }
+    .cw-see-more:hover { text-decoration:underline; }
+    .cw-fb-tip { position:fixed; z-index:100000; max-width:340px; background:var(--gc-card, #fff); color:var(--gc-text, #1f2937); border:1px solid var(--gc-line, #e5e7eb); border-radius:10px; box-shadow:0 8px 24px rgba(15,23,42,.22); padding:10px 12px; font-size:14px; line-height:1.5; white-space:pre-wrap; display:none; pointer-events:none; }
     .cw-ai-form button { margin-top: 6px; border: 1px solid var(--gc-line); background: var(--gc-card); color: #8430ce; border-radius: 6px; font-size: 13px; font-weight: 700; padding: 3px 8px; }
     html[data-theme="dark"] .cw-ai-form button { color: #d7aefb; }
     /* The <form> wraps header/body/footer, so it must pass the scrollable
@@ -1448,7 +1456,7 @@ include '../../includes/header.php';
         $gc_feed = [];
         foreach ($stream_posts as $sp) $gc_feed[] = ['kind' => 'post', 'time' => $sp['created_at'], 'data' => $sp];
         foreach ($online_work['sent'] as $ow) $gc_feed[] = ['kind' => 'work', 'time' => $ow['sent_raw'], 'data' => $ow];
-        foreach ($classwork_items as $ci) $gc_feed[] = ['kind' => 'classwork', 'time' => $ci['created_at'], 'data' => $ci];
+        foreach ($classwork_items as $ci) { if ((int) ($ci['post_to_stream'] ?? 1) === 1) $gc_feed[] = ['kind' => 'classwork', 'time' => $ci['created_at'], 'data' => $ci]; }
         usort($gc_feed, function ($a, $b) { return strcmp($b['time'], $a['time']); });
         $gc_classwork_url = '?section_id=' . $section_id . '&subject_code=' . urlencode($subject_code) . '&term=' . urlencode($term) . '&tab=classwork';
     ?>
@@ -1624,12 +1632,13 @@ include '../../includes/header.php';
             </div>
             <?php else: $w = $f['data']; $w_title = $f['kind'] === 'work' ? $w['title'] : $w['title']; ?>
             <div class="pm-work-wrap">
-            <a class="stream-post gc-post gc-post-work" href="<?php echo $gc_classwork_url; ?><?php echo $f['kind'] === 'classwork' ? '&amp;open=' . (int) $w['assignment_id'] : ''; ?>">
+            <a class="stream-post gc-post gc-post-work" href="<?php echo $gc_classwork_url; ?><?php echo $f['kind'] === 'classwork' ? '#cw-' . (int) $w['assignment_id'] : ''; ?>">
                 <span class="gc-work-icon"><i class="fas <?php echo $f['kind'] === 'work' ? 'fa-clipboard-list' : 'fa-file-lines'; ?>"></i></span>
                 <div>
                     <div class="gc-post-name"><?php echo htmlspecialchars($gc_teacher_name); ?> posted a new assignment: <?php echo htmlspecialchars($w_title); ?></div>
-                    <div class="gc-post-date"><?php echo date('M j, Y · g:i A', strtotime($f['time'])); ?><?php if ($f['kind'] === 'work' && $w['window']): ?> · <?php echo htmlspecialchars($w['window']); ?><?php endif; ?></div>
+                    <div class="gc-post-date"><?php echo date('M j, Y · g:i A', strtotime($f['time'])); ?><?php if ($f['kind'] === 'work' && $w['window']): ?> · <?php echo htmlspecialchars($w['window']); ?><?php endif; ?><?php if ($f['kind'] === 'classwork' && !empty($w['due_date'])): ?> · Due <?php echo date('M j, g:i A', strtotime($w['due_date'])); ?><?php endif; ?></div>
                 </div>
+                <span class="gc-view-cw">View in Classwork <i class="fas fa-arrow-right"></i></span>
             </a>
             <?php if ($f['kind'] === 'classwork') echo $pm_menu($pm_cw_data($w)); ?>
             </div>
@@ -1644,11 +1653,98 @@ include '../../includes/header.php';
         <div class="gc-cw-head">
             <span class="gc-cw-hint">Online quizzes and activities from Teacher AI show here automatically with each student's status.</span>
         </div>
+        <?php
+            $cw_fc = ['all' => 0, 'ww' => 0, 'pt' => 0, 'qa' => 0, 'online' => 0, 'other' => 0];
+            $cw_fc['online'] = count($online_work['prepared']) + count($online_work['sent']);
+            $cw_topics = [];
+            foreach ($classwork_items as $ci) {
+                $g = strtolower($ci['grading_category'] ?? classworkGradingCategory($ci['category']) ?: 'other');
+                $cw_fc[isset($cw_fc[$g]) ? $g : 'other']++;
+                $t = trim((string) ($ci['topic'] ?? ''));
+                if ($t !== '') $cw_topics[$t] = true;
+            }
+            $cw_fc['all'] = $cw_fc['ww'] + $cw_fc['pt'] + $cw_fc['qa'] + $cw_fc['online'] + $cw_fc['other'];
+            $cw_chip_labels = ['all' => 'All', 'ww' => 'Written Works', 'pt' => 'Performance Task', 'qa' => 'Exam', 'online' => 'Online (Teacher AI)', 'other' => 'Not graded'];
+        ?>
+        <?php if ($cw_fc['all'] > 0): ?>
+        <div class="cw-filter-bar" id="cwFilterBar">
+            <?php foreach ($cw_chip_labels as $k => $lbl): if ($k !== 'all' && !$cw_fc[$k]) continue; ?>
+                <button type="button" class="cw-chip<?php echo $k === 'all' ? ' active' : ''; ?>" data-cw-chip="<?php echo $k; ?>"><?php echo $lbl; ?> <span><?php echo (int) $cw_fc[$k]; ?></span></button>
+            <?php endforeach; ?>
+            <?php if ($cw_topics): ?>
+                <select class="form-select form-select-sm cw-topic-select" id="cwTopicFilter" aria-label="Filter by topic">
+                    <option value="">All topics</option>
+                    <?php foreach (array_keys($cw_topics) as $t): ?><option value="<?php echo htmlspecialchars($t); ?>"><?php echo htmlspecialchars($t); ?></option><?php endforeach; ?>
+                </select>
+            <?php endif; ?>
+        </div>
+        <script>
+        (function () {
+            var bar = document.getElementById('cwFilterBar');
+            if (!bar) return;
+            var chip = 'all', topic = '';
+            var cards = document.querySelectorAll('#classwork .cw-list [data-cw-filter]');
+            function apply() {
+                cards.forEach(function (c) {
+                    var okType = chip === 'all' || c.getAttribute('data-cw-filter') === chip;
+                    var okTopic = !topic || c.getAttribute('data-cw-topic') === topic;
+                    c.style.display = (okType && okTopic) ? '' : 'none';
+                });
+            }
+            bar.querySelectorAll('[data-cw-chip]').forEach(function (b) {
+                b.addEventListener('click', function () {
+                    chip = b.getAttribute('data-cw-chip');
+                    bar.querySelectorAll('[data-cw-chip]').forEach(function (x) { x.classList.toggle('active', x === b); });
+                    apply();
+                });
+            });
+            var sel = document.getElementById('cwTopicFilter');
+            if (sel) sel.addEventListener('change', function () { topic = sel.value; apply(); });
+        })();
+        </script>
+        <?php endif; ?>
+        <script>
+        (function () {
+            if (window.__cwSeeMoreInit) return;
+            window.__cwSeeMoreInit = true;
+            var tip = document.createElement('div');
+            tip.className = 'cw-fb-tip';
+            document.body.appendChild(tip);
+            var current = null;
+            function show(link) {
+                tip.textContent = link.getAttribute('data-full') || '';
+                tip.style.display = 'block';
+                var r = link.getBoundingClientRect();
+                var w = tip.offsetWidth, h = tip.offsetHeight;
+                var left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8));
+                var top = r.bottom + 6;
+                if (top + h > window.innerHeight - 8) top = Math.max(8, r.top - h - 6);
+                tip.style.left = left + 'px';
+                tip.style.top = top + 'px';
+                current = link;
+            }
+            function hide() { tip.style.display = 'none'; current = null; }
+            document.addEventListener('mouseover', function (e) {
+                var l = e.target.closest && e.target.closest('.cw-see-more');
+                if (l) show(l);
+            });
+            document.addEventListener('mouseout', function (e) {
+                var l = e.target.closest && e.target.closest('.cw-see-more');
+                if (l) hide();
+            });
+            document.addEventListener('click', function (e) {
+                var l = e.target.closest && e.target.closest('.cw-see-more');
+                if (l) { e.preventDefault(); e.stopPropagation(); if (current === l) hide(); else show(l); }
+                else hide();
+            }, true);
+            window.addEventListener('scroll', hide, true);
+        })();
+        </script>
         <?php $cw_order = function ($when) { $t = $when ? strtotime((string) $when) : 0; return (int) -floor(($t ?: 0) / 60); }; ?>
         <div class="cw-list">
 
         <?php foreach ($online_work['prepared'] as $pw): ?>
-            <div class="classwork-card cr-prepared gc-work" style="order:<?php echo $cw_order($pw['updated_at'] ?? null); ?>">
+            <div class="classwork-card cr-prepared gc-work" data-cw-filter="online" data-cw-topic="" style="order:<?php echo $cw_order($pw['updated_at'] ?? null); ?>">
                 <span class="gc-work-icon is-pending"><i class="fas fa-hourglass-half"></i></span>
                 <div class="gc-work-body d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <div>
@@ -1662,7 +1758,7 @@ include '../../includes/header.php';
         <?php endforeach; ?>
 
         <?php foreach ($online_work['sent'] as $ow): ?>
-            <div class="classwork-card cr-online gc-work cw-toggle-card" style="order:<?php echo $cw_order($ow['sent_raw'] ?? null); ?>">
+            <div class="classwork-card cr-online gc-work cw-toggle-card" data-cw-filter="online" data-cw-topic="" style="order:<?php echo $cw_order($ow['sent_raw'] ?? null); ?>">
                 <span class="gc-work-icon"><i class="fas fa-clipboard-list"></i></span>
                 <div class="gc-work-body">
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
@@ -1719,7 +1815,7 @@ include '../../includes/header.php';
             $cw_grading = $item['grading_category'] ?? classworkGradingCategory($item['category']);
             $cw_open = (int) ($_GET['open'] ?? 0) === (int) $item['assignment_id'];
         ?>
-            <div class="classwork-card gc-work cw-toggle-card<?php echo $cw_open ? ' cw-auto-open' : ''; ?>" id="cw-<?php echo (int) $item['assignment_id']; ?>" style="order:<?php echo $cw_order($item['assigned_at'] ?? $item['created_at']); ?>">
+            <div data-cw-filter="<?php echo strtolower($cw_grading ?: 'other'); ?>" data-cw-topic="<?php echo htmlspecialchars(trim((string) ($item['topic'] ?? ''))); ?>" class="classwork-card gc-work cw-toggle-card<?php echo $cw_open ? ' cw-auto-open' : ''; ?>" id="cw-<?php echo (int) $item['assignment_id']; ?>" style="order:<?php echo $cw_order($item['assigned_at'] ?? $item['created_at']); ?>">
                 <span class="gc-work-icon <?php echo $cw_grading === 'PT' ? 'is-pt' : ($cw_grading === 'QA' ? 'is-exam' : ($cw_grading ? '' : 'is-assignment')); ?>"><i class="fas <?php echo $cw_grading === 'PT' ? 'fa-star' : ($cw_grading === 'QA' ? 'fa-file-signature' : ($cw_grading ? 'fa-clipboard-list' : 'fa-book-open')); ?>"></i></span>
                 <div class="gc-work-body">
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
@@ -1799,7 +1895,7 @@ include '../../includes/header.php';
                     <div class="cwm-counts">
                         <span class="cr-pill upcoming">Assigned: <?php echo (int) $item['counts']['assigned']; ?></span>
                         <span class="cr-pill completed">Turned in: <?php echo (int) $item['counts']['turned_in']; ?></span>
-                        <span class="cr-pill active">Late: <?php echo (int) $item['counts']['late']; ?></span>
+                        <span class="cr-pill active">Submitted late: <?php echo (int) $item['counts']['late']; ?></span>
                         <span class="cr-pill missing">Missing: <?php echo (int) $item['counts']['missing']; ?></span>
                         <?php if ($cw_grading): ?><span class="cr-pill graded">Graded: <?php echo (int) $item['counts']['graded']; ?></span><?php endif; ?>
                     </div>
@@ -1839,7 +1935,9 @@ include '../../includes/header.php';
                                     <?php if (($st['score_source'] ?? '') === 'AI'): ?><span class="cw-src cw-src-ai"><i class="fas fa-robot"></i> AI-checked</span>
                                     <?php elseif (($st['score_source'] ?? '') === 'Teacher'): ?><span class="cw-src cw-src-t"><i class="fas fa-user-check"></i> Checked by teacher<?php echo $st['ai_score'] !== null ? ' (AI said ' . rtrim(rtrim(number_format((float) $st['ai_score'], 2), '0'), '.') . ')' : ''; ?></span><?php endif; ?>
                                     <?php if (!empty($st['submitted_at'])): ?><div class="cw-when"><?php echo date('M j, g:i A', strtotime($st['submitted_at'])); ?></div><?php endif; ?>
-                                    <?php if (!empty($st['ai_feedback'])): ?><div class="cw-ai-fb"><?php echo htmlspecialchars(mb_strimwidth($st['ai_feedback'], 0, 220, '…')); ?></div><?php endif; ?>
+                                    <?php if (!empty($st['ai_feedback'])): $cw_fb = trim((string) $st['ai_feedback']); $cw_fb_long = mb_strlen($cw_fb) > 90; ?>
+                                        <div class="cw-ai-fb"><span><?php echo htmlspecialchars($cw_fb_long ? rtrim(mb_substr($cw_fb, 0, 90)) . '…' : $cw_fb); ?></span><?php if ($cw_fb_long): ?> <a href="#" class="cw-see-more" data-full="<?php echo htmlspecialchars($cw_fb, ENT_QUOTES); ?>">See more</a><?php endif; ?></div>
+                                    <?php endif; ?>
                                 </td>
                                 <td>
                                     <?php if (!$st['files']): ?><span class="text-muted">—</span><?php endif; ?>
@@ -2311,6 +2409,10 @@ include '../../includes/header.php';
                         <div class="cw-grading-line" id="cwGradingLine"></div>
                         <label class="form-label small mb-1">Topic <span class="text-muted">(optional — shown in the students' email)</span></label>
                         <input type="text" class="form-control form-control-sm mb-2" name="topic" id="cwTopic" maxlength="200" placeholder="e.g. Philippine Poetry: elements of a poem">
+                        <label class="form-check-label small mb-2" style="display:flex;gap:6px;align-items:center;">
+                            <input type="checkbox" class="form-check-input mt-0" name="post_to_stream" value="1" checked>
+                            Also post a short notice in the Stream
+                        </label>
 
                         <label class="form-label small mb-1">Instructions</label>
                         <textarea class="form-control mb-2" name="instructions" id="cwInstructions" rows="6" required maxlength="12000" placeholder="e.g. Identify and observe the characteristics/elements of Philippine poetry. Then generate the full activity with AI below, or write it yourself."></textarea>
@@ -2320,9 +2422,33 @@ include '../../includes/header.php';
                                 <label class="form-label small mb-1">Points (highest possible score)</label>
                                 <input type="number" class="form-control form-control-sm" name="max_points" id="cwPoints" min="1" max="9999" step="1" value="20">
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-8">
                                 <label class="form-label small mb-1">Due Date &amp; Time</label>
-                                <input type="datetime-local" class="form-control form-control-sm" name="due_date">
+                                <input type="hidden" name="due_date" id="cwDueDate">
+                                <div class="cw-due-split">
+                                    <input type="date" class="form-control form-control-sm" id="cwDueDay" aria-label="Due date">
+                                    <input type="time" class="form-control form-control-sm" id="cwDueTime" aria-label="Due time">
+                                </div>
+                                <script>
+                                (function () {
+                                    var day = document.getElementById('cwDueDay'), time = document.getElementById('cwDueTime'), out = document.getElementById('cwDueDate');
+                                    if (!day || !time || !out) return;
+                                    function sync() {
+                                        // Date chosen but no time yet -> 11:59 PM (same default as Google Classroom).
+                                        if (day.value && !time.value) time.value = '23:59';
+                                        out.value = day.value ? day.value + 'T' + time.value : '';
+                                    }
+                                    day.addEventListener('input', sync);
+                                    day.addEventListener('change', sync);
+                                    time.addEventListener('input', sync);
+                                    time.addEventListener('change', sync);
+                                    var f = day.form;
+                                    if (f) {
+                                        f.addEventListener('submit', sync);
+                                        f.addEventListener('reset', function () { setTimeout(function () { out.value = ''; }, 0); });
+                                    }
+                                })();
+                                </script>
                                 <label class="form-check-label small mt-1" style="display:flex;gap:6px;align-items:center;">
                                     <input type="checkbox" class="form-check-input mt-0" name="lock_after_due" value="1">
                                     Close after the due date (no late turn-in)
@@ -2670,6 +2796,28 @@ include '../../includes/header.php';
     </div>
     <?php endif; ?>
 
+<?php endif; ?>
+
+<?php if (!empty($class['subject_name'])): ?>
+<script src="<?php echo BASE_URL; ?>static/js/file-relevance.js"></script>
+<script>
+// Warning-only: a file that does not look like it belongs to this subject (never blocks the post).
+document.addEventListener('DOMContentLoaded', function () {
+    if (!window.FileRelevance) return;
+    var cfg = { url: <?php echo json_encode(BASE_URL . 'modules/teachers/check_file_relevance.php'); ?>, csrf: <?php echo json_encode($csrf_token); ?>,
+                getSubject: function () { return <?php echo json_encode($class['subject_name']); ?>; } };
+    function ctx(form, sel) { var el = form && form.querySelector(sel); return el ? el.value : ''; }
+    var a = document.getElementById('announcementFiles');
+    if (a) FileRelevance.attach({ input: a, form: a.form, url: cfg.url, csrf: cfg.csrf, getSubject: cfg.getSubject,
+        getContext: function () { return ctx(a.form, 'textarea[name=body]'); } });
+    var c = document.getElementById('cwFiles');
+    if (c) FileRelevance.attach({ input: c, form: c.form, url: cfg.url, csrf: cfg.csrf, getSubject: cfg.getSubject,
+        getContext: function () { return ctx(c.form, '#cwTitle'); } });
+    var e = document.querySelector('#pmEditModal input[name="new_attachments[]"]');
+    if (e) FileRelevance.attach({ input: e, form: e.form, url: cfg.url, csrf: cfg.csrf, getSubject: cfg.getSubject,
+        getContext: function () { return ctx(e.form, 'input[name=title]'); } });
+});
+</script>
 <?php endif; ?>
 
 <?php include '../../includes/footer.php'; ?>

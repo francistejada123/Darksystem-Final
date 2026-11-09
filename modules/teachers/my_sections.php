@@ -9,6 +9,7 @@ require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/grading_helpers.php';
 require_once __DIR__ . '/../../includes/attendance_qr_helpers.php'; // attQrLrnLink()
+require_once __DIR__ . '/../../includes/teacher_department.php';
 
 if (!defined('BASE_URL')) {
     define('BASE_URL', '/watdahel/');
@@ -50,24 +51,34 @@ if (!isset($_GET['term']) && $selected_section > 0 && $school_year_id) {
 // Get teacher info
 $teacher = getRecord("SELECT * FROM users WHERE user_id = ?", [$teacher_id]);
 
+// Department / Level saved at registration is the source of truth: a JHS
+// teacher (Grade 7-10) must only ever see JHS classes, an SHS teacher only
+// Grade 11-12 ones. Historical assignments outside the department are not
+// deleted -- they are simply not listed here, so the portal stays consistent
+// with what assignment and scheduling allow.
+$teacher_department = tdNormalize($teacher['department_level'] ?? '');
+$teacher_grades = tdGradesFor($teacher_department);
+
 // ============================================================
 // GET ALL SECTIONS ASSIGNED TO THIS TEACHER WITH ACTUAL ENROLLMENT COUNT
 // ============================================================
+[$td_grade_sql, $td_grade_params] = tdGradeSqlFilter($teacher_id, 's');
 $my_sections = getRecords("
     SELECT DISTINCT s.section_id, s.section_name, s.grade_level, s.strand, s.capacity, s.current_enrollment,
            CONCAT(adv.last_name, ', ', adv.first_name) AS adviser_name,
-           (SELECT COUNT(*) FROM enrollments e 
-            WHERE e.section_id = s.section_id 
-            AND e.school_year_id = ? 
+           (SELECT COUNT(*) FROM enrollments e
+            WHERE e.section_id = s.section_id
+            AND e.school_year_id = ?
             AND e.enrollment_status = 'Approved') as actual_enrollment
     FROM sections s
     JOIN teacher_subjects ts ON s.section_id = ts.section_id
     LEFT JOIN users adv ON s.adviser_id = adv.user_id
-    WHERE s.is_active = 1 
+    WHERE s.is_active = 1
     AND ts.teacher_id = ?
     AND ts.school_year_id = ?
+    {$td_grade_sql}
     ORDER BY s.grade_level, s.section_name
-", [$school_year_id, $teacher_id, $school_year_id]);
+", array_merge([$school_year_id, $teacher_id, $school_year_id], $td_grade_params));
 
 // Group sections by grade level
 $sections_by_grade = [];
@@ -99,6 +110,14 @@ if ($selected_section > 0) {
         WHERE sec.section_id = ?
     ", [$selected_section]);
     
+    if ($section_info && !tdGradeAllowed($teacher_department, $section_info['grade_level'])) {
+        // A section outside this teacher's Department / Level (a stale or
+        // hand-edited link, or a historical assignment that is being
+        // corrected by an Admin) must not open: no roster, no subjects.
+        $section_info = null;
+        $_SESSION['error_message'] = 'That class is outside your Department / Level (' . $teacher_department . ').';
+    }
+
     if ($section_info) {
         // Get subjects assigned to this teacher for this section, for the
         // TERM CURRENTLY BEING VIEWED. A Junior High subject has no term

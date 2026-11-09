@@ -57,8 +57,19 @@ $year_promoted_label = gh_yearStatusPromotedLabel();
 $year_join = " LEFT JOIN student_year_status ys ON ys.student_id = e.student_id AND ys.school_year_id = e.school_year_id
                     AND ys.grade_level = e.grade_level AND ys.status = " . $db->quote($year_promoted_label) . " ";
 
+// Walk-in Enrollment lists ONLY walk-in enrollments. An enrollment that came
+// from an Online Application (linked by enrollment_id, or the same student +
+// school year of an approved application) is listed under Online Applications
+// instead, so the two lists never mix.
+$walkin_sql = " AND NOT EXISTS (
+        SELECT 1 FROM online_applications oa
+        WHERE oa.deleted_at IS NULL
+          AND (oa.enrollment_id = %1\$s.enrollment_id
+               OR (oa.student_id = %1\$s.student_id AND oa.school_year_id = %1\$s.school_year_id AND oa.status = 'Approved'))
+    )";
+
 // Build WHERE clause
-$where = "e.enrollment_status != 'Graduated'";
+$where = "e.enrollment_status != 'Graduated'" . sprintf($walkin_sql, 'e');
 $params = [];
 [$eo_where, $eo_params] = eoSql('e.grade_level');   // Enrollment Officer: own grade level only
 $where .= $eo_where;
@@ -150,9 +161,9 @@ $counts = getRecord("
         SUM(enrollment_status = 'Approved') AS approved,
         SUM(enrollment_status IN ('Incomplete Requirements', 'Rejected')) AS rejected,
         SUM(enrollment_status = 'Transferred') AS transferred
-    FROM enrollments
-    WHERE enrollment_status != 'Graduated'" . eoSql('grade_level')[0] . "
-", eoSql('grade_level')[1]);
+    FROM enrollments en
+    WHERE en.enrollment_status != 'Graduated'" . sprintf($walkin_sql, 'en') . eoSql('en.grade_level')[0] . "
+", eoSql('en.grade_level')[1]);
 
 include '../../includes/header.php';
 ?>

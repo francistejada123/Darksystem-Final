@@ -37,30 +37,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 // The profile is only released when both match, and every successful lookup is
 // remembered in the session so the final submit can be trusted (see below).
 // ---------------------------------------------------------------------------
-// AJAX (Step 2): does this email account really exist? (see includes/email_verify_helpers.php)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['oe_action'] ?? '') === 'email_check') {
-    header('Content-Type: application/json; charset=utf-8');
-    header('Cache-Control: no-store');
-    if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
-        echo json_encode(['status' => 'error', 'message' => 'Your session expired. Please reload the page and try again.']);
-        exit;
-    }
-    $ev_now = time();
-    $ev_tries = array_values(array_filter($_SESSION['oe_tries_email'] ?? [], function ($t) use ($ev_now) { return $t > $ev_now - 600; }));
-    if (count($ev_tries) >= 30) {
-        $_SESSION['oe_tries_email'] = $ev_tries;
-        echo json_encode(['status' => 'unknown', 'message' => '']); // throttled: never block, the server re-checks on submit
-        exit;
-    }
-    $ev_tries[] = $ev_now;
-    $_SESSION['oe_tries_email'] = $ev_tries;
-    @set_time_limit(30);
-    echo json_encode(evCheckEmail($_POST['email'] ?? ''));
-    exit;
-}
+// The email is contact information only during Online Enrollment, so there is
+// deliberately NO email_check endpoint here any more: nothing is verified
+// against a mail server and an address already on file is never rejected.
+// (The former oe_action=email_check handler was removed with the validation.)
 
-// AJAX (Step 3): read the LRN on the Report Card the applicant just chose and
-// compare it with the LRN from Step 2. The final submit checks it again.
+// AJAX (Step 3): read the Report Card the applicant just chose (grade level and
+// grades). The LRN on the card is NOT compared with Step 2 any more.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['oe_action'] ?? '') === 'report_card_lrn') {
     header('Content-Type: application/json; charset=utf-8');
     if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
@@ -75,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['oe_action'] ?? '') === 're
     }
     $rc_tries[] = $rc_now;
     $_SESSION['oe_tries_card'] = $rc_tries;
-    // report_card[] = the pages in order (Page 1 / Front, Page 2 / Back / Grades, optional Page 3)
+    // report_card[] = the pages in order (Page 1 / Report Card, optional Page 2 and Page 3)
     $rc_paths = [];
     $rc_in = $_FILES['report_card'] ?? null;
     if ($rc_in && is_array($rc_in['name'] ?? null)) {
@@ -85,12 +68,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['oe_action'] ?? '') === 're
             if (count($rc_paths) >= 3) break;
         }
     }
-    if (count($rc_paths) < 2) {
+    if (count($rc_paths) < 1) {
         echo json_encode(['status' => 'incomplete', 'message' => OE_CARD_MSG_INCOMPLETE]);
         exit;
     }
     @set_time_limit(120);
-    $rc = oeReportCardCheck($rc_paths, $_POST['lrn'] ?? '');
+    $rc = oeReportCardCheck($rc_paths);
     $rc_d = $rc['data'] ?? [];
     echo json_encode([
         'status' => $rc['status'], 'message' => $rc['message'], 'detected' => $rc['detected'],
@@ -149,7 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['oe_action'] ?? '') === 'lr
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // When the uploaded documents (plus the rest of the form) are bigger than
     // PHP's post_max_size, PHP empties $_POST and $_FILES before this script
-    // even starts running — every field the applicant typed is just gone.
+    // even starts running â€” every field the applicant typed is just gone.
     // That used to fall through to the CSRF check below and show a
     // misleading "session expired" error, so applicants kept resubmitting
     // the exact same oversized photos and it kept "not working". Detect
@@ -216,6 +199,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     $birth_date = $existing_learner['birth_date'];
                     if ($application_type === 'Continuing') {
+                        // The grade level must be exactly the one the learner's IISS record allows
+                        // (re-derived here from the database; the posted grade is never trusted).
+                        $continuing_elig = getContinuingEligibility($existing_learner['student_id'], $active_sy['sy_id'] ?? null);
+                        $continuing_err = continuingGradeError($continuing_elig, $grade_level);
+                        if ($continuing_err !== '') $errors[] = $continuing_err;
                         $last_name = $existing_learner['last_name'];
                         $first_name = $existing_learner['first_name'];
                         $middle_name = $existing_learner['middle_name'];
@@ -236,14 +224,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
             } elseif ($application_type === 'Continuing') {
-                $errors[] = 'We could not find a student record with that LRN. Continuing applications are only for current students — check your LRN, contact the registrar, or choose Transferee if you are coming from another school.';
+                $errors[] = OE_MSG_CONTINUING_NOT_FOUND;
             }
         }
 
         // --- validation ---
         if (!in_array($grade_level, $grade_levels, true)) $errors[] = 'Please select the grade level you are applying for.';
         // Applicant Type must be one of the four, and allowed for the chosen grade
-        // (New Student: Grade 7 / 11 only, Continuing: Grade 8 / 9 / 10 / 12 only).
+        // (New Student: Grade 7 / 11 only, Continuing: Grade 8 - 12, and only the grade its IISS record allows).
         if (!in_array($application_type, getApplicantTypes(), true)) {
             $errors[] = 'Please select your Applicant Type.';
         } elseif (in_array($grade_level, $grade_levels, true) && !isApplicantTypeAllowedForGrade($application_type, $grade_level)) {
@@ -256,23 +244,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($birth_date === '') $errors[] = 'Date of birth is required.';
         if (!in_array($gender, ['Male', 'Female'], true)) $errors[] = 'Please select your sex.';
         if ($contact_number === '') $errors[] = 'Contact number is required.';
+        // The email is collected as CONTACT INFORMATION ONLY. It is never checked
+        // against a mail server, never verified by a code/link, and never compared
+        // with another learner's or school account -- a family that already has an
+        // address on file must still be able to apply for another learner.
+        // Only the shape of the address matters here; nothing is sent to it during
+        // Steps 1-4 and no password is created before the Admin approves.
         if ($email === '' || !validateEmail($email)) {
-            $errors[] = 'A valid email address is required — this is where we send your enrollment result.';
-        } else {
-            $ev_result = evCheckEmail($email);
-            if (evIsRejected($ev_result)) {
-                $errors[] = $ev_result['message'];
-            } elseif (($ev_result['status'] ?? '') === 'unknown' && empty($_POST['email_confirmed'])) {
-                // The mail server could not be asked right now (blocked/slow). Never
-                // reject a real address for that -- the applicant confirms it instead.
-                $errors[] = 'We could not verify your email right now. Please check it carefully and tick "I confirm this email is correct".';
-            }
-        }
-        if ($email !== '' && validateEmail($email)) {
-            $own_rec = $lrn !== '' ? getRecord("SELECT student_id FROM students WHERE lrn = ?", [$lrn]) : null;
-            if (diEmailOwner($email, (int) ($own_rec['student_id'] ?? 0))) {
-                $errors[] = 'This email is already used by another learner or school account. Please use your own email address.';
-            }
+            $errors[] = 'A valid email address is required for contact purposes.';
         }
         if ($address === '') $errors[] = 'Complete address is required.';
         if ($guardian_name === '') $errors[] = 'Parent/Guardian name is required.';
@@ -325,6 +304,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         [$dupe_student['student_id'], $active_sy['sy_id']]
                     ) : null;
                     if ($already) $errors[] = 'This learner is already enrolled (or has an enrollment waiting for approval) for the current school year. Please contact the registrar instead.';
+                } elseif ($application_type === 'New Student') {
+                    // New Student = first enrollment at IISS. An LRN that already has an IISS record
+                    // belongs to a Continuing (or Returning) learner.
+                    $errors[] = existingLRNApplicantMessage('New Student', $dupe_student['student_id'], $active_sy['sy_id'] ?? null);
                 } else {
                     $errors[] = 'This LRN is already registered. Please contact the registrar instead.';
                 }
@@ -332,6 +315,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             oeEnsureCorrectionStatus();
             $dupe_app = getRecord("SELECT reference_no FROM online_applications WHERE lrn = ? AND status IN ('Pending','Under Review','For Correction','Incomplete Requirements') AND deleted_at IS NULL", [$lrn]);
             if ($dupe_app) $errors[] = 'You already have a pending application (Ref. ' . $dupe_app['reference_no'] . ').';
+            $approved_app = lrnApprovedApplication($lrn, $active_sy['sy_id'] ?? null);
+            if ($approved_app) $errors[] = 'This LRN already has an approved application (Ref. ' . $approved_app['reference_no'] . ') for the current school year. Please contact the registrar instead.';
         }
 
         // --- documents ---
@@ -344,7 +329,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $has_file = $file && isset($file['error']) && $file['error'] !== UPLOAD_ERR_NO_FILE;
 
             if ($doc['key'] === OE_LRN_CARD_DOC_KEY) {
-                // Page 1 / Front and Page 2 / Back / Grades are required; Page 3 is optional.
+                // Only Page 1 is required up front; Page 2 / Page 3 are optional (the content check below asks for another page if info is missing).
                 $card_paths = [];
                 $card_missing = [];
                 foreach (oeReportCardPages() as $suffix => $pg) {
@@ -354,23 +339,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         if ($pg['required']) $card_missing[] = $pg['label'];
                         continue;
                     }
-                    $uploads[] = ['doc' => ['key' => $doc['key'] . $suffix, 'label' => $doc['label'] . ' — ' . $pg['label']] + $doc, 'file' => $pf];
+                    $uploads[] = ['doc' => ['key' => $doc['key'] . $suffix, 'label' => $doc['label'] . ' â€” ' . $pg['label']] + $doc, 'file' => $pf];
                     if (($pf['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) $card_paths[] = $pf['tmp_name'];
                 }
                 if ($card_missing) {
                     $errors[] = $doc['label'] . ': please upload ' . implode(' and ', $card_missing) . '.';
                     continue;
                 }
-                // All pages read together: the LRN must match Step 2 and the grades / General Average must be found.
-                $rc = oeReportCardCheck($card_paths, $lrn);
+                // All pages read together: the grades / General Average must be found (the LRN on the card is no longer compared).
+                $rc = oeReportCardCheck($card_paths);
                 if ($rc['status'] !== 'verified') {
                     $errors[] = $rc['message'];
                 } else {
                     $card_data = $rc['data'];
                     $grade_check = oeGradeLevelCheck($card_data, $grade_level);
                     if ($grade_check['status'] === OE_GC_MISMATCH) {
-                        $errors[] = 'Step 1 – Grade Level Information: Grade Level Does Not Match. ' . $grade_check['message'];
+                        if ($application_type === 'Continuing' && !empty($continuing_elig['ok'])) {
+                            // The grade is fixed by the IISS record, so the card is what conflicts.
+                            $errors[] = 'Step 1 â€“ Grade Level Information: Grade Level Does Not Match. Your uploaded Form 138 shows ' . $grade_check['card_grade'] . ($grade_check['retained'] ? ' (Retained)' : '') . ', but your IISS record says you are enrolling in ' . $continuing_elig['expected_grade'] . '. Please upload the correct Form 138 or contact the registrar. Your grade level was not changed.';
+                        } else {
+                            $errors[] = 'Grade level does not match the uploaded Report Card. ' . $grade_check['message'];
+                        }
                         $grade_mismatch_error = true;
+                    }
+                    // Returning / Transferee type their own "last grade completed": it must be the grade on the Form 138.
+                    if (applicantTypeNeedsPreviousSchool($application_type) && $last_grade_completed !== ''
+                        && $grade_check['card_grade'] !== '' && $last_grade_completed !== $grade_check['card_grade']) {
+                        $errors[] = 'Last grade completed does not match the uploaded Report Card. Your Form 138 shows ' . $grade_check['card_grade'] . ($grade_check['retained'] ? ' (Retained)' : ' completed') . ', but you selected ' . $last_grade_completed . '. Please change "Last Grade Level Completed" to ' . $grade_check['card_grade'] . '.';
+                        $last_grade_mismatch_error = true;
                     }
                 }
                 continue;
@@ -440,14 +436,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         );
                     }
 
-                    // New Student / Transferee without Form 137: Incomplete Requirements until it is uploaded.
-                    if (oeForm137Counts($application_type) && !in_array('form137', array_map(function ($x) { return $x['doc']['key']; }, $saved), true)) {
-                        executeQuery(
-                            "UPDATE online_applications SET status = ?, remarks = ? WHERE application_id = ?",
-                            [OE_INCOMPLETE, 'Missing requirement: Form 137 (Permanent Record). Upload it on your Enrollment Tracking page when you have it.', $application_id]
-                        );
-                    }
-
                     notifyStaffNewApplication([
                         'application_id' => $application_id,
                         'reference_no' => $reference_no,
@@ -457,7 +445,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'strand' => $strand,
                     ]);
 
-                    logActivity(null, 'online_enrollment', 'Online application submitted', "Ref: $reference_no — $last_name, $first_name ($grade_level)");
+                    logActivity(null, 'online_enrollment', 'Online application submitted', "Ref: $reference_no â€” $last_name, $first_name ($grade_level)");
 
                     $success_ref = $reference_no;
                     $old = [];
@@ -494,7 +482,7 @@ function docFieldId($g, $key, $type = '') {
     return 'docfile_' . preg_replace('/[^A-Za-z0-9_]/', '', str_replace(' ', '', $g)) . ($type !== '' ? '_' . preg_replace('/[^A-Za-z0-9_]/', '', str_replace(' ', '', $type)) : '') . '_' . $key;
 }
 // Reads existing system_settings rows (already used elsewhere, e.g. modules/settings)
-// for the Contact modal only. Read-only — no new settings are created here.
+// for the Contact modal only. Read-only â€” no new settings are created here.
 function getSchoolSetting($key) {
     $row = getRecord("SELECT setting_value FROM system_settings WHERE setting_key = ?", [$key]);
     return $row ? trim($row['setting_value']) : '';
@@ -503,10 +491,10 @@ $school_address = getSchoolSetting('school_address');
 $school_contact = getSchoolSetting('school_contact');
 $school_email_addr = getSchoolSetting('school_email');
 // If this was a POST that came back with server-side validation errors, the
-// applicant was on the final Review & Submit step when they clicked Submit —
+// applicant was on the final Review & Submit step when they clicked Submit â€”
 // send them back there (with all their entered values intact) instead of
 // dumping them back on Step 1.
-$initial_step = (!empty($errors) && !$success_ref && !empty($old)) ? (!empty($grade_mismatch_error) ? 1 : 4) : 1;
+$initial_step = (!empty($errors) && !$success_ref && !empty($old)) ? (!empty($grade_mismatch_error) ? 1 : (!empty($last_grade_mismatch_error) ? 3 : 4)) : 1;
 
 // After a server-side error the wizard is rebuilt from what was posted. For
 // Continuing / Returning, hand the JS the (still session-verified) saved record
@@ -522,6 +510,15 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                 foreach ($r_prof as $k => $v) { if (is_string($v)) $r_prof[$k] = html_entity_decode($v, ENT_QUOTES, 'UTF-8'); }
                 unset($r_prof['student_id'], $r_prof['previous_grades']);
                 $oe_restore = ['status' => 'verified', 'profile' => $r_prof];
+                if ($old['application_type'] === 'Continuing') {
+                    $r_el = getContinuingEligibility($r_ver['student_id'], $active_sy['sy_id'] ?? null);
+                    if (!empty($r_el['ok'])) {
+                        $oe_restore['continuing'] = ['expected_grade' => $r_el['expected_grade'], 'last_grade' => $r_el['last_grade'],
+                                                     'last_school_year' => $r_el['last_school_year'], 'retained' => $r_el['retained']];
+                    } else {
+                        $oe_restore = null;
+                    }
+                }
             }
         } elseif ($old['application_type'] === 'Returning') {
             $oe_restore = ['status' => 'new_record'];
@@ -543,7 +540,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
         } catch (e) {}
     })();
     </script>
-    <title>Online Enrollment — <?php echo htmlspecialchars($school_name); ?></title>
+    <title>Online Enrollment â€” <?php echo htmlspecialchars($school_name); ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="<?php echo BASE_URL; ?>static/css/theme.css" rel="stylesheet">
@@ -567,7 +564,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
         html{scroll-behavior:smooth}
         body{background:var(--bg);font-family:'Inter',system-ui,-apple-system,sans-serif;margin:0;color:var(--ink);position:relative}
         /* Faint, fixed page-wide tint so the wizard card reads as sitting on a
-           soft school-blue backdrop rather than plain white — subtle by design,
+           soft school-blue backdrop rather than plain white â€” subtle by design,
            not a decorative graphic that competes with the form. */
         body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
             background:
@@ -639,7 +636,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
         .step-heading h5{margin:0;font-weight:700;font-size:17px;color:var(--ink)}
         .step-heading small{color:var(--text-muted);font-size:14.5px}
 
-        /* Step 3 — one card, subtle subsections instead of boxed groups */
+        /* Step 3 â€” one card, subtle subsections instead of boxed groups */
         .subsection{padding:18px 0}
         .subsection + .subsection{border-top:1px solid var(--border)}
         .subsection:first-child{padding-top:2px}
@@ -682,7 +679,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
         /* Form */
         .form-label{font-weight:600;font-size:14.5px;color:var(--ink);margin-bottom:5px;display:block}
         /* Required fields are no longer marked with a red asterisk (validation
-           still runs server- and client-side) — only genuinely optional fields
+           still runs server- and client-side) â€” only genuinely optional fields
            are called out, with the muted "(Optional)" tag below. */
         .optional-tag{color:var(--text-muted);font-weight:500;font-size:13.5px;margin-left:4px}
         .form-control,.form-select{height:42px;border-radius:8px;font-size:15px;border:1px solid var(--border);padding:0 12px;background-color:var(--card);color:var(--ink);transition:border-color .15s ease,box-shadow .15s ease}
@@ -691,8 +688,8 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
            moment anything sets the `background` shorthand (as the old rule
            above did), which is why selects like Applicant Type looked like
            plain text fields. Painting our own arrow avoids relying on
-           `background` ever staying untouched again, and — since it's a
-           background image, not an element — it can never intercept clicks. */
+           `background` ever staying untouched again, and â€” since it's a
+           background image, not an element â€” it can never intercept clicks. */
         .form-select{
             -webkit-appearance:none;-moz-appearance:none;appearance:none;
             padding-right:38px;
@@ -718,7 +715,8 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
         /* Buttons */
         .btn-next,.btn-back,.btn-submit,.btn-doc{height:43px;padding:0 22px;border-radius:9px;font-weight:600;font-size:15px;display:inline-flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;transition:background .15s ease,border-color .15s ease,transform .15s ease,box-shadow .15s ease}
         .btn-next{background:linear-gradient(135deg,var(--primary),var(--deep-blue));color:#fff;border:none;box-shadow:0 3px 10px rgba(37,99,235,.25)}
-        .btn-next:hover{background:linear-gradient(135deg,#1d4ed8,var(--primary-dark));transform:translateY(-1px);box-shadow:0 6px 14px rgba(37,99,235,.3)}
+                .btn-next:hover{background:linear-gradient(135deg,#1d4ed8,var(--primary-dark));transform:translateY(-1px);box-shadow:0 6px 14px rgba(37,99,235,.3)}
+        .btn-next:disabled,.btn-next:disabled:hover{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none;background:linear-gradient(135deg,var(--primary),var(--deep-blue))}
         .btn-back{background:#fff;color:var(--ink);border:1px solid var(--border)}
         .btn-back:hover{background:var(--muted);transform:translateY(-1px)}
         .btn-submit{background:linear-gradient(135deg,var(--success),#047857);color:#fff;border:none;padding:0 30px;box-shadow:0 3px 10px rgba(5,150,105,.28)}
@@ -747,7 +745,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
         .review-row span:last-child{color:var(--ink);text-align:right;max-width:60%;font-weight:600}
         .certify-box{background:#eef4ff;border:1px solid #c9dbfb;border-radius:12px;padding:16px 18px;margin:22px 0 16px}
 
-        /* Review — uploaded documents list */
+        /* Review â€” uploaded documents list */
         .doc-review-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed #eef1f6}
         .doc-review-row:last-child{border-bottom:none}
         .doc-review-icon{width:34px;height:34px;border-radius:9px;background:var(--success-soft);color:var(--success);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
@@ -755,7 +753,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
         .doc-review-label{font-size:14px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:7px;flex-wrap:wrap}
         .doc-review-file{font-size:13.5px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 
-        /* Documents — polished upload cards */
+        /* Documents â€” polished upload cards */
         .doc-card{border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:14px;background:var(--card);box-shadow:0 1px 3px rgba(15,38,75,.04);transition:border-color .15s ease,box-shadow .15s ease}
         .doc-card.required{border-color:#c7d9f7;background:#f9fbfe}
         .doc-card-head{display:flex;gap:12px;align-items:flex-start}
@@ -793,6 +791,9 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
         .form-label.req::after{content:" *";color:var(--danger,#dc2626);font-weight:700}
         .doc-slot.is-page{border:1px dashed var(--border,#dbe3ee);border-radius:10px;padding:8px 10px;margin-top:8px}
         .doc-slot-label{display:flex;align-items:center;gap:8px;font-size:14.5px;font-weight:700;margin-bottom:6px;flex-wrap:wrap}
+        .doc-slot-note{font-size:13px;color:var(--text-muted,#64748b);margin:-2px 0 6px}
+        .doc-slot-note.is-required{color:#B91C1C;font-weight:700}
+        .doc-slot-note.is-ok{color:#047857;font-weight:600}
         .doc-slot-done{display:none;color:#047857;font-size:13.5px;font-weight:700}
         .doc-slot.has-file .doc-slot-done{display:inline-flex;align-items:center;gap:4px}
         .doc-card-read{display:none;margin-top:6px;font-size:14px;color:#334155;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:7px 10px}
@@ -921,7 +922,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
         .site-footer .foot-tagline{font-size:13.5px;color:var(--text-muted);margin:2px 0 10px}
         .site-footer .foot-copy{font-size:13px}
 
-        /* Modals — light touch over Bootstrap defaults */
+        /* Modals â€” light touch over Bootstrap defaults */
         .modal-content{border-radius:12px;border:1px solid var(--border)}
         .modal-header{border-bottom:1px solid var(--border)}
         .modal-title{font-weight:700;font-size:16px;color:var(--ink)}
@@ -946,11 +947,11 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
         /* ===================== DARK MODE ===================== */
         /* This wizard is a self-contained page with its own :root
            palette (separate from static/css/style.css), so its dark
-           overrides live here rather than in the shared theme.css —
+           overrides live here rather than in the shared theme.css â€”
            same shared toggle button / localStorage key / theme.js,
            just page-local colors. Nothing about the upload cards,
            LRN validation, dropdown chevrons or step navigation is
-           touched — only color values. */
+           touched â€” only color values. */
         html[data-theme="dark"] {
             color-scheme: dark;
             --bg: #0B1220;
@@ -1003,7 +1004,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
         /* The file-preview backdrop and preview-modal-frame stay their
            existing near-black / white panel look on purpose in both
            themes (a photo/PDF needs a neutral frame, not a theme
-           tint) — and are never run through any invert filter. */
+           tint) â€” and are never run through any invert filter. */
         @media (prefers-reduced-motion: reduce) {
             .theme-toggle-btn.theme-toggle-flip .theme-toggle-icon-sun,
             .theme-toggle-btn.theme-toggle-flip .theme-toggle-icon-moon { animation: none !important; }
@@ -1131,9 +1132,9 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                                 <?php
                                 $type_cards = [
                                     'New Student' => ['fa-user-plus',  'New Student',            'First time enrolling in this school.',            'Grade 7 &middot; Grade 11'],
-                                    'Continuing'  => ['fa-user-check', 'Continuing',             'Currently enrolled here and moving up.',          'Grade 8 &ndash; 10 &middot; Grade 12'],
+                                    'Continuing'  => ['fa-user-check', 'Continuing',             'Currently enrolled here and progressing to the next grade level.', 'Grade 8 &ndash; 12'],
                                     'Returning'   => ['fa-rotate-left', 'Returning (Balik-Aral)', 'Stopped studying and is coming back.',           'Any grade'],
-                                    'Transferee'  => ['fa-right-left', 'Transferee',             'Coming from another school.',                     'Any grade'],
+                                    'Transferee'  => ['fa-right-left', 'Transferee',             'Coming from another school.',                     'Grade 8 &ndash; 12'],
                                 ];
                                 foreach (getApplicantTypes() as $t):
                                     $tc = $type_cards[$t] ?? ['fa-user', $t, '', '']; ?>
@@ -1165,6 +1166,10 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                             </div>
                         </div>
 
+                        <!-- Continuing: LRN + date of birth are verified HERE, before any grade level can be chosen
+                             (the panel itself is moved in and out of this slot by applyStep2Layout()). -->
+                        <div id="verifyHome1" style="margin-top:18px"></div>
+
                         <div style="margin-top:22px">
                             <label class="form-label req">Grade Level</label>
                             <div class="grade-grid">
@@ -1191,7 +1196,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                             <label class="form-label req">Senior High Strand</label>
                             <select name="strand" class="form-select" id="strandSelect" style="max-width:320px">
                                 <option value="">-- Select strand --</option>
-                                <option value="GAS" <?php echo ($old['strand'] ?? '') === 'GAS' ? 'selected' : ''; ?>>GAS — General Academic Strand</option>
+                                <option value="GAS" <?php echo ($old['strand'] ?? '') === 'GAS' ? 'selected' : ''; ?>>GAS â€” General Academic Strand</option>
                                 <option value="ASSH" <?php echo ($old['strand'] ?? '') === 'ASSH' ? 'selected' : ''; ?>>ASSH Cluster (Arts, Social Sciences, and Humanities)</option>
                             </select>
                             <div class="field-error" id="err-strand">Strand is required for Senior High.</div>
@@ -1218,6 +1223,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                         <div class="step-validation-banner" id="banner-step2"><i class="fas fa-triangle-exclamation"></i> <span id="banner2Text">Please complete the required fields highlighted below.</span></div>
 
                         <!-- Continuing / Returning: LRN first. We look the learner up and load the saved profile. -->
+                        <div id="verifyHome2">
                         <div class="verify-panel" id="verifyPanel" style="display:none">
                             <div class="verify-head">
                                 <span class="verify-icon"><i class="fas fa-id-card"></i></span>
@@ -1244,6 +1250,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                             </div>
                             <div class="form-hint">For your privacy, your saved details are only shown when the LRN and date of birth both match our records.</div>
                             <div class="verify-result" id="verifyResult" role="status" aria-live="polite" style="display:none"></div>
+                        </div>
                         </div>
 
                         <div id="personalFields">
@@ -1296,11 +1303,8 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                                 <label class="form-label req" for="f_email">Email Address</label>
                                 <input type="email" id="f_email" name="email" class="form-control" autocomplete="email" placeholder="example@email.com" value="<?php echo ov('email', $old); ?>">
                                 <div class="field-error" id="err-email">A valid email address is required.</div>
-                                <div class="form-hint email-status" id="emailStatus" style="display:none"></div>
-                                <label class="email-confirm" id="emailConfirmWrap" style="display:none;margin-top:6px;font-size:14.5px;gap:8px;align-items:flex-start;">
-                                    <input type="checkbox" name="email_confirmed" value="1" id="emailConfirm" style="margin-top:3px;">
-                                    <span>We could not check this email right now. <strong>I confirm this email is correct</strong> and I can open it — my enrollment result will be sent here.</span>
-                                </label>
+                                <div class="form-hint">Contact information only. It does not have to be unique and is never verified here.</div>
+                                <div class="form-hint" id="emailStatus" style="display:none"></div>
                             </div>
                         </div>
                         </div><!-- /#personalFields -->
@@ -1402,7 +1406,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                                     <label class="form-label req" for="f_last_grade_completed">Last Grade Level Completed</label>
                                     <select id="f_last_grade_completed" name="last_grade_completed" class="form-select" data-old="<?php echo ov('last_grade_completed', $old); ?>">
                                         <option value="">-- Select --</option>
-                                        <?php for ($gi = 1; $gi <= 11; $gi++): ?>
+                                        <?php for ($gi = 6; $gi <= 11; $gi++): /* secondary school: Grade 7+ only; Grade 6 is kept (and shown by the script) only when applying to Grade 7 */ ?>
                                             <option value="Grade <?php echo $gi; ?>" <?php echo ($old['last_grade_completed'] ?? '') === 'Grade ' . $gi ? 'selected' : ''; ?>>Grade <?php echo $gi; ?></option>
                                         <?php endfor; ?>
                                     </select>
@@ -1420,7 +1424,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                         <div class="subsection" id="docsSection">
                             <div class="sub-heading"><i class="fas fa-file-arrow-up"></i> <span>Upload Requirements</span></div>
                             <small id="docHint" style="display:block;color:var(--text-muted);margin:-6px 0 12px">Upload the documents required for your grade level and applicant type. JPG, PNG, WEBP or PDF &mdash; max 5 MB each.</small>
-                        <div class="step-validation-banner" id="banner-stepdocs"><i class="fas fa-triangle-exclamation"></i> Please upload every document marked Required below.</div>
+                        <div class="step-validation-banner" id="banner-stepdocs"><i class="fas fa-triangle-exclamation"></i> <span id="bannerDocsText">Please upload every document marked Required below.</span></div>
 
                         <div class="alert-info-box" id="docPlaceholder">
                             <i class="fas fa-circle-info me-1"></i>
@@ -1459,6 +1463,9 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                                                     <span class="<?php echo $slot['required'] ? 'badge-req' : 'badge-opt'; ?>"><?php echo $slot['required'] ? 'Required' : 'Optional'; ?></span>
                                                     <span class="doc-slot-done"><i class="fas fa-circle-check"></i> Uploaded</span>
                                                 </div>
+                                                <?php if ($doc['key'] === OE_LRN_CARD_DOC_KEY && $slot_suffix === '_p2'): ?>
+                                                    <div class="doc-slot-note">Optional â€” required only if some report card information is missing on Page 1.</div>
+                                                <?php endif; ?>
                                             <?php endif; ?>
                                             <label class="visually-hidden" for="<?php echo $sfid; ?>"><?php echo htmlspecialchars($doc['label'] . ($slot['label'] !== '' ? ' ' . $slot['label'] : '')); ?> file upload</label>
                                             <input type="file" class="doc-file-input" id="<?php echo $sfid; ?>" name="doc_<?php echo $doc['key'] . $slot_suffix; ?>" accept=".jpg,.jpeg,.png,.webp,.pdf"
@@ -1540,9 +1547,9 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                                     <span><i class="fas fa-graduation-cap me-1"></i> Applicant Type &amp; Grade</span>
                                     <button type="button" data-edit="1"><i class="fas fa-pen me-1"></i> Edit</button>
                                 </div>
-                                <div class="review-row"><span>Grade Level</span><span id="revGradeLevel">—</span></div>
-                                <div class="review-row"><span>Applicant Type</span><span id="revAppType">—</span></div>
-                                <div class="review-row" id="revStrandRow" style="display:none"><span>Strand</span><span id="revStrand">—</span></div>
+                                <div class="review-row"><span>Grade Level</span><span id="revGradeLevel">â€”</span></div>
+                                <div class="review-row"><span>Applicant Type</span><span id="revAppType">â€”</span></div>
+                                <div class="review-row" id="revStrandRow" style="display:none"><span>Strand</span><span id="revStrand">â€”</span></div>
                             </div>
 
                             <!-- Review: Personal Information -->
@@ -1551,12 +1558,12 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                                     <span><i class="fas fa-user me-1"></i> Personal Information</span>
                                     <button type="button" data-edit="2"><i class="fas fa-pen me-1"></i> Edit</button>
                                 </div>
-                                <div class="review-row"><span>Full Name</span><span id="revFullName">—</span></div>
-                                <div class="review-row"><span>LRN</span><span id="revLRN">—</span></div>
-                                <div class="review-row"><span>Date of Birth</span><span id="revDOB">—</span></div>
-                                <div class="review-row"><span>Sex</span><span id="revGender">—</span></div>
-                                <div class="review-row"><span>Mobile Number</span><span id="revContact">—</span></div>
-                                <div class="review-row"><span>Email Address</span><span id="revEmail">—</span></div>
+                                <div class="review-row"><span>Full Name</span><span id="revFullName">â€”</span></div>
+                                <div class="review-row"><span>LRN</span><span id="revLRN">â€”</span></div>
+                                <div class="review-row"><span>Date of Birth</span><span id="revDOB">â€”</span></div>
+                                <div class="review-row"><span>Sex</span><span id="revGender">â€”</span></div>
+                                <div class="review-row"><span>Mobile Number</span><span id="revContact">â€”</span></div>
+                                <div class="review-row"><span>Email Address</span><span id="revEmail">â€”</span></div>
                             </div>
                         </div>
 
@@ -1566,21 +1573,21 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                                 <span><i class="fas fa-sliders me-1"></i> Additional Information</span>
                                 <button type="button" data-edit="3"><i class="fas fa-pen me-1"></i> Edit</button>
                             </div>
-                            <div class="review-row"><span>Place of Birth</span><span id="revBirthPlace">—</span></div>
-                            <div class="review-row"><span>Religion</span><span id="revReligion">—</span></div>
-                            <div class="review-row"><span>Nationality</span><span id="revNationality">—</span></div>
-                            <div class="review-row"><span>Address</span><span id="revAddress">—</span></div>
+                            <div class="review-row"><span>Place of Birth</span><span id="revBirthPlace">â€”</span></div>
+                            <div class="review-row"><span>Religion</span><span id="revReligion">â€”</span></div>
+                            <div class="review-row"><span>Nationality</span><span id="revNationality">â€”</span></div>
+                            <div class="review-row"><span>Address</span><span id="revAddress">â€”</span></div>
                             <hr class="my-1">
-                            <div class="review-row"><span>Father's Name</span><span id="revFather">—</span></div>
-                            <div class="review-row"><span>Mother's Name</span><span id="revMother">—</span></div>
-                            <div class="review-row"><span>Guardian Name</span><span id="revGuardian">—</span></div>
-                            <div class="review-row"><span>Relationship</span><span id="revGuardianRel">—</span></div>
-                            <div class="review-row"><span>Guardian Contact</span><span id="revGuardianContact">—</span></div>
+                            <div class="review-row"><span>Father's Name</span><span id="revFather">â€”</span></div>
+                            <div class="review-row"><span>Mother's Name</span><span id="revMother">â€”</span></div>
+                            <div class="review-row"><span>Guardian Name</span><span id="revGuardian">â€”</span></div>
+                            <div class="review-row"><span>Relationship</span><span id="revGuardianRel">â€”</span></div>
+                            <div class="review-row"><span>Guardian Contact</span><span id="revGuardianContact">â€”</span></div>
                             <hr class="my-1">
-                            <div class="review-row" data-rev-types="Returning,Transferee"><span id="revSchoolLbl">Last School</span><span id="revSchool">—</span></div>
-                            <div class="review-row" data-rev-types="Transferee"><span>School Address</span><span id="revSchoolAddr">—</span></div>
-                            <div class="review-row" data-rev-types="Returning,Transferee"><span>Last Grade Completed</span><span id="revLastGrade">—</span></div>
-                            <div class="review-row" data-rev-types="Returning,Transferee"><span>School Year</span><span id="revSchoolYear">—</span></div>
+                            <div class="review-row" data-rev-types="Returning,Transferee"><span id="revSchoolLbl">Last School</span><span id="revSchool">â€”</span></div>
+                            <div class="review-row" data-rev-types="Transferee"><span>School Address</span><span id="revSchoolAddr">â€”</span></div>
+                            <div class="review-row" data-rev-types="Returning,Transferee"><span>Last Grade Completed</span><span id="revLastGrade">â€”</span></div>
+                            <div class="review-row" data-rev-types="Returning,Transferee"><span>School Year</span><span id="revSchoolYear">â€”</span></div>
                         </div>
 
                         <!-- Review: Documents -->
@@ -1630,7 +1637,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
         <div class="foot-copy">&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars($school_name); ?> &middot; Powered by EGRADEPRO</div>
     </div>
 
-    <!-- Help modal (static UI content only — no backend) -->
+    <!-- Help modal (static UI content only â€” no backend) -->
     <div class="modal fade" id="helpModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -1646,13 +1653,13 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                         <li>Upload your Required Documents.</li>
                         <li>Review and Submit your application.</li>
                     </ol>
-                    <p class="mb-0">Your application will be reviewed by the Registrar. You'll be notified through the email address you provide once a decision has been made.</p>
+                    <p class="mb-0">Your application will be reviewed by the Registrar. The email address you provide is kept as contact information only.</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- About Us modal (static UI content only — no backend) -->
+    <!-- About Us modal (static UI content only â€” no backend) -->
     <div class="modal fade" id="aboutModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -1668,7 +1675,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
         </div>
     </div>
 
-    <!-- Contact modal (static UI content only — no backend) -->
+    <!-- Contact modal (static UI content only â€” no backend) -->
     <div class="modal fade" id="contactModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -1690,7 +1697,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
     </div>
 
     <!-- Shared document preview modal (image lightbox / PDF viewer). Purely a
-         client-side preview of the File the applicant just picked — nothing
+         client-side preview of the File the applicant just picked â€” nothing
          here is uploaded early or persisted; it just reads the local file
          with an object URL so they can confirm it's the right document. -->
     <div class="modal fade" id="docPreviewModal" tabindex="-1" aria-hidden="true" aria-labelledby="docPreviewTitle">
@@ -1716,7 +1723,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
         var MAX_FILE_SIZE = 5 * 1024 * 1024;
         var ALLOWED_EXTS = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
 
-        // Mobile hamburger nav (UI-only — no routes involved)
+        // Mobile hamburger nav (UI-only â€” no routes involved)
         var hamburger = document.getElementById('navHamburger');
         var mobileNav = document.getElementById('mobileNav');
         if (hamburger && mobileNav) {
@@ -1814,7 +1821,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
         ?>;
         var TYPE_INFO = {
             'New Student': 'Incoming Grade 7 or Grade 11 learner. You fill out the complete form. Upload: Report Card + Birth Certificate.',
-            'Continuing': 'Current student moving up to Grade 8, 9, 10 or 12. Enter your LRN first and we load your saved profile \u2014 you only update what changed. Upload: Report Card only.',
+            'Continuing': 'Current IISS student progressing to the next grade level (Grade 8 to 12). Enter your LRN and date of birth first \u2014 we verify your IISS record, set your grade level for you and load your saved profile. Upload: Report Card only.',
             'Returning': 'Former student coming back (Balik-Aral). We check your LRN and reuse your old record \u2014 you review and update your information. Upload: Report Card + Birth Certificate.',
             'Transferee': 'Coming from another school. You fill out the complete form plus your previous school details. Upload: Report Card + Birth Certificate.'
         };
@@ -1836,11 +1843,11 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                 list: ['Complete personal information form (name, LRN, birth date, contact).', 'Address and parent / guardian, then upload your Report Card and PSA Birth Certificate.', 'Review and submit.']
             },
             'Continuing': {
-                dots: ['Verify LRN & Profile', 'Update Details & Report Card'],
-                s2: ['Verify LRN & Profile', 'Enter your LRN and date of birth. We load your saved profile \u2014 only the details that changed can be updated.'],
+                dots: ['Your Saved Profile', 'Update Details & Report Card'],
+                s2: ['Your Saved Profile', 'Your LRN and date of birth were verified in Step 1. Your saved profile is loaded \u2014 only the details that changed can be updated.'],
                 s3: ['Update Details & Upload Report Card', 'Everything is filled in from your saved record. Press Edit only on the details that changed, then upload your Report Card.'],
                 s3note: 'Your saved details are locked. Press Edit on the ones that changed \u2014 only those are updated.',
-                list: ['Enter your LRN and date of birth \u2014 your saved profile is loaded.', 'Check your details (press Edit only on what changed) and upload your Report Card \u2014 birth certificate is already on file.', 'Review your changes and submit.']
+                list: ['Your saved profile is loaded (you verified your LRN and date of birth in Step 1).', 'Check your details (press Edit only on what changed) and upload your Report Card \u2014 birth certificate is already on file.', 'Review your changes and submit.']
             },
             'Returning': {
                 dots: ['Verify LRN & Profile', 'Review, Update & Upload'],
@@ -1861,11 +1868,21 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
         function curGrade() { var p = document.querySelector('input[name="grade_level"]:checked'); return p ? p.value : ''; }
         function curType() { var t = document.getElementById('f_application_type'); return t ? t.value : ''; }
         function typeAllowed(type, grade) { return !type || !grade || (TYPE_GRADES[type] || []).indexOf(grade) !== -1; }
+        // Continuing: has this browser verified LRN + date of birth against an IISS record (and got a grade back)?
+        function continuingVerified() { return !!(lookup && lookup.status === 'verified' && lookup.type === 'Continuing' && lookup.expectedGrade); }
+        // Open (and select) only the verified next grade for Continuing; with no verified record every grade stays closed.
+        function applyContinuingGrade() {
+            if (curType() !== 'Continuing') return;
+            var g = continuingVerified() ? lookup.expectedGrade : '';
+            document.querySelectorAll('input[name="grade_level"]').forEach(function (r) { r.checked = (g !== '' && r.value === g); });
+            onGradeChange();   // re-syncs the open / closed cards, the strand box and the document list
+        }
         function needsPrev(type) { return type === 'Returning' || type === 'Transferee'; }
         function gradeNum(g) { return parseInt(String(g).replace('Grade ', ''), 10) || 0; }
         function typeGradeMessage(type, grade) {
             if (type === 'New Student') return 'New Student is only for Grade 7 and Grade 11. For ' + grade + ', choose Continuing, Returning or Transferee.';
-            if (type === 'Continuing') return 'Continuing is only for Grade 8, 9, 10 and 12. For ' + grade + ', choose New Student, Returning or Transferee.';
+            if (type === 'Continuing') return 'Continuing is only for Grade 8, 9, 10, 11 and 12. For ' + grade + ', choose New Student, Returning or Transferee.';
+            if (type === 'Transferee') return 'Transferee is only for Grade 8, 9, 10, 11 and 12. Grade 7 is for New Students, so choose New Student for ' + grade + '.';
             return 'This Applicant Type is not available for ' + grade + '.';
         }
         function activeDocGroup() {
@@ -1884,7 +1901,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             return true;
         }
 
-        // Required fields keep their validation — only the visible red
+        // Required fields keep their validation â€” only the visible red
         // asterisk was removed (see item 5/16 of the design brief). Every
         // check below still blocks Next/Submit exactly as before; only the
         // UX changed from a browser alert() to an inline banner + highlight.
@@ -1905,6 +1922,15 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                 }
                 clearInvalid(typeEl);
 
+                // 1b) Continuing: the record must be verified first -- the grade comes from it
+                if (typeVal === 'Continuing' && !continuingVerified()) {
+                    setBanner1('Continuing students must first enter their LRN and date of birth and press "Find my record". Your grade level is set from your verified IISS record.');
+                    showBanner(1);
+                    var vpEl = document.getElementById('verifyPanel');
+                    if (vpEl) vpEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    return false;
+                }
+
                 // 2) Grade level (must be one this Applicant Type may apply for)
                 var gradeGrid = document.querySelector('.grade-grid');
                 var gl = document.querySelector('input[name="grade_level"]:checked');
@@ -1917,6 +1943,12 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                 }
                 if (gradeGrid) gradeGrid.classList.remove('is-invalid');
                 var grade = gl.value;
+                if (typeVal === 'Continuing' && grade !== lookup.expectedGrade) {
+                    setBanner1('Based on your verified IISS record, Continuing students can only enroll in ' + lookup.expectedGrade + '.');
+                    showBanner(1);
+                    if (gradeGrid) gradeGrid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    return false;
+                }
                 if (!typeAllowed(typeVal, grade)) {
                     setBanner1(typeGradeMessage(typeVal, grade));
                     showBanner(1);
@@ -1936,9 +1968,10 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                     clearInvalid(strand);
                 }
                 var gcNow = gradeCheckNow();
-                if (gcNow && gcNow.status === 'mismatch') {
+                // (From Step 3 / Submit the same mismatch is reported in Step 3 by validateDocs(), so the applicant is stopped there.)
+                if (gcNow && gcNow.status === 'mismatch' && currentStep === 1) {
                     renderGradeCheck();
-                    setBanner1('Grade Level Does Not Match your uploaded Form 138. Please correct your selected grade level.');
+                    setBanner1(gcFullMessage(gcNow.info));
                     showBanner(1);
                     if (gradeGrid) { gradeGrid.classList.add('gc-flag'); gradeGrid.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
                     return false;
@@ -1983,34 +2016,11 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                 var errEmail = document.getElementById('err-email');
                 if (errEmail) errEmail.textContent = 'A valid email address is required.';
                 check2('email', emailShapeOk);
-                // The email account must really exist ("Couldn't find this account").
-                if (emailShapeOk) {
-                    var emEl = document.querySelector('[name="email"]');
-                    if (emailCheck.email !== emailVal.toLowerCase()) {
-                        // Not checked yet: check now, and continue automatically if it is fine.
-                        checkEmailAccount(true);
-                        ok = false;
-                        if (!firstInvalid) firstInvalid = emEl;
-                        setBanner2('Checking your email address\u2026');
-                    } else if (emailCheck.status === 'checking') {
-                        ok = false;
-                        if (!firstInvalid) firstInvalid = emEl;
-                        setBanner2('Checking your email address\u2026');
-                    } else if (emailCheck.bad) {
-                        if (errEmail) errEmail.textContent = emailCheck.message;
-                        markInvalid(emEl, 'err-email');
-                        ok = false;
-                        if (!firstInvalid) firstInvalid = emEl;
-                        setBanner2(emailCheck.message);
-                    } else if (emailCheck.status === 'unknown' && !(document.getElementById('emailConfirm') || {}).checked) {
-                        showEmailConfirm(true);
-                        ok = false;
-                        if (!firstInvalid) firstInvalid = document.getElementById('emailConfirm') || emEl;
-                        setBanner2('We could not verify your email right now. Please check it and tick "I confirm this email is correct".');
-                    }
-                }
+                // The email is contact information only: it is never verified against
+                // a mail server and never compared with another account, so shape is
+                // the ONLY thing that can fail here (mirrors the server check).
 
-                // LRN — required, exactly 12 digits, numbers only (mirrors the
+                // LRN â€” required, exactly 12 digits, numbers only (mirrors the
                 // server-side check in online_enrollment.php one-for-one).
                 var lrnEl = document.getElementById('f_lrn');
                 if (lrnEl) {
@@ -2124,6 +2134,8 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                     }
                 }
                 if (!ok4) {
+                    var gcDocs = gradeCheckNow(), docsTxt = document.getElementById('bannerDocsText');
+                    if (docsTxt) docsTxt.textContent = (gcDocs && gcDocs.status === 'mismatch') ? gcFullMessage(gcDocs.info) : (lastGradeMessage() || 'Please upload every document marked Required below.');
                     showBanner('docs');
                     if (firstInvalidCard) firstInvalidCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     return false;
@@ -2193,7 +2205,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             if (ph) ph.style.display = key ? 'none' : 'block';
 
             document.getElementById('docHint').textContent = key
-                ? 'These are the documents required for ' + (TYPE_LABEL[type] || type) + ' applicants (' + grade + '). ' + (type === 'Continuing' ? 'Your birth certificate is already on file, so only the Report Card is needed. ' : '') + 'JPG, PNG, WEBP or PDF — max 5 MB each.'
+                ? 'These are the documents required for ' + (TYPE_LABEL[type] || type) + ' applicants (' + grade + '). ' + (type === 'Continuing' ? 'Your birth certificate is already on file, so only the Report Card is needed. ' : '') + 'JPG, PNG, WEBP or PDF â€” max 5 MB each.'
                 : 'Select your Applicant Type and grade level to see your required documents.';
         }
 
@@ -2203,6 +2215,10 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
         function syncTypeOptions(resetNote) {
             var type = curType();
             var allowed = type ? (TYPE_GRADES[type] || []) : null;
+            // Continuing never picks a grade freely: nothing is open until the LRN + date of birth are
+            // verified, then only the one grade that follows the learner's IISS record.
+            var contLock = (type === 'Continuing');
+            if (contLock) allowed = continuingVerified() && lookup.expectedGrade ? [lookup.expectedGrade] : [];
             var cleared = '';
             document.querySelectorAll('input[name="grade_level"]').forEach(function(r) {
                 var ok = !allowed || allowed.indexOf(r.value) !== -1;
@@ -2218,7 +2234,11 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             var gh = document.getElementById('gradeHint');
             if (gh) {
                 gh.style.color = '';
-                if (cleared) { gh.textContent = typeGradeMessage(type, cleared) + ' Please pick another grade level.'; gh.style.color = 'var(--danger)'; }
+                if (contLock) {
+                    gh.textContent = 'Continuing students may proceed to Grade 8, Grade 9, Grade 10, Grade 11, or Grade 12 based on their verified previous IISS enrollment record.'
+                        + (allowed.length ? ' Your verified record opens ' + allowed[0] + ' only.' : ' Enter your LRN and date of birth above to unlock your grade level.');
+                }
+                else if (cleared) { gh.textContent = typeGradeMessage(type, cleared) + ' Please pick another grade level.'; gh.style.color = 'var(--danger)'; }
                 else if (allowed) gh.textContent = (TYPE_LABEL[type] || type) + ' can apply for: ' + allowed.join(', ') + '.';
                 else gh.textContent = 'Choose your Applicant Type above to see which grade levels are open.';
             }
@@ -2293,7 +2313,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             if (lg) {
                 Array.prototype.forEach.call(lg.options, function(o) {
                     if (o.value === '') return;
-                    var below = !grade || gradeNum(o.value) < gradeNum(grade);
+                    var below = (o.value === 'Grade 6') ? (grade === 'Grade 7') : (!grade || gradeNum(o.value) < gradeNum(grade));
                     o.disabled = !below; o.hidden = !below;
                 });
                 if (lg.value && grade && gradeNum(lg.value) >= gradeNum(grade)) lg.value = '';
@@ -2328,11 +2348,14 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             applyStep2Layout();
             applyTypeFields();
             refreshDocs();
+            setTimeout(syncLastGradeCheck, 0);
         }
 
         document.querySelectorAll('input[name="grade_level"]').forEach(function(radio) {
             radio.addEventListener('change', onGradeChange);
         });
+        var lgSel = document.getElementById('f_last_grade_completed');
+        if (lgSel) lgSel.addEventListener('change', syncLastGradeCheck);
         var appTypeSel = document.getElementById('f_application_type');
         if (appTypeSel) appTypeSel.addEventListener('change', onTypeChange);
         document.querySelectorAll('#typeGrid .type-card').forEach(function(card) {
@@ -2446,12 +2469,13 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                     if (el) el.value = (name === 'nationality') ? 'Filipino' : '';
                 });
             }
-            lookup = { status: '', type: '', lrn: '', profile: null };
+            lookup = { status: '', type: '', lrn: '', profile: null, expectedGrade: '' };
             showResult('', '');
             var rc = document.getElementById('profileReviewed'), rb = document.getElementById('reviewConfirmBox');
             if (rc) { rc.checked = false; rc.disabled = true; }
             if (rb) { rb.style.display = 'none'; rb.classList.remove('is-invalid'); }
             applyStep2Layout();
+            applyContinuingGrade();   // Continuing: no verified record -> every grade level closes again
         }
 
         function applyLookupModes(type, profile, restoring) {
@@ -2473,8 +2497,9 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             });
         }
 
-        function finishLookup(status, type, lrn, dob, profile, restoring) {
-            lookup = { status: status, type: type, lrn: lrn, profile: profile || null };
+        function finishLookup(status, type, lrn, dob, profile, restoring, continuing) {
+            lookup = { status: status, type: type, lrn: lrn, profile: profile || null,
+                       expectedGrade: (status === 'verified' && type === 'Continuing' && continuing && continuing.expected_grade) ? continuing.expected_grade : '' };
             if (status === 'verified') {
                 applyLookupModes(type, profile, restoring);
             } else {                       // new_record: nothing saved -- full form; only the checked LRN is locked
@@ -2490,6 +2515,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             if (rc) { rc.disabled = !needConfirm; if (!needConfirm) rc.checked = false; }
             applyStep2Layout();
             applyTypeFields();
+            applyContinuingGrade();   // Continuing: open and select only the verified next grade level
         }
 
         function applyStep2Layout() {
@@ -2497,11 +2523,14 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             var vp = document.getElementById('verifyPanel'), pf = document.getElementById('personalFields');
             if (vp) vp.style.display = lk ? '' : 'none';
             if (pf) pf.style.display = (!lk || lookup.status) ? '' : 'none';
+            // Continuing verifies in Step 1 (before the grade level); Returning keeps it in Step 2.
+            var home = document.getElementById(type === 'Continuing' ? 'verifyHome1' : 'verifyHome2');
+            if (vp && home && vp.parentNode !== home) home.appendChild(vp);
             var vt = document.getElementById('verifyTitle'), vs = document.getElementById('verifySub');
-            if (vt) vt.textContent = type === 'Returning' ? 'Welcome back! Enter your LRN' : 'Enter your LRN first';
+            if (vt) vt.textContent = type === 'Returning' ? 'Welcome back! Enter your LRN' : 'Verify your LRN and date of birth first';
             if (vs) vs.textContent = type === 'Returning'
                 ? 'We will check if you studied here before and reuse your old record. You will still review and update your information.'
-                : 'We will load your saved profile. You only need to update the details that changed.';
+                : 'We check your existing IISS record, set your grade level for you and load your saved profile. You only need to update the details that changed.';
             var lrnEl = document.getElementById('f_lrn');
             if (lrnEl && !lk && lookup.status === '' && lrnEl.classList.contains('oe-locked')) unlockField(lrnEl);
             var st = document.getElementById('lrnStatus');
@@ -2543,8 +2572,10 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                 if (curType() !== type) return;                     // the applicant changed type meanwhile
                 if (lookup.status) resetLookup(true);
                 if (res && res.ok && res.status === 'verified') {
-                    finishLookup('verified', type, lrn, dob, res.profile, false);
-                    var extra = res.profile.current_grade ? ' <span class="verify-meta">On record: ' + esc(res.profile.current_grade) + '</span>' : '';
+                    finishLookup('verified', type, lrn, dob, res.profile, false, res.continuing || null);
+                    var extra = (type === 'Continuing' && res.continuing)
+                        ? ' <span class="verify-meta">Last grade at IISS: ' + esc(res.continuing.last_grade) + ' &rarr; ' + esc(res.continuing.expected_grade) + '</span>'
+                        : (res.profile.current_grade ? ' <span class="verify-meta">On record: ' + esc(res.profile.current_grade) + '</span>' : '');
                     showResult('ok', '<i class="fas fa-circle-check"></i> <span>' + esc(res.message) + extra + '</span>');
                 } else if (res && res.ok && res.status === 'new_record') {
                     finishLookup('new_record', type, lrn, dob, null, false);
@@ -2570,93 +2601,25 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
         });
         if (vLrn) vLrn.addEventListener('input', function() { vLrn.value = vLrn.value.replace(/\D/g, '').slice(0, 12); });
 
-        // Email: does this account really exist? (same idea as Google's
-        // "Couldn't find this account"). An address the mail server cannot
-        // confirm either way is allowed -- the server checks again on submit.
-        var emailCheck = { email: '', status: '', bad: false, message: '' };
-        var emailTimer = null;
+        // The email is contact information only during Online Enrollment: no
+        // account lookup, no verification code, no confirmation tick box. These
+        // no-op stubs are kept so any leftover markup or caller degrades quietly
+        // instead of throwing, and the Step 2 gate can still call them.
         function setEmailStatus(kind, msg) {
             var st = document.getElementById('emailStatus');
             if (!st) return;
             if (!msg) { st.style.display = 'none'; st.textContent = ''; return; }
-            st.className = 'form-hint email-status ' + kind;
-            st.innerHTML = '';
-            st.appendChild(document.createTextNode(msg));
             st.style.display = '';
+            st.textContent = msg;
         }
         function showEmailConfirm(show) {
             var w = document.getElementById('emailConfirmWrap');
-            if (!w) return;
-            w.style.display = show ? 'flex' : 'none';
-            if (!show) { var c = document.getElementById('emailConfirm'); if (c) c.checked = false; }
+            if (w) w.style.display = show ? 'flex' : 'none';
         }
         function checkEmailAccount(continueAfter) {
-            var emEl = document.querySelector('[name="email"]');
-            if (!emEl) return;
-            var val = emEl.value.trim().toLowerCase();
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) { emailCheck = { email: '', status: '', bad: false, message: '' }; setEmailStatus('', ''); return; }
-            if (emailCheck.email === val && emailCheck.status && emailCheck.status !== 'checking') {
-                if (continueAfter && !emailCheck.bad) { var nb = document.querySelector('[data-next="2"]'); if (nb) nb.click(); }
-                return;
-            }
-            if (emailCheck.email === val && emailCheck.status === 'checking') return;
-            emailCheck = { email: val, status: 'checking', bad: false, message: '' };
-            setEmailStatus('', 'Checking this email account\u2026');
-            var fd = new FormData();
-            fd.append('oe_action', 'email_check');
-            fd.append('csrf_token', oeForm0.querySelector('[name="csrf_token"]').value);
-            fd.append('email', val);
-            fetch(window.location.href.split('#')[0], { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
-                .then(function(r) { return r.json(); })
-                .then(function(res) {
-                    if (emEl.value.trim().toLowerCase() !== val) return;
-                    var bad = ['invalid', 'typo', 'bad_domain', 'not_found'].indexOf(res && res.status) >= 0;
-                    emailCheck = { email: val, status: (res && res.status) || 'unknown', bad: bad, message: (res && res.message) || '' };
-                    showEmailConfirm(emailCheck.status === 'unknown');
-                    if (bad) {
-                        var er = document.getElementById('err-email');
-                        if (er) er.textContent = emailCheck.message;
-                        markInvalid(emEl, 'err-email');
-                        setEmailStatus('', '');
-                        if (res.suggestion) {
-                            var st = document.getElementById('emailStatus');
-                            st.className = 'form-hint email-status';
-                            st.innerHTML = '';
-                            var use = document.createElement('button');
-                            use.type = 'button';
-                            use.className = 'email-suggest';
-                            use.textContent = 'Use ' + res.suggestion;
-                            use.addEventListener('click', function() { emEl.value = res.suggestion; clearInvalid(emEl); checkEmailAccount(false); });
-                            st.appendChild(use);
-                            st.style.display = '';
-                        }
-                    } else {
-                        clearInvalid(emEl);
-                        setEmailStatus(res.status === 'ok' ? 'ok' : '', res.status === 'ok' ? '\u2713 Email account found.' : '');
-                        if (continueAfter) { hideBanner(2); var nb2 = document.querySelector('[data-next="2"]'); if (nb2) nb2.click(); }
-                    }
-                })
-                .catch(function() {
-                    // Offline / server problem: do not block the applicant.
-                    emailCheck = { email: val, status: 'unknown', bad: false, message: '' };
-                    setEmailStatus('', '');
-                    showEmailConfirm(true);
-                    if (continueAfter) { var nb3 = document.querySelector('[data-next="2"]'); if (nb3) nb3.click(); }
-                });
+            // Nothing to verify any more -- always let the applicant continue.
+            if (continueAfter) { hideBanner(2); var nb = document.querySelector('[data-next="2"]'); if (nb) nb.click(); }
         }
-        (function() {
-            var emEl = document.querySelector('[name="email"]');
-            if (!emEl) return;
-            emEl.addEventListener('input', function() {
-                emailCheck = { email: '', status: '', bad: false, message: '' };
-                setEmailStatus('', '');
-                showEmailConfirm(false);
-                clearTimeout(emailTimer);
-                emailTimer = setTimeout(function() { checkEmailAccount(false); }, 450);
-            });
-            emEl.addEventListener('blur', function() { clearTimeout(emailTimer); checkEmailAccount(false); });
-        })();
-
         // New Student / Transferee: is this LRN still free?
         function setLrnStatus(kind, msg) {
             var st = document.getElementById('lrnStatus');
@@ -2709,11 +2672,11 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
         // ===================================================================
         // DOCUMENT UPLOAD CARDS (Step 3 + the Review list in Step 4)
         // The real <input type="file"> for each requirement is never removed
-        // or recreated — it just sits visually hidden inside its card — so
+        // or recreated â€” it just sits visually hidden inside its card â€” so
         // whatever the browser is holding in its .files stays put across
         // Back/Next/Edit. Everything below only changes how that same input
         // is *presented*; a page reload is the one thing that can clear a
-        // file input (browser security — see item 41), which is unrelated to
+        // file input (browser security â€” see item 41), which is unrelated to
         // this in-page wizard navigation.
         // ===================================================================
         function fmtBytes(bytes) {
@@ -2724,15 +2687,32 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
 
         // ---- Report Card (Form 138) check (Step 3) ----
         // The 2-3 pages are sent TOGETHER; the server reads them as one Report
-        // Card (name, LRN, grade level, grades, General Average, remarks) and
-        // compares the LRN with Step 2. Kept per set of pages; re-compared at
-        // once if the applicant edits the LRN afterwards.
+        // Card (name, grade level, grades, General Average, remarks). The LRN on
+        // the card is NOT compared with Step 2 any more.
+        // Kept per set of pages.
         var rcState = {};   // card key -> { sig, status, detected, message, card }
         var RC_MSG = {
-            mismatch: 'Wrong LRN number. The LRN entered in Personal Information does not match the LRN found on the Report Card.',
-            unreadable: 'LRN could not be verified. Please upload a clear and readable Report Card.',
-            incomplete: 'Complete Report Card grades could not be detected. Please upload the front and back/pages of your Form 138 clearly.'
+            unreadable: 'Some information could not be verified. Please upload a clear and readable Report Card.',
+            incomplete: 'Additional page required. Please upload the page containing the missing report card information.',
+            unverified: 'Some information could not be verified from the uploaded report card. Please upload a clearer image or add another page of the Form 138.'
         };
+        // Page 2 is conditional: optional unless Page 1 (and any other page) lacks required information.
+        function rcSetPage2(card, mode) {
+            var p2 = card.querySelector('.doc-file-input[id$="_p2"]');
+            var slot = p2 && p2.closest('.doc-slot');
+            if (!slot) return;
+            var note = slot.querySelector('.doc-slot-note');
+            var badge = slot.querySelector('.doc-slot-label .badge-req, .doc-slot-label .badge-opt');
+            var need = mode === 'needed';
+            if (badge) { badge.className = need ? 'badge-req' : 'badge-opt'; badge.textContent = need ? 'Required' : 'Optional'; }
+            if (note) {
+                note.className = 'doc-slot-note' + (need ? ' is-required' : (mode === 'ok' ? ' is-ok' : ''));
+                note.textContent = need ? 'Required â€” Some report card information was not found on Page 1.'
+                    : (mode === 'ok' ? 'Optional â€” No additional page needed.'
+                    : 'Optional â€” required only if some report card information is missing on Page 1.');
+            }
+        }
+        function rcPageCount(card) { return rcPages(card).filter(Boolean).length; }
         function fileSig(f) { return f ? f.name + '|' + f.size + '|' + f.lastModified : ''; }
         function rcKey(card) { var g = card.closest('.doc-group'); return (g ? g.dataset.grade + '|' + g.dataset.type : '') + '|form138'; }
         function rcPages(card) {   // chosen files, in page order
@@ -2742,11 +2722,6 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             return Array.prototype.slice.call(card.querySelectorAll('.doc-file-input[data-required="1"]')).every(function (i) { return i.files && i.files.length; });
         }
         function rcSig(card) { return rcPages(card).map(fileSig).join('#'); }
-        function enteredLrn() {
-            var a = document.getElementById('f_lrn'), b = document.getElementById('v_lrn');
-            var v = (a && a.value.trim()) || (b && b.value.trim()) || '';
-            return v.replace(/[\s-]+/g, '');
-        }
         function setCardLrnStatus(card, kind, msg) {
             if (!card) return;
             var st = card.querySelector('.doc-lrn-status');
@@ -2766,32 +2741,28 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             el.classList.add('show');
         }
         function applyRcState(card) {
+            setTimeout(syncLastGradeCheck, 0);
             var s = rcState[rcKey(card)];
-            if (!rcRequiredDone(card)) { setCardLrnStatus(card, '', ''); setCardRead(card, null); return; }
-            if (!s || s.sig !== rcSig(card)) { setCardLrnStatus(card, '', ''); setCardRead(card, null); return; }
+            if (!rcRequiredDone(card)) { setCardLrnStatus(card, '', ''); setCardRead(card, null); rcSetPage2(card, 'idle'); return; }
+            if (!s || s.sig !== rcSig(card)) { setCardLrnStatus(card, '', ''); setCardRead(card, null); rcSetPage2(card, 'idle'); return; }
             if (s.status === 'checking') {
-                setCardLrnStatus(card, 'checking', '<i class="fas fa-spinner fa-spin me-1"></i>Reading your Report Card pages (LRN and grades)… this can take up to a minute.');
+                setCardLrnStatus(card, 'checking', '<i class="fas fa-spinner fa-spin me-1"></i>Reading your Report Card pages (grades)â€¦ this can take up to a minute.');
                 setCardRead(card, null);
                 return;
             }
-            // Re-compare with the LRN as it is NOW (the applicant may have fixed Step 2).
-            if (s.detected && (s.status === 'verified' || s.status === 'mismatch')) {
-                var now = enteredLrn();
-                s.status = (now.length === 12 && now === s.detected) ? (s.card ? 'verified' : 'incomplete') : 'mismatch';
-                if (s.status !== 'verified') s.message = RC_MSG[s.status] || s.message;
-            }
             clearDocError(card);   // the status line below carries the result (no stale "please wait")
             if (s.status === 'verified') {
-                setCardLrnStatus(card, 'verified', '✓ LRN Verified');
+                setCardLrnStatus(card, 'verified', 'âœ“ Report Card read &middot; Required information detected');
                 setCardRead(card, s.card);
+                rcSetPage2(card, 'ok');
                 renderGradeCheck();
             } else {
+                rcSetPage2(card, s.status === 'incomplete' ? 'needed' : 'idle');
                 setCardLrnStatus(card, 'bad', '<i class="fas fa-circle-xmark me-1"></i>' + esc(s.message || RC_MSG.unreadable));
                 setCardRead(card, null);
             }
         }
         function checkReportCard(card) {
-            if (!card) return;
             if (!rcRequiredDone(card)) { applyRcState(card); return; }
             var key = rcKey(card), sig = rcSig(card);
             var old = rcState[key];
@@ -2801,7 +2772,6 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             var fd = new FormData();
             fd.append('oe_action', 'report_card_lrn');
             fd.append('csrf_token', document.querySelector('#oeForm [name="csrf_token"]').value);
-            fd.append('lrn', enteredLrn());
             fd.append('grade_level', curGrade());
             rcPages(card).forEach(function (f) { if (f) fd.append('report_card[]', f); });
             fetch(window.location.href.split('#')[0], { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
@@ -2822,14 +2792,15 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             var missing = Array.prototype.slice.call(card.querySelectorAll('.doc-file-input[data-required="1"]'))
                 .filter(function (i) { return !(i.files && i.files.length); })
                 .map(function (i) { return i.getAttribute('data-page-label'); });
-            if (missing.length) return 'Please upload ' + missing.join(' and ') + ' of your Report Card.';
+            if (missing.length) return 'Please upload ' + missing.join(' and ') + ' of your Report Card.';   // Page 1 only; Page 2 is conditional
             var s = rcState[rcKey(card)];
-            if (!s || s.sig !== rcSig(card)) { checkReportCard(card); return 'Checking your Report Card… please wait.'; }
-            if (s.status === 'checking') return 'Checking your Report Card… please wait.';
+            if (!s || s.sig !== rcSig(card)) { checkReportCard(card); return 'Checking your Report Cardâ€¦ please wait.'; }
+            if (s.status === 'checking') return 'Checking your Report Cardâ€¦ please wait.';
             applyRcState(card);
             if (s.status !== 'verified') return s.message || RC_MSG.unreadable;
             var gc = gradeCheckNow();
-            return (gc && gc.status === 'mismatch') ? 'Grade Level Does Not Match. Please correct your grade level in Step 1.' : '';
+            if (gc && gc.status === 'mismatch') return gcFullMessage(gc.info);
+            return lastGradeMessage();
         }
 
         // ---- Grade level on the Form 138 vs the grade chosen in Step 1 ----
@@ -2851,14 +2822,44 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             return { status: ok ? 'match' : 'mismatch', card: card, info: g };
         }
         function gcMessage(info) {
+            if (continuingVerified() && info.card_grade) {
+                return 'Your uploaded Form 138 shows ' + info.card_grade + (info.retained ? ' (Retained)' : '') + ', but your IISS record says you are enrolling in ' + lookup.expectedGrade
+                    + '. Please upload the correct Form 138 or contact the registrar. Your grade level was not changed.';
+            }
             if (!info.expected) return info.message;
-            return 'Your uploaded Form 138 shows ' + info.card_grade + (info.retained ? ' (Retained)' : '') + '. Based on this record, your expected enrollment grade level is ' + info.expected + '. Please go back to Step 1 and correct your selected grade level.';
+            return 'Your Form 138 shows ' + info.card_grade + (info.retained ? ' (Retained)' : ' completed') + ', so the correct enrollment level is ' + info.expected + '.';
         }
+        // Returning / Transferee type their own "Last Grade Level Completed": it must be the grade shown on the Form 138.
+        function lastGradeMessage() {
+            if (!needsPrev(curType())) return '';
+            var lg = document.getElementById('f_last_grade_completed'), gc = gradeCheckNow();
+            if (!lg || !lg.value || !gc || !gc.info || !gc.info.card_grade || lg.value === gc.info.card_grade) return '';
+            return 'Last grade completed does not match the uploaded Report Card. Your Form 138 shows ' + gc.info.card_grade + (gc.info.retained ? ' (Retained)' : ' completed')
+                + ', but you selected ' + lg.value + '. Please change "Last Grade Level Completed" to ' + gc.info.card_grade + '.';
+        }
+        var lgSyncOwned = false;
+        // Shows the message on the field and switches Step 3's Next button off while the Report Card disagrees.
+        function syncLastGradeCheck() {
+            var msg = lastGradeMessage(), gc = gradeCheckNow();
+            var lg = document.getElementById('f_last_grade_completed'), err = document.getElementById('err-last_grade_completed');
+            var nb = document.querySelector('[data-next="3"]');
+            if (msg) {
+                if (lg) lg.classList.add('is-invalid');
+                if (err) { err.textContent = msg; err.classList.add('show'); }
+                lgSyncOwned = true;
+            } else if (lgSyncOwned) {
+                lgSyncOwned = false;
+                if (lg) lg.classList.remove('is-invalid');
+                if (err) { err.textContent = 'Last grade level completed is required.'; err.classList.remove('show'); }
+            }
+            if (nb) nb.disabled = !!(msg || (gc && gc.status === 'mismatch'));
+        }
+        function gcFullMessage(info) { return 'Grade level does not match the uploaded Report Card. ' + gcMessage(info); }
         function gcBoxHtml(info, withButton) {
             return (withButton ? '<span class="gc-step">Action Required: Step 1</span>' : '<span class="gc-step">Step 1 &ndash; Grade Level Information</span>')
                 + '<span class="gc-title"><i class="fas fa-triangle-exclamation me-1"></i>Grade Level Does Not Match</span>'
                 + esc(gcMessage(info))
-                + (withButton ? '<br><button type="button" class="gc-btn" data-gc-go="1"><i class="fas fa-arrow-left"></i> Go to Step 1</button>' : '');
+                + (withButton && !continuingVerified() ? '<br><button type="button" class="gc-btn" data-gc-go="1"><i class="fas fa-arrow-left"></i> Go to Step 1</button>' : '');
         }
         function renderGradeCheck() {
             var gc = gradeCheckNow();
@@ -2896,6 +2897,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                 o.classList.toggle('gc-expected', !!(bad && inp && gc.info.expected && inp.value === gc.info.expected));
             });
             if (grid && !bad) grid.classList.remove('gc-flag');
+            syncLastGradeCheck();
         }
         function goToStep1ForGrade() {
             showStep(1);
@@ -2928,13 +2930,8 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                 }, 0);
             });
         });
-        // Editing the LRN in Step 2 re-checks every Report Card at once.
-        ['f_lrn', 'v_lrn'].forEach(function (id) {
-            var el = document.getElementById(id);
-            if (el) el.addEventListener('input', function () {
-                document.querySelectorAll('.doc-card[data-doc-key="form138"]').forEach(function (c) { if (rcState[rcKey(c)]) applyRcState(c); });
-            });
-        });
+        // (The LRN no longer affects the Report Card check, so editing it in
+        // Step 2 does not re-check the cards.)
 
         function validateDocFile(file) {
             var ext = (file.name.split('.').pop() || '').toLowerCase();
@@ -2975,7 +2972,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                     var metaEl = fileState.querySelector('.doc-file-meta');
                     var ext = (file.name.split('.').pop() || '').toUpperCase();
                     if (nameEl) { nameEl.textContent = file.name; nameEl.title = file.name; }
-                    if (metaEl) metaEl.textContent = ext + ' • ' + fmtBytes(file.size);
+                    if (metaEl) metaEl.textContent = ext + ' â€¢ ' + fmtBytes(file.size);
                 }
             } else {
                 if (!anyFile) card.classList.remove('has-file');
@@ -2984,7 +2981,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             }
         }
 
-        // Choose / Change / Remove / View — delegated so it works for every
+        // Choose / Change / Remove / View â€” delegated so it works for every
         // grade's document cards without binding per-card listeners.
         document.addEventListener('click', function(e) {
             var chooseBtn = e.target.closest('.btn-doc-choose, .btn-doc-change');
@@ -3017,7 +3014,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             }
         });
 
-        // File chosen/changed — validate the same rules the server enforces
+        // File chosen/changed â€” validate the same rules the server enforces
         // (extension + 5 MB) before accepting it, so a rejected file never
         // reaches Submit only to bounce back from PHP.
         document.addEventListener('change', function(e) {
@@ -3088,45 +3085,45 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
 
         function populateReview() {
             var gl = document.querySelector('input[name="grade_level"]:checked');
-            document.getElementById('revGradeLevel').textContent = gl ? gl.value : '—';
+            document.getElementById('revGradeLevel').textContent = gl ? gl.value : 'â€”';
 
             var strand = document.getElementById('strandSelect');
             var isSHS = gl && (gl.value === 'Grade 11' || gl.value === 'Grade 12');
             document.getElementById('revStrandRow').style.display = isSHS ? 'flex' : 'none';
-            document.getElementById('revStrand').textContent = strand && strand.value ? strand.value : '—';
+            document.getElementById('revStrand').textContent = strand && strand.value ? strand.value : 'â€”';
 
             var ln = val('last_name'), fn = val('first_name'), mn = val('middle_name'), sf = val('suffix');
             var fullName = fn;
             if (mn) fullName += ' ' + mn;
             fullName += ' ' + ln;
             if (sf) fullName += ' ' + sf;
-            document.getElementById('revFullName').textContent = fullName.trim() || '—';
+            document.getElementById('revFullName').textContent = fullName.trim() || 'â€”';
 
-            document.getElementById('revLRN').textContent = valRaw('lrn') || '—';
-            document.getElementById('revDOB').textContent = valRaw('birth_date') || '—';
-            document.getElementById('revGender').textContent = val('gender') !== '-- Select --' ? val('gender') : '—';
-            document.getElementById('revContact').textContent = valRaw('contact_number') || '—';
-            document.getElementById('revEmail').textContent = valRaw('email') || '—';
+            document.getElementById('revLRN').textContent = valRaw('lrn') || 'â€”';
+            document.getElementById('revDOB').textContent = valRaw('birth_date') || 'â€”';
+            document.getElementById('revGender').textContent = val('gender') !== '-- Select --' ? val('gender') : 'â€”';
+            document.getElementById('revContact').textContent = valRaw('contact_number') || 'â€”';
+            document.getElementById('revEmail').textContent = valRaw('email') || 'â€”';
 
-            document.getElementById('revAppType').textContent = val('application_type') || '—';
-            document.getElementById('revBirthPlace').textContent = valRaw('birth_place') || '—';
-            document.getElementById('revReligion').textContent = valRaw('religion') || '—';
-            document.getElementById('revNationality').textContent = valRaw('nationality') || '—';
-            document.getElementById('revAddress').textContent = valRaw('address') || '—';
-            document.getElementById('revFather').textContent = valRaw('father_name') || '—';
-            document.getElementById('revMother').textContent = valRaw('mother_name') || '—';
-            document.getElementById('revGuardian').textContent = valRaw('guardian_name') || '—';
-            document.getElementById('revGuardianRel').textContent = valRaw('guardian_relationship') || '—';
-            document.getElementById('revGuardianContact').textContent = valRaw('guardian_contact') || '—';
+            document.getElementById('revAppType').textContent = val('application_type') || 'â€”';
+            document.getElementById('revBirthPlace').textContent = valRaw('birth_place') || 'â€”';
+            document.getElementById('revReligion').textContent = valRaw('religion') || 'â€”';
+            document.getElementById('revNationality').textContent = valRaw('nationality') || 'â€”';
+            document.getElementById('revAddress').textContent = valRaw('address') || 'â€”';
+            document.getElementById('revFather').textContent = valRaw('father_name') || 'â€”';
+            document.getElementById('revMother').textContent = valRaw('mother_name') || 'â€”';
+            document.getElementById('revGuardian').textContent = valRaw('guardian_name') || 'â€”';
+            document.getElementById('revGuardianRel').textContent = valRaw('guardian_relationship') || 'â€”';
+            document.getElementById('revGuardianContact').textContent = valRaw('guardian_contact') || 'â€”';
             var revType = curType();
             document.querySelectorAll('[data-rev-types]').forEach(function(row) {
                 row.style.display = row.getAttribute('data-rev-types').split(',').indexOf(revType) !== -1 ? 'flex' : 'none';
             });
             document.getElementById('revSchoolLbl').textContent = revType === 'Transferee' ? 'Previous School' : 'Last School';
-            document.getElementById('revSchool').textContent = valRaw('last_school_name') || '—';
-            document.getElementById('revSchoolAddr').textContent = valRaw('last_school_address') || '—';
-            document.getElementById('revLastGrade').textContent = valRaw('last_grade_completed') || '—';
-            document.getElementById('revSchoolYear').textContent = valRaw('last_school_year') || '—';
+            document.getElementById('revSchool').textContent = valRaw('last_school_name') || 'â€”';
+            document.getElementById('revSchoolAddr').textContent = valRaw('last_school_address') || 'â€”';
+            document.getElementById('revLastGrade').textContent = valRaw('last_grade_completed') || 'â€”';
+            document.getElementById('revSchoolYear').textContent = valRaw('last_school_year') || 'â€”';
 
             // Continuing / Returning: which saved details were changed
             var chgCard = document.getElementById('revChangesCard'), chgList = document.getElementById('revChangesList');
@@ -3166,7 +3163,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
                     var file = input && input.files && input.files[0];
                     if (!file) return;
                     hasFiles = true;
-                    var label = card.querySelector('h6').textContent + (input.getAttribute('data-page-label') ? ' — ' + input.getAttribute('data-page-label') : '');
+                    var label = card.querySelector('h6').textContent + (input.getAttribute('data-page-label') ? ' â€” ' + input.getAttribute('data-page-label') : '');
                     var isRequired = card.classList.contains('required');
                     var row = document.createElement('div');
                     row.className = 'doc-review-row';
@@ -3185,7 +3182,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             }
         }
 
-        // Form submit — inline feedback instead of alert(), plus a loading
+        // Form submit â€” inline feedback instead of alert(), plus a loading
         // state that blocks a second click while the request is in flight
         // (the server also only ever creates one application per submit).
         var oeForm = document.getElementById('oeForm');
@@ -3230,10 +3227,10 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
             if (!OE_RESTORE || !isLookupType(t)) return;
             var l = fieldEl('lrn').value.trim(), d = fieldEl('birth_date').value;
             vLrn.value = l; vDob.value = (OE_RESTORE.profile && OE_RESTORE.profile.birth_date) || d;
-            lookup = { status: OE_RESTORE.status, type: t, lrn: l, profile: OE_RESTORE.profile || null };
+            lookup = { status: OE_RESTORE.status, type: t, lrn: l, profile: OE_RESTORE.profile || null, expectedGrade: '' };
             var rc = document.getElementById('profileReviewed');
             var wasChecked = rc && <?php echo !empty($old['profile_reviewed']) ? 'true' : 'false'; ?>;
-            finishLookup(OE_RESTORE.status, t, l, vDob.value, OE_RESTORE.profile || null, true);
+            finishLookup(OE_RESTORE.status, t, l, vDob.value, OE_RESTORE.profile || null, true, OE_RESTORE.continuing || null);
             if (rc && wasChecked && !rc.disabled) rc.checked = true;
             showResult(OE_RESTORE.status === 'verified' ? 'ok' : 'info', '<i class="fas fa-circle-check"></i> <span>' + (OE_RESTORE.status === 'verified' ? 'Your saved record is loaded.' : 'No previous record was found for this LRN \u2014 full form.') + '</span>');
             document.getElementById('btnVerifyText').textContent = 'Search again';
@@ -3242,7 +3239,7 @@ if (!empty($errors) && !$success_ref && !empty($old['lrn']) && !empty($old['appl
         onTypeChange();
         updateProgress(currentStep);
         // If the server round-tripped us with validation errors, the applicant
-        // was on Review & Submit — refill the review with their preserved values.
+        // was on Review & Submit â€” refill the review with their preserved values.
         if (currentStep === 4) {
             populateReview();
         }

@@ -25,6 +25,7 @@
 
 session_start();
 require_once '../../../config/database.php';
+require_once '../../../includes/student_password.php';   // spwRequireChangedPassword()
 require_once '../../../includes/ai_quiz_gform_helpers.php'; // aiQuizSyncFormResponses(), aiQuizGetResponses()
 require_once '../../../includes/ai_resource_submission_helpers.php'; // aiResourceGetSubmission() — for the native in-app answer/manual-check case below
 require_once '../../../includes/student_portal_ui.php'; // spSubjectColor(), spInitial()
@@ -35,6 +36,12 @@ if (!isset($_SESSION['student_id']) || $_SESSION['role'] !== 'Student') {
     header('Location: ../../../student_login.php');
     exit;
 }
+
+// First login: the account still holds the temporary password issued when the
+// Admin approved the enrollment, so the portal may not be used until it is
+// changed (see includes/student_password.php).
+if (spwRequireChangedPassword()) exit;
+
 
 $student_id = $_SESSION['student_id'];
 $lrn = $_SESSION['student_lrn'];

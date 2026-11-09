@@ -274,20 +274,23 @@ function ppSteps($n, $of = 3)
  * The 6-box code form (+ "Send a new code" with its countdown). The boxes fill
  * a hidden "code" field; the 6th digit submits. $backHref/$backText: the other link.
  */
-function ppCodeForm($csrf, $verifyAction, $resendAction, $wait, $backHref, $backText, $btnText = '')
+function ppCodeForm($csrf, $verifyAction, $resendAction, $wait, $backHref, $backText, $btnText = '', $formAction = '', $field = 'code')
 {
     $en = ppLang() === 'en';
+    // $formAction: where both forms post (empty = the current address).
+    // $field: name of the typed code (setup.php uses "otp" so it never mixes with its setup code "code").
+    $act = $formAction !== '' ? ' action="' . htmlspecialchars($formAction) . '"' : '';
     ?>
-    <form method="POST" class="pp-code-form" autocomplete="off">
+    <form method="POST" class="pp-code-form" autocomplete="off"<?php echo $act; ?>>
         <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
         <input type="hidden" name="action" value="<?php echo $verifyAction; ?>">
-        <input type="hidden" name="code" class="pp-code-val">
+        <input type="hidden" name="<?php echo htmlspecialchars($field); ?>" class="pp-code-val">
         <div class="otp" aria-label="<?php echo $en ? '6-digit code' : '6-digit na code'; ?>">
             <?php for ($i = 0; $i < 6; $i++): ?><input class="form-control" type="text" inputmode="numeric" <?php echo $i === 0 ? 'autocomplete="one-time-code" autofocus' : ''; ?> aria-label="<?php echo $i + 1; ?>"><?php endfor; ?>
         </div>
         <button class="btn btn-primary w-100 btn-go mt-3"><?php echo $btnText !== '' ? $btnText : ($en ? 'Verify code' : 'I-verify ang code'); ?> <i class="fas fa-arrow-right ms-1"></i></button>
     </form>
-    <form method="POST" class="links">
+    <form method="POST" class="links"<?php echo $act; ?>>
         <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
         <input type="hidden" name="action" value="<?php echo $resendAction; ?>">
         <a href="<?php echo htmlspecialchars($backHref); ?>"><?php echo $backText; ?></a>
@@ -297,11 +300,11 @@ function ppCodeForm($csrf, $verifyAction, $resendAction, $wait, $backHref, $back
 }
 
 /** A PIN box with the lock icon and the show/hide eye. */
-function ppPinField($name, $placeholder = '••••••', $autocomplete = 'current-password', $id = '')
+function ppPinField($name, $placeholder = '••••••', $autocomplete = 'current-password', $id = '', $required = true)
 {
     ?>
     <div class="pp-field"><i class="fas fa-lock"></i>
-        <input type="password" class="form-control pin<?php echo $placeholder !== '••••••' ? ' ph-text' : ''; ?>" <?php echo $id ? 'id="' . $id . '"' : ''; ?> name="<?php echo $name; ?>" inputmode="numeric" pattern="\d{6}" maxlength="6" placeholder="<?php echo htmlspecialchars($placeholder); ?>" required autocomplete="<?php echo $autocomplete; ?>">
+        <input type="password" class="form-control pin<?php echo $placeholder !== '••••••' ? ' ph-text' : ''; ?>" <?php echo $id ? 'id="' . $id . '"' : ''; ?> name="<?php echo $name; ?>" inputmode="numeric" pattern="\d{6}" maxlength="6" placeholder="<?php echo htmlspecialchars($placeholder); ?>" <?php echo $required ? 'required' : ''; ?> autocomplete="<?php echo $autocomplete; ?>">
         <button type="button" class="pp-eye" aria-label="Show PIN"><i class="fas fa-eye"></i></button>
     </div>
 <?php

@@ -27,6 +27,7 @@
 
 session_start();
 require_once __DIR__ . '/../../../config/database.php';
+require_once '../../../includes/student_password.php';   // spwRequireChangedPassword()
 require_once __DIR__ . '/../../../includes/ai_resource_submission_helpers.php';
 require_once __DIR__ . '/../../../includes/assessment_material_helpers.php'; // aim_taskWindowError() -- Start/Deadline set in Manage Assessment Items
 
@@ -34,6 +35,12 @@ if (!isset($_SESSION['student_id']) || $_SESSION['role'] !== 'Student') {
     header('Location: ../../../student_login.php');
     exit;
 }
+
+// First login: the account still holds the temporary password issued when the
+// Admin approved the enrollment, so the portal may not be used until it is
+// changed (see includes/student_password.php).
+if (spwRequireChangedPassword()) exit;
+
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: dashboard.php');

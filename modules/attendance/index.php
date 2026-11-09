@@ -1,6 +1,6 @@
 <?php
 // modules/attendance/index.php
-// Teacher Attendance — Time In / Start Break / End Break / Time Out for
+// Teacher Attendance — Time In / Time Out for
 // the logged-in teacher. The expected duty schedule is derived from the
 // teacher's ACTUAL class assignments for today (teacher_subjects +
 // teacher_class_schedule), not from can_handle_shs or grade level alone.
@@ -29,95 +29,172 @@ $page_title = 'My Attendance';
 $current_page = 'attendance';
 $base_url = '../../';
 
-$teacher_id = $_SESSION['user_id'];
+$teacher_id = (int) $_SESSION['user_id'];
 $today = date('Y-m-d'); // Asia/Manila, set globally in config/database.php
 
 // ============================================================
 // HANDLE ATTENDANCE ACTIONS
-// Server time only — the browser never supplies a timestamp, so a
-// teacher cannot manipulate their recorded time via the POST body.
-// Every action is re-validated here regardless of what the UI allowed,
-// so a replayed or hand-crafted POST cannot skip a step.
+// Server time only — the browser never supplies a timestamp.
+// Every action is re-validated regardless of what the UI allowed.
 // ============================================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-    if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
-        $_SESSION['error_message'] = 'Invalid security token. Please try again.';
+    $is_ajax_request = strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'xmlhttprequest';
+    $respond_to_action = function ($success, $message, $status_code = 200, array $extra = []) use ($is_ajax_request) {
+        if ($is_ajax_request) {
+            // The page reloads after a successful action; carry the message
+            // over so the teacher sees the confirmation on the refreshed page.
+            if ($success) {
+                $_SESSION['success_message'] = $message;
+            }
+            http_response_code($status_code);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(array_merge(['success' => $success, 'message' => $message], $extra));
+            exit;
+        }
+
+        $_SESSION[$success ? 'success_message' : 'error_message'] = $message;
         header('Location: index.php');
         exit;
+    };
+
+    if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
+        $respond_to_action(false, 'Invalid security token. Please refresh the page and try again.', 403);
     }
 
     $action = $_POST['action'];
     $now_time = date('H:i:s');
     $now_label = date('g:i A');
+    // Teacher-facing message for any unexpected failure. The technical
+    // cause is only ever written to the server error log.
+    $fail_message = $action === 'time_out'
+        ? 'Unable to record Time Out. Please try again.'
+        : 'Unable to record Time In. Please try again.';
 
-    $existing = getRecord(
-        "SELECT * FROM teacher_attendance WHERE teacher_id = ? AND attendance_date = ?",
-        [$teacher_id, $today]
-    );
+    try {
+        // Bring teacher_attendance up to the schema this module expects
+        // (additive + idempotent; see teacherAttendanceEnsureSchema()).
+        if (!teacherAttendanceEnsureSchema()) {
+            error_log("Teacher attendance ($action) failed for teacher_id=$teacher_id: schema is missing required columns.");
+            $respond_to_action(false, $fail_message, 500);
+        }
 
-    $check = validateAttendanceAction($existing, $action);
-    if (!$check['valid']) {
-        $_SESSION['error_message'] = $check['message'];
-        header('Location: index.php');
-        exit;
-    }
+        // Always scoped to the logged-in teacher (session) and today's
+        // date — one row per teacher per day (UNIQUE uniq_teacher_date).
+        $existing_stmt = executeQuery(
+            "SELECT * FROM teacher_attendance WHERE teacher_id = ? AND attendance_date = ?",
+            [$teacher_id, $today]
+        );
+        if (!$existing_stmt) {
+            error_log("Teacher attendance ($action) failed for teacher_id=$teacher_id: could not read today's record.");
+            $respond_to_action(false, $fail_message, 500);
+        }
+        $existing = $existing_stmt->fetch(PDO::FETCH_ASSOC);
 
-    switch ($action) {
-        case 'time_in':
-            $window = getExpectedAttendanceWindow($teacher_id, $today);
-            executeQuery(
-                "INSERT INTO teacher_attendance
-                    (teacher_id, attendance_date, time_in, status, expected_time_in, expected_time_out, expected_break_start, expected_break_end, schedule_type)
-                 VALUES (?, ?, ?, 'Timed In', ?, ?, ?, ?, ?)",
-                [
-                    $teacher_id, $today, $now_time,
+        switch ($action) {
+            case 'time_in':
+                // Repeated click / page refresh / second tab: never insert a
+                // second row. Return the Time In that is already saved.
+                if ($existing && !empty($existing['time_in'])) {
+                    $respond_to_action(
+                        true,
+                        'You already timed in today at ' . date('g:i A', strtotime($existing['time_in'])) . '.',
+                        200,
+                        ['already_recorded' => true, 'time_in' => $existing['time_in']]
+                    );
+                }
+
+                $window = getExpectedAttendanceWindow($teacher_id, $today);
+                $snapshot = [
                     $window['time_in'] ?? null,
                     $window['time_out'] ?? null,
                     $window['break_start'] ?? null,
                     $window['break_end'] ?? null,
                     $window['schedule_type'] ?? null,
-                ]
-            );
-            logActivity($teacher_id, 'Teacher Time In', 'attendance', 'Clocked in at ' . $now_label);
-            $_SESSION['success_message'] = 'Time In recorded successfully.';
-            break;
+                ];
 
-        case 'start_break':
-            executeQuery(
-                "UPDATE teacher_attendance SET break_start = ?, status = 'On Break' WHERE attendance_id = ?",
-                [$now_time, $existing['attendance_id']]
-            );
-            logActivity($teacher_id, 'Teacher Break Start', 'attendance', 'Started break at ' . $now_label);
-            $_SESSION['success_message'] = 'Break started.';
-            break;
+                if ($existing) {
+                    // A row for today exists but has no Time In (e.g. cleared by
+                    // an admin edit). Fill in THAT row instead of inserting.
+                    $result = executeQuery(
+                        "UPDATE teacher_attendance
+                            SET time_in = ?, status = 'Timed In',
+                                expected_time_in = ?, expected_time_out = ?, expected_break_start = ?, expected_break_end = ?, schedule_type = ?
+                          WHERE attendance_id = ? AND teacher_id = ? AND time_in IS NULL",
+                        array_merge([$now_time], $snapshot, [$existing['attendance_id'], $teacher_id])
+                    );
+                } else {
+                    // The no-op ON DUPLICATE KEY clause makes a concurrent
+                    // double submit harmless: the UNIQUE (teacher_id,
+                    // attendance_date) key turns the 2nd insert into a no-op.
+                    $result = executeQuery(
+                        "INSERT INTO teacher_attendance
+                            (teacher_id, attendance_date, time_in, status, expected_time_in, expected_time_out, expected_break_start, expected_break_end, schedule_type)
+                         VALUES (?, ?, ?, 'Timed In', ?, ?, ?, ?, ?)
+                         ON DUPLICATE KEY UPDATE attendance_id = attendance_id",
+                        array_merge([$teacher_id, $today, $now_time], $snapshot)
+                    );
+                }
+                if (!$result) {
+                    // executeQuery() already logged the SQL error.
+                    error_log("Teacher Time In failed for teacher_id=$teacher_id date=$today: save query failed.");
+                    $respond_to_action(false, $fail_message, 500);
+                }
 
-        case 'end_break':
-            executeQuery(
-                "UPDATE teacher_attendance SET break_end = ?, status = 'Timed In' WHERE attendance_id = ?",
-                [$now_time, $existing['attendance_id']]
-            );
-            logActivity($teacher_id, 'Teacher Break End', 'attendance', 'Ended break at ' . $now_label);
-            $_SESSION['success_message'] = 'Break ended.';
-            break;
+                // Confirm what is actually stored, and report that.
+                $saved_stmt = executeQuery(
+                    "SELECT time_in FROM teacher_attendance WHERE teacher_id = ? AND attendance_date = ?",
+                    [$teacher_id, $today]
+                );
+                $saved = $saved_stmt ? $saved_stmt->fetch(PDO::FETCH_ASSOC) : false;
+                if (!$saved || empty($saved['time_in'])) {
+                    error_log("Teacher Time In failed for teacher_id=$teacher_id date=$today: record not found after save.");
+                    $respond_to_action(false, $fail_message, 500);
+                }
+                $saved_label = date('g:i A', strtotime($saved['time_in']));
 
-        case 'time_out':
-            executeQuery(
-                "UPDATE teacher_attendance SET time_out = ?, status = 'Completed' WHERE attendance_id = ?",
-                [$now_time, $existing['attendance_id']]
-            );
-            logActivity($teacher_id, 'Teacher Time Out', 'attendance', 'Clocked out at ' . $now_label);
-            $_SESSION['success_message'] = 'Time Out recorded successfully.';
-            break;
+                if ($result->rowCount() < 1) {
+                    // Lost a race with another request that saved first.
+                    $respond_to_action(
+                        true,
+                        'You already timed in today at ' . $saved_label . '.',
+                        200,
+                        ['already_recorded' => true, 'time_in' => $saved['time_in']]
+                    );
+                }
 
-        default:
-            $_SESSION['error_message'] = 'Unknown attendance action.';
+                logActivity($teacher_id, 'Teacher Time In', 'attendance', 'Clocked in at ' . $now_label);
+                $respond_to_action(true, 'Time In recorded successfully at ' . $saved_label . '.', 200, ['time_in' => $saved['time_in']]);
+
+            case 'time_out':
+                $check = validateAttendanceAction($existing ?: null, $action);
+                if (!$check['valid']) {
+                    $respond_to_action(false, $check['message'], 409);
+                }
+                // Updates the SAME row Time In created — never inserts.
+                $result = executeQuery(
+                    "UPDATE teacher_attendance SET time_out = ?, status = 'Completed' WHERE attendance_id = ? AND teacher_id = ? AND time_out IS NULL",
+                    [$now_time, $existing['attendance_id'], $teacher_id]
+                );
+                if (!$result || $result->rowCount() !== 1) {
+                    $respond_to_action(false, 'Time Out could not be saved. Refresh the page and try again.', 409);
+                }
+                logActivity($teacher_id, 'Teacher Time Out', 'attendance', 'Clocked out at ' . $now_label);
+                $respond_to_action(true, 'Time Out recorded successfully.');
+
+            default:
+                $respond_to_action(false, 'Unknown attendance action.', 400);
+        }
+    } catch (Throwable $e) {
+        error_log("Teacher attendance ($action) exception for teacher_id=$teacher_id: " . $e->getMessage()
+            . ' @ ' . $e->getFile() . ':' . $e->getLine());
+        $respond_to_action(false, $fail_message, 500);
     }
-
-    header('Location: index.php');
-    exit;
 }
 
 $csrf_token = generateCSRFToken();
+
+// The page below reads the schedule-snapshot columns; make sure they exist.
+teacherAttendanceEnsureSchema();
 
 // ============================================================
 // TODAY'S SCHEDULE + ATTENDANCE STATE
@@ -147,7 +224,10 @@ if ($today_record) {
     $display_window = getExpectedAttendanceWindow($teacher_id, $today);
 }
 
-$attendance_state = getTeacherAttendanceState($today_record, true);
+$attendance_state_record = $today_record
+    ? array_merge($today_record, ['break_start' => null, 'break_end' => null])
+    : null;
+$attendance_state = getTeacherAttendanceState($attendance_state_record, true);
 
 // Fetch attendance history (last 30 days)
 $history = getRecords(
@@ -169,7 +249,7 @@ function attStatusColors($status) {
 include '../../includes/header.php';
 ?>
 <?php
-// ---- Display values (the Time In / Break / Time Out logic above is unchanged) ----
+// ---- Display values ----
 $att_hour = (int) date('G');
 $att_greet = $att_hour < 12 ? 'Good morning,' : ($att_hour < 18 ? 'Good afternoon,' : 'Good evening,');
 $att_greet_icon = $att_hour < 18 ? 'fa-sun' : 'fa-moon';
@@ -198,14 +278,20 @@ foreach ($history as $h) {
         $att_incomplete++; // timed in but never timed out (today is still in progress)
     }
 }
+ $att_active = !empty($today_record['time_in']) && empty($today_record['time_out']);
+$att_active_elapsed = $att_active
+    ? max(0, time() - strtotime($today . ' ' . $today_record['time_in']))
+    : 0;
+$att_active_in_month = $att_active && $att_month === date('Y-m');
+if ($att_active_in_month) $att_secs += $att_active_elapsed;
 $att_fmt_hours = function ($secs) { $h = floor($secs / 3600); $m = floor(($secs % 3600) / 60); return $h . 'h' . ($m ? ' ' . $m . 'm' : ''); };
+$att_fmt_elapsed = function ($secs) { return sprintf('%02d:%02d:%02d', floor($secs / 3600), floor(($secs % 3600) / 60), $secs % 60); };
 $att_total = $att_secs ? $att_fmt_hours($att_secs) : '0';
-$att_avg = $att_complete ? $att_fmt_hours((int) round($att_secs / $att_complete)) : '0';
+$att_avg_days = $att_complete + ($att_active_in_month ? 1 : 0);
+$att_avg = $att_avg_days ? $att_fmt_hours((int) round($att_secs / $att_avg_days)) : '0';
 
 // Progress steps
 $s_in = !empty($today_record['time_in']);
-$s_break_started = !empty($today_record['break_start']);
-$s_break_done = $s_break_started && !empty($today_record['break_end']);
 $s_out = !empty($today_record['time_out']);
 $att_t = function ($v) { return $v ? date('g:i A', strtotime($v)) : ''; };
 ?>
@@ -238,7 +324,7 @@ $att_t = function ($v) { return $v ? date('g:i A', strtotime($v)) : ''; };
 .att2 .duty-assigned .tm { color: var(--a-muted); }
 .att2 .duty-empty { font-size: 15px; color: var(--a-muted); }
 .att2 .steps { display: flex; align-items: flex-start; justify-content: space-between; position: relative; margin: 2px 6px 16px; }
-.att2 .step { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 33%; position: relative; z-index: 1; }
+.att2 .step { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 50%; position: relative; z-index: 1; }
 .att2 .step-ic { width: 48px; height: 48px; border-radius: 50%; background: #e9edf3; color: #6b7a90; display: flex; align-items: center; justify-content: center; font-size: 19px; border: 2px solid var(--a-card); }
 .att2 .step.done .step-ic { background: #1f9d6b; color: #fff; }
 .att2 .step.now .step-ic { background: #2f7fe0; color: #fff; box-shadow: 0 0 0 4px rgba(47,127,224,.18); }
@@ -247,18 +333,17 @@ $att_t = function ($v) { return $v ? date('g:i A', strtotime($v)) : ''; };
 .att2 .step.done .step-state { background: #e3f5ec; color: #16704b; font-weight: 600; }
 .att2 .step.now .step-state { background: #e7f0fc; color: #1d5fbf; font-weight: 600; }
 .att2 .step.next .step-state { background: #e3f5ec; color: #16704b; }
-.att2 .steps::before { content: ""; position: absolute; top: 24px; left: 16%; right: 16%; height: 2px; background: #dfe4ec; z-index: 0; }
+.att2 .steps::before { content: ""; position: absolute; top: 24px; left: 25%; right: 25%; height: 2px; background: #dfe4ec; z-index: 0; }
 .att2 .actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
 .att2 .actions form { margin: 0; }
 .att2 .btn-att { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-width: 200px; height: 48px; padding: 0 26px; border-radius: 8px; border: 0; font-size: 17px; font-weight: 700; color: #fff; background: var(--a-green); }
 .att2 .btn-att:hover { filter: brightness(1.07); color: #fff; }
-.att2 .btn-att.break { background: #d97706; }
-.att2 .btn-att.endbreak { background: #2f7fe0; }
 .att2 .btn-att.out { background: #c2412d; }
 .att2 .btn-att.out-ghost { background: var(--a-card); color: #c2412d; border: 1px solid #e6b3aa; min-width: 150px; }
 .att2 .help { text-align: center; font-size: 15px; color: var(--a-muted); margin-top: 10px; }
 .att2 .status-row { text-align: center; margin-top: 8px; font-size: 14.5px; color: var(--a-muted); }
 .att2 .done-msg { text-align: center; color: #16704b; font-weight: 700; font-size: 15px; }
+.att2 .action-feedback { margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: #fdecec; color: #b42318; text-align: center; }
 
 .att2 .hist { background: var(--a-card); border: 1px solid var(--a-line); border-radius: 16px; padding: 22px 26px; box-shadow: 0 1px 3px rgba(16,24,40,.04); }
 .att2 .hist-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
@@ -301,7 +386,7 @@ html[data-theme="dark"] .att2 .hist-empty .art { background: radial-gradient(cir
 <div class="page-header">
     <div class="page-header-text">
         <h1 class="page-title">My Attendance</h1>
-        <p class="page-subtitle">Record your daily Time In, Break, and Time Out.</p>
+        <p class="page-subtitle">Record your daily Time In and Time Out.</p>
     </div>
 </div>
 
@@ -372,11 +457,6 @@ html[data-theme="dark"] .att2 .hist-empty .art { background: radial-gradient(cir
                             <div class="step-name">Time In</div>
                             <div class="step-state"><?php echo $s_in ? $att_t($today_record['time_in']) : 'Not started'; ?></div>
                         </div>
-                        <div class="step <?php echo $s_break_done ? 'done' : ($s_break_started ? 'now' : ''); ?>">
-                            <div class="step-ic"><i class="fas fa-mug-hot"></i></div>
-                            <div class="step-name">Break</div>
-                            <div class="step-state"><?php echo $s_break_done ? $att_t($today_record['break_start']) . '–' . $att_t($today_record['break_end']) : ($s_break_started ? 'On break since ' . $att_t($today_record['break_start']) : ($s_out ? 'No break' : 'Not started')); ?></div>
-                        </div>
                         <div class="step <?php echo $s_out ? 'done' : ''; ?>">
                             <div class="step-ic"><i class="fas fa-arrow-right-from-bracket"></i></div>
                             <div class="step-name">Time Out</div>
@@ -384,41 +464,38 @@ html[data-theme="dark"] .att2 .hist-empty .art { background: radial-gradient(cir
                         </div>
                     </div>
 
+                    <div id="attendance-action-feedback" class="action-feedback" role="alert" hidden></div>
+
+                    <?php if ($s_in): ?>
+                        <?php
+                            $today_worked_seconds = $att_active
+                                ? $att_active_elapsed
+                                : max(0, strtotime($today_record['time_out']) - strtotime($today_record['time_in']));
+                        ?>
+                        <div class="status-row">
+                            Teaching time:
+                            <strong class="<?php echo $att_active ? 'js-attendance-elapsed' : ''; ?>"<?php echo $att_active ? ' data-elapsed-seconds="' . $today_worked_seconds . '"' : ''; ?>>
+                                <?php echo $att_fmt_elapsed($today_worked_seconds); ?>
+                            </strong>
+                        </div>
+                    <?php endif; ?>
+
                     <?php if (!$today_record): ?>
                         <div class="actions">
                             <form method="POST">
                                 <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
                                 <input type="hidden" name="action" value="time_in">
-                                <button type="submit" class="btn-att" onclick="return confirm('Record your Time In now?')"><i class="fas fa-circle-play"></i> Time In</button>
+                                <button type="submit" class="btn-att"><i class="fas fa-circle-play"></i> Time In</button>
                             </form>
                         </div>
                         <div class="help">Start your day by clicking the Time In button.</div>
                     <?php elseif (empty($today_record['time_out'])): ?>
                         <div class="actions">
-                            <?php if (empty($today_record['break_start'])): ?>
-                                <form method="POST">
-                                    <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
-                                    <input type="hidden" name="action" value="start_break">
-                                    <button type="submit" class="btn-att break" onclick="return confirm('Start your break now?')"><i class="fas fa-mug-hot"></i> Start Break</button>
-                                </form>
-                                <form method="POST">
-                                    <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
-                                    <input type="hidden" name="action" value="time_out">
-                                    <button type="submit" class="btn-att out-ghost" onclick="return confirm('Record your Time Out now?')"><i class="fas fa-arrow-right-from-bracket"></i> Time Out</button>
-                                </form>
-                            <?php elseif (empty($today_record['break_end'])): ?>
-                                <form method="POST">
-                                    <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
-                                    <input type="hidden" name="action" value="end_break">
-                                    <button type="submit" class="btn-att endbreak" onclick="return confirm('End your break now?')"><i class="fas fa-play"></i> End Break</button>
-                                </form>
-                            <?php else: ?>
-                                <form method="POST">
-                                    <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
-                                    <input type="hidden" name="action" value="time_out">
-                                    <button type="submit" class="btn-att out" onclick="return confirm('Record your Time Out now?')"><i class="fas fa-arrow-right-from-bracket"></i> Time Out</button>
-                                </form>
-                            <?php endif; ?>
+                            <form method="POST">
+                                <input type="hidden" name="csrf_token" value="<?php echo $csrf_token; ?>">
+                                <input type="hidden" name="action" value="time_out">
+                                <button type="submit" class="btn-att out"><i class="fas fa-arrow-right-from-bracket"></i> Time Out</button>
+                            </form>
                         </div>
                         <?php list($sbg, $scl) = attStatusColors($attendance_state); ?>
                         <div class="status-row">Status: <span class="status-pill" style="background:<?php echo $sbg; ?>;color:<?php echo $scl; ?>;"><?php echo htmlspecialchars($attendance_state); ?></span></div>
@@ -438,7 +515,7 @@ html[data-theme="dark"] .att2 .hist-empty .art { background: radial-gradient(cir
             <i class="far fa-calendar-days ic"></i>
             <div>
                 <h2>Attendance History</h2>
-                <p>View your daily Time In, Break, and Time Out records.</p>
+                <p>View your daily Time In and Time Out records.</p>
             </div>
             <form method="GET" class="month-pick">
                 <i class="far fa-calendar"></i>
@@ -452,8 +529,8 @@ html[data-theme="dark"] .att2 .hist-empty .art { background: radial-gradient(cir
 
         <div class="tiles">
             <div class="tile t-green"><i class="far fa-calendar-check"></i><div><b><?php echo $att_present; ?></b><span>Days Present</span></div></div>
-            <div class="tile t-orange"><i class="far fa-clock"></i><div><b><?php echo $att_total; ?></b><span>Total Hours</span></div></div>
-            <div class="tile t-blue"><i class="fas fa-clock-rotate-left"></i><div><b><?php echo $att_avg; ?></b><span>Avg. Hours/Day</span></div></div>
+            <div class="tile t-orange"><i class="far fa-clock"></i><div><b<?php echo $att_active_in_month ? ' class="js-attendance-total" data-total-seconds="' . $att_secs . '"' : ''; ?>><?php echo $att_total; ?></b><span>Total Hours</span></div></div>
+            <div class="tile t-blue"><i class="fas fa-clock-rotate-left"></i><div><b<?php echo $att_active_in_month ? ' class="js-attendance-average" data-average-days="' . $att_avg_days . '" data-total-seconds="' . $att_secs . '"' : ''; ?>><?php echo $att_avg; ?></b><span>Avg. Hours/Day</span></div></div>
             <div class="tile t-red"><i class="far fa-calendar-xmark"></i><div><b><?php echo $att_incomplete; ?></b><span>Days with Incomplete Log</span></div></div>
         </div>
 
@@ -479,12 +556,18 @@ html[data-theme="dark"] .att2 .hist-empty .art { background: radial-gradient(cir
                         <?php foreach ($history as $h): ?>
                             <?php
                                 $h_is_today = ($h['attendance_date'] === $today);
-                                $h_state = getTeacherAttendanceState($h, $h_is_today);
+                                $h_state_record = array_merge($h, ['break_start' => null, 'break_end' => null]);
+                                $h_state = getTeacherAttendanceState($h_state_record, $h_is_today);
                                 list($hbg, $hcl) = attStatusColors($h_state);
-                                $h_has_hours = $h['time_in'] && $h['time_out'];
+                                $h_is_active = $h_is_today && !empty($h['time_in']) && empty($h['time_out']);
+                                $h_has_hours = !empty($h['time_in']) && (!empty($h['time_out']) || $h_is_active);
                                 if ($h_has_hours) {
-                                    $h_diff = strtotime($h['time_out']) - strtotime($h['time_in']);
-                                    $h_worked = floor($h_diff / 3600) . 'h ' . floor(($h_diff % 3600) / 60) . 'm';
+                                    $h_diff = $h_is_active
+                                        ? $att_active_elapsed
+                                        : strtotime($h['time_out']) - strtotime($h['time_in']);
+                                    $h_worked = $h_is_active
+                                        ? $att_fmt_elapsed($h_diff)
+                                        : floor($h_diff / 3600) . 'h ' . floor(($h_diff % 3600) / 60) . 'm';
                                 }
                             ?>
                             <tr>
@@ -498,11 +581,10 @@ html[data-theme="dark"] .att2 .hist-empty .art { background: radial-gradient(cir
                                 <td>
                                     <div class="attendance-time-block">
                                         <div class="time-row"><span class="time-label">In</span><span class="time-value <?php echo $h['time_in'] ? '' : 'text-muted-2'; ?>"><?php echo $h['time_in'] ? date('g:i A', strtotime($h['time_in'])) : '—'; ?></span></div>
-                                        <div class="time-row"><span class="time-label">Break</span><span class="time-value <?php echo !empty($h['break_start']) ? '' : 'text-muted-2'; ?>"><?php echo !empty($h['break_start']) ? (date('g:i A', strtotime($h['break_start'])) . '–' . (!empty($h['break_end']) ? date('g:i A', strtotime($h['break_end'])) : '…')) : '—'; ?></span></div>
                                         <div class="time-row"><span class="time-label">Out</span><span class="time-value <?php echo $h['time_out'] ? '' : 'text-muted-2'; ?>"><?php echo $h['time_out'] ? date('g:i A', strtotime($h['time_out'])) : '—'; ?></span></div>
                                     </div>
                                 </td>
-                                <td class="<?php echo $h_has_hours ? 'cell-strong' : 'text-muted-2'; ?>"><?php echo $h_has_hours ? $h_worked : '—'; ?></td>
+                                <td class="<?php echo $h_has_hours ? 'cell-strong' : 'text-muted-2'; ?>"><?php if ($h_has_hours): ?><span<?php echo $h_is_active ? ' class="js-attendance-elapsed" data-elapsed-seconds="' . $h_diff . '"' : ''; ?>><?php echo $h_worked; ?></span><?php else: ?>—<?php endif; ?></td>
                                 <td><span class="status-pill" style="background:<?php echo $hbg; ?>;color:<?php echo $hcl; ?>;"><?php echo htmlspecialchars($h_state); ?></span></td>
                             </tr>
                         <?php endforeach; ?>
@@ -512,5 +594,103 @@ html[data-theme="dark"] .att2 .hist-empty .art { background: radial-gradient(cir
         <?php endif; ?>
     </section>
 </div>
+
+<script>
+    (function () {
+        var attendanceForms = document.querySelectorAll('.att2 .actions form');
+        Array.prototype.forEach.call(attendanceForms, function (form) {
+            form.addEventListener('submit', function (event) {
+                if (!window.fetch || !window.FormData) return;
+                event.preventDefault();
+
+                // Ignore repeated clicks / Enter presses while a request is running.
+                if (form.dataset.submitting === '1') return;
+                form.dataset.submitting = '1';
+
+                var button = form.querySelector('button[type="submit"]');
+                var originalButton = button.innerHTML;
+                var actionInput = form.querySelector('input[name="action"]');
+                var fallbackMessage = actionInput && actionInput.value === 'time_out'
+                    ? 'Unable to record Time Out. Please try again.'
+                    : 'Unable to record Time In. Please try again.';
+                button.disabled = true;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+
+                fetch(form.action || window.location.href, {
+                    method: 'POST',
+                    body: new FormData(form),
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    }
+                }).then(function (response) {
+                    // A non-JSON reply (PHP/HTML error page) must never reach the teacher.
+                    return response.json().then(function (result) {
+                        return { ok: response.ok, result: result };
+                    }, function () {
+                        return { ok: false, result: null };
+                    });
+                }).then(function (reply) {
+                    if (!reply.ok || !reply.result || !reply.result.success) {
+                        // Only messages written by the server for the teacher are shown.
+                        var failure = new Error((reply.result && reply.result.message) || fallbackMessage);
+                        failure.teacherSafe = true;
+                        throw failure;
+                    }
+                    // Reload so Attendance Progress is rebuilt from the saved record.
+                    window.location.reload();
+                }).catch(function (error) {
+                    form.dataset.submitting = '0';
+                    button.disabled = false;
+                    button.innerHTML = originalButton;
+                    var feedback = document.getElementById('attendance-action-feedback');
+                    feedback.hidden = false;
+                    feedback.textContent = (error && error.teacherSafe) ? error.message : fallbackMessage;
+                });
+            });
+        });
+
+        var timers = document.querySelectorAll('.js-attendance-elapsed');
+        var total = document.querySelector('.js-attendance-total');
+        var average = document.querySelector('.js-attendance-average');
+        if (!timers.length && !total) return;
+
+        var startedAt = performance.now();
+        Array.prototype.forEach.call(timers, function (timer) {
+            timer.dataset.initialElapsed = timer.dataset.elapsedSeconds;
+        });
+        var initialTotal = total ? Number(total.dataset.totalSeconds) : 0;
+        var averageDays = average ? Number(average.dataset.averageDays) : 0;
+
+        function updateElapsedTimes() {
+            var additionalSeconds = Math.floor((performance.now() - startedAt) / 1000);
+            Array.prototype.forEach.call(timers, function (timer) {
+                var elapsed = Number(timer.dataset.initialElapsed) + additionalSeconds;
+                var hours = Math.floor(elapsed / 3600);
+                var minutes = Math.floor((elapsed % 3600) / 60);
+                var seconds = elapsed % 60;
+                timer.textContent = String(hours).padStart(2, '0') + ':' +
+                    String(minutes).padStart(2, '0') + ':' +
+                    String(seconds).padStart(2, '0');
+            });
+            if (total) {
+                var totalSeconds = initialTotal + additionalSeconds;
+                var totalHours = Math.floor(totalSeconds / 3600);
+                var totalMinutes = Math.floor((totalSeconds % 3600) / 60);
+                total.textContent = totalHours + 'h' + (totalMinutes ? ' ' + totalMinutes + 'm' : '');
+                if (average && averageDays) {
+                    var averageSeconds = Math.round(totalSeconds / averageDays);
+                    var averageHours = Math.floor(averageSeconds / 3600);
+                    var averageMinutes = Math.floor((averageSeconds % 3600) / 60);
+                    average.textContent = averageHours + 'h' + (averageMinutes ? ' ' + averageMinutes + 'm' : '');
+                }
+            }
+        }
+
+        updateElapsedTimes();
+        window.setInterval(updateElapsedTimes, 1000);
+    })();
+</script>
 
 <?php include '../../includes/footer.php'; ?>

@@ -107,15 +107,20 @@ $can_scan = $schema_ok && $is_today && hasRole('Teacher');
 
 $session = $schema_ok ? attQrGetSession($subject_code, $section_id, $today) : null;
 
-// What "on time" means for this class today. Once a session is open the start
-// time is frozen on the session; before that, show what it WILL be.
+// What "on time" means for this class on the chosen date, from the Admin
+// schedule (teacher_class_schedule: teacher + subject + section + SY + weekday).
+// Once a session is open the start time is frozen on the session; before
+// that, show what it WILL be. No meeting that weekday -> no start time at all.
+$sched_ts = $is_today ? time() : strtotime($att_date . ' 00:00:00');
 $class_start = $session
     ? ['start' => $session['schedule_start'], 'source' => $session['start_source']]
-    : attQrResolveClassStart($teacher_id, $subject_code, $section_id, $active_sy['sy_id']);
-$class_start_label = attQrFormatTime($class_start['start']);
+    : attQrResolveClassStart($teacher_id, $subject_code, $section_id, $active_sy['sy_id'], $sched_ts);
+$no_schedule = !$session && $class_start['source'] === 'none';
+$class_week_schedule = $no_schedule ? attQrClassWeekSchedule($teacher_id, $subject_code, $section_id, $active_sy['sy_id']) : [];
+$class_start_label = $class_start['start'] !== null ? attQrFormatTime($class_start['start']) : '';
 $class_start_source = ($class_start['source'] === 'schedule')
     ? 'from the class schedule'
-    : 'school program start — no class schedule is set for today';
+    : 'school program start — no class schedule was set when this session started';   // older sessions only
 
 $summary_start = attQrSummaryStart($active_sy['sy_id'], $term);
 $roster = $schema_ok
@@ -133,6 +138,7 @@ $init = [
     'libUrl'      => BASE_URL . 'static/js/vendor/jsQR.min.js',
     'session'     => $session ? ['status' => $session['status'], 'class_start' => $class_start_label, 'start_source' => $session['start_source']] : null,
     'classStart'  => $class_start_label,
+    'noSchedule'  => $no_schedule,
     'students'    => $roster['students'],
     'counts'      => $roster['counts'],
 ];
@@ -321,8 +327,16 @@ include '../../includes/header.php';
             <span class="att-pill" id="sessionPill"><i class="fas fa-circle"></i> <span>Not started</span></span>
         </div>
         <p class="att-start-note" id="startNote">
-            Class start time: <strong><?php echo htmlspecialchars($class_start_label); ?></strong> (<?php echo htmlspecialchars($class_start_source); ?>).
-            Scans after that time are marked <strong>Late</strong>.
+            <?php if ($no_schedule): ?>
+                <strong>No class schedule set for this day</strong> (<?php echo htmlspecialchars(date('l', $sched_ts)); ?>).
+                <?php echo $class_week_schedule
+                    ? 'This class meets: <strong>' . htmlspecialchars(implode(', ', $class_week_schedule)) . '</strong>.'
+                    : 'This class has no schedule yet.'; ?>
+                IN scanning opens on a scheduled day. If the class meets today, ask the administrator to add it in Teacher Management &rarr; Schedule.
+            <?php else: ?>
+                Class start time: <strong><?php echo htmlspecialchars($class_start_label); ?></strong> (<?php echo htmlspecialchars($class_start_source); ?>).
+                Scans after that time are marked <strong>Late</strong>.
+            <?php endif; ?>
         </p>
 
         <div class="att-result waiting" id="scanResult" role="status" aria-live="polite">
@@ -537,12 +551,14 @@ window.ATT_INIT = <?php echo json_encode($init, JSON_HEX_TAG | JSON_HEX_AMP | JS
         btnStart.querySelector('span').textContent = startLabel;
         btnStart.querySelector('i').className = 'fas ' + icon + ' me-1';
         btnStart.disabled = !!(session && session.status === 'Open' && cameraOn());
+        // No meeting today in the Admin schedule: no session can be started.
+        if (!session && cfg.noSchedule) { btnStart.disabled = true; btnStart.querySelector('span').textContent = 'No Schedule Today'; btnStart.querySelector('i').className = 'fas fa-calendar-xmark me-1'; }
         btnEnd.hidden = !(session && session.status === 'Open');
 
         var start = session ? session.class_start : cfg.classStart;
         var src = session ? session.start_source : null;
         if (session && src) {
-            startNote.innerHTML = 'Class start time: <strong>' + esc(start) + '</strong> (' + (src === 'schedule' ? 'from the class schedule' : 'school program start — no class schedule set for today')
+            startNote.innerHTML = 'Class start time: <strong>' + esc(start) + '</strong> (' + (src === 'schedule' ? 'from the class schedule' : 'school program start — no class schedule was set when this session started')
                 + '). Scans after that time are marked <strong>Late</strong>.';
         }
     }

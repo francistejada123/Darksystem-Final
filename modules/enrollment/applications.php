@@ -33,7 +33,18 @@ if ($search) {
     $p = "%$search%";
     $params = array_merge($params, [$p, $p, $p, $p]);
 }
-if ($status) { $where .= " AND a.status = ?"; $params[] = $status; }
+// "Incomplete Requirements": the SAME set the stat card counts -- an application whose
+// requirements are still pending (Form 137 To Follow / Received, or an online_app_requirements
+// row not yet Verified), whether or not it is already Approved. Resolved after the query
+// below, from oePendingRequirements(), so the list and the card can never disagree.
+$only_incomplete = ($status === OE_INCOMPLETE);
+if ($status && !$only_incomplete) {
+    $where .= " AND a.status = ?";
+    $params[] = $status;
+} elseif ($only_incomplete) {
+    // Cheap pre-filter; the exact set is applied after the rows are loaded.
+    $where .= " AND a.status IN ('Incomplete Requirements','For Correction','Rejected','Approved')";
+}
 if ($grade_level) { $where .= " AND a.grade_level = ?"; $params[] = $grade_level; }
 [$eo_where, $eo_params] = eoSql('a.grade_level');   // Enrollment Officer: own grade level only
 $where .= $eo_where;
@@ -48,16 +59,40 @@ $applications = getRecords("
     ORDER BY FIELD(a.status,'Pending','Under Review','Incomplete Requirements','Approved'), a.created_at DESC
 ", $params);
 
+// Filtering by Incomplete Requirements: keep only rows that really still have a pending
+// requirement. Uses the same oePendingRequirements() the card and the Review page use, so
+// a document that has just been Verified drops out of the list immediately.
+if ($only_incomplete) {
+    $applications = array_values(array_filter($applications, function ($a) {
+        return (bool) oePendingRequirements((int) $a['application_id'], $a['application_type']);
+    }));
+}
+
 $counts = getRecord("
     SELECT
-      SUM(status = 'Pending') AS pending,
-      SUM(status = 'Under Review') AS reviewing,
-      SUM(status IN ('Incomplete Requirements','For Correction','Rejected')) AS incomplete,
-      SUM(status = 'Approved') AS approved,
+      COALESCE(SUM(status = 'Pending'), 0) AS pending,
+      COALESCE(SUM(status = 'Under Review'), 0) AS reviewing,
+      COALESCE(SUM(status = 'Approved'), 0) AS approved,
       0 AS rejected
     FROM online_applications
     WHERE deleted_at IS NULL" . eoSql('grade_level')[0] . "
 ", eoSql('grade_level')[1]);
+
+// "Incomplete Requirements" is counted from the ACTUAL pending requirements of each
+// application (oePendingRequirements: Form 137 still To Follow / Received, plus any
+// online_app_requirements row not yet Verified). This is the same list the Review page
+// and the Adviser reminder use, so the card matches them exactly and DROPS as soon as a
+// document is Verified -- an Approved application with a pending Form 137 is enrolled,
+// but still counts here until that document is submitted and verified.
+$counts['incomplete'] = 0;
+$counts['incomplete_approved'] = 0;
+foreach (getRecords("SELECT application_id, application_type, status FROM online_applications
+                     WHERE deleted_at IS NULL AND (status = 'Approved' OR status IN ('Incomplete Requirements','For Correction','Rejected'))"
+                    . eoSql('grade_level')[0], eoSql('grade_level')[1]) as $ar_app) {
+    if (!oePendingRequirements((int) $ar_app['application_id'], $ar_app['application_type'])) continue;
+    $counts['incomplete']++;
+    if ($ar_app['status'] === 'Approved') $counts['incomplete_approved']++;
+}
 $can_delete = hasAnyRole(['Administrator', 'Registrar']);
 $can_delete_forever = hasRole('Administrator');
 $trash_count = $can_delete ? (int) (getRecord("SELECT COUNT(*) AS c FROM online_applications WHERE deleted_at IS NOT NULL")['c'] ?? 0) : 0;
@@ -97,8 +132,7 @@ include '../../includes/header.php';
         $cards = [
             ['Pending', intval($counts['pending'] ?? 0), '#B7791F', '#fef9e7', 'fa-hourglass-half'],
             ['Under Review', intval($counts['reviewing'] ?? 0), '#667085', '#f3f4f6', 'fa-magnifying-glass'],
-            ['Incomplete Requirements', intval($counts['incomplete'] ?? 0), '#B45309', '#FFF4E5', 'fa-file-circle-exclamation'],
-            ['Approved', intval($counts['approved'] ?? 0), '#238863', '#e8f5e9', 'fa-circle-check'],
+            ['Incomplete Requirements', intval($counts['incomplete'] ?? 0), '#B45309', '#FFF4E5', 'fa-file-circle-exclamation'],            ['Approved', intval($counts['approved'] ?? 0), '#238863', '#e8f5e9', 'fa-circle-check'],
         ];
         foreach ($cards as $c): ?>
             <div class="stat-card">

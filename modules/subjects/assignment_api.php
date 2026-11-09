@@ -3,6 +3,7 @@ session_start();
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/grading_helpers.php';
+require_once __DIR__ . '/../../includes/teacher_department.php';
 
 // ASSH Cluster = the school's Arts, Social Sciences and Humanities cluster. Older
 // records (sections created before the cluster was renamed) still carry the
@@ -38,7 +39,7 @@ function assignment_shift($grade) {
     return '';
 }
 function assignment_shift_window($shift) {
-    $defaults = $shift === 'AM' ? ['07:00', '12:00'] : ['12:30', '17:30'];
+    $defaults = $shift === 'AM' ? ['06:00', '12:30'] : ['12:30', '19:00'];
     $keys = $shift === 'AM' ? ['jhs_morning_start', 'jhs_morning_end'] : ['jhs_afternoon_start', 'jhs_afternoon_end'];
     $rows = getRecords("SELECT setting_key, setting_value FROM system_settings WHERE setting_group='attendance' AND setting_key IN (?, ?)", $keys);
     foreach ($rows as $row) {
@@ -79,10 +80,15 @@ if ($action === 'edit' && !$assignment) assignment_json(false, ['message' => 'As
 
 $subject = getRecord("SELECT subject_code, subject_name, grade_level, strand, term FROM subjects WHERE subject_code=? AND is_active=1", [$subjectCode]);
 $section = getRecord("SELECT section_id, section_name, grade_level, strand FROM sections WHERE section_id=? AND is_active=1", [$sectionId]);
-$teacher = getRecord("SELECT user_id, first_name, last_name FROM users WHERE user_id=? AND role_id=3 AND is_active=1", [$teacherId]);
+$teacher = getRecord("SELECT user_id, first_name, last_name, department_level FROM users WHERE user_id=? AND role_id=3 AND is_active=1", [$teacherId]);
 if (!$subject || !$section || !$teacher || $subject['grade_level'] !== $section['grade_level'] || (!empty($section['strand']) && normalizeStrandKey($subject['strand']) !== normalizeStrandKey($section['strand']))) {
     assignment_json(false, ['message' => 'The selected subject, section, or teacher is invalid.'], 422);
 }
+// Department / Level saved at teacher registration is the source of truth:
+// a JHS teacher may only be given Grade 7-10, an SHS teacher only Grade 11-12.
+// Re-checked here so a hand-crafted API call cannot bypass the dropdowns.
+$deptCheck = tdCheckAssignment($teacher['department_level'] ?? '', $section['grade_level']);
+if (!$deptCheck['ok']) assignment_json(false, ['message' => $deptCheck['message']], 422);
 $shift = assignment_shift($section['grade_level']);
 if ($shift) {
     [$windowStart, $windowEnd] = assignment_shift_window($shift);
@@ -119,6 +125,10 @@ try {
     global $db;
     $db->beginTransaction();
     if ($action === 'edit') {
+        // Editing may not move an assignment into a grade level outside the
+        // teacher's department either.
+        $newDeptCheck = tdCheckAssignment($teacher['department_level'] ?? '', $section['grade_level']);
+        if (!$newDeptCheck['ok']) assignment_json(false, ['message' => $newDeptCheck['message']], 422);
         executeQuery("UPDATE teacher_subjects SET teacher_id=?, subject_code=?, section_id=? WHERE ts_id=? AND school_year_id=?", [$teacherId, $subjectCode, $sectionId, $tsId, $schoolYearId]);
         executeQuery("DELETE FROM teacher_class_schedule WHERE teacher_id=? AND subject_code=? AND section_id=? AND school_year_id=?", [$excludeTeacher, $excludeSubject, $excludeSection, $schoolYearId]);
     } else {

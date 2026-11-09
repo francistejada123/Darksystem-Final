@@ -71,6 +71,9 @@ function tvValidate(array $in, string $mode): array
 
     if ($mode === 'edit') {
         if (!in_array($plain('highest_educ_attainment'), TV_EDUC_OPTIONS, true)) $e[] = 'Highest educational attainment is required.';
+        // Department / Level is required in both modes: it decides which classes
+        // this teacher may ever be assigned to (JHS -> Grade 7-10, SHS -> 11-12).
+        if (!in_array($plain('department_level'), ['JHS', 'SHS'], true)) $e[] = 'Department / Level is required (JHS or SHS).';
         $deg = $plain('degree_course');
         if ($deg === '') $e[] = 'Degree / Course is required.';
         elseif (mb_strlen($deg) < 3 || mb_strlen($deg) > 150) $e[] = 'Degree / Course must be 3 to 150 characters.';

@@ -2755,7 +2755,7 @@ function gh_recordTermFinalization($teacher_id, $subject_code, $section_id, $sy_
 
 /**
  * The Start/End Date row for one school year + term, or null if not set yet.
- * @return array|null {window_id, school_year_id, term, start_date, end_date, updated_by, updated_at}
+ * @return array|null {window_id, school_year_id, term, start_date, start_time, end_date, end_time, updated_by, updated_at}
  */
 function gh_getTermWindow($sy_id, $term) {
     gh_ensureTermWindowsTable();
@@ -2793,6 +2793,7 @@ function gh_ensureTermWindowsTable() {
     static $done = false;
     if ($done) return;
     $done = true;
+    gh_ensureTermWindowTimeColumns();
     if (schemaIsReady('term_windows_v1')) return;
     executeQuery(
         "CREATE TABLE IF NOT EXISTS term_windows (
@@ -2807,6 +2808,88 @@ function gh_ensureTermWindowsTable() {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
     );
     schemaMarkReady('term_windows_v1');
+    gh_ensureTermWindowTimeColumns(true);
+}
+
+/**
+ * TEMPORARY (testing): optional Start Time / End Time per term.
+ * Adds two nullable TIME columns to term_windows (start_time, end_time).
+ * NULL means "whole day" -- exactly the old behavior (term starts at
+ * 12:00 AM of the Start Date and ends at 11:59:59 PM of the End Date).
+ * Additive and idempotent; see
+ * database/migrations/2026_term_windows_time.sql (+ _rollback.sql).
+ */
+function gh_ensureTermWindowTimeColumns($force = false) {
+    static $done = false;
+    if ($done && !$force) return;
+    $done = true;
+    if (!$force && schemaIsReady('term_windows_time_v1')) return;
+    $cols = [];
+    foreach (getRecords("SHOW COLUMNS FROM term_windows") as $c) {
+        $cols[$c['Field']] = true;
+    }
+    if (empty($cols)) return; // table not created yet -- caller creates it, then calls us again
+    if (!isset($cols['start_time'])) {
+        executeQuery("ALTER TABLE term_windows ADD COLUMN start_time TIME NULL DEFAULT NULL COMMENT 'Optional (temporary): time the term starts on start_date; NULL = 12:00 AM' AFTER start_date");
+    }
+    if (!isset($cols['end_time'])) {
+        executeQuery("ALTER TABLE term_windows ADD COLUMN end_time TIME NULL DEFAULT NULL COMMENT 'Optional (temporary): time the term ends on end_date; NULL = end of day' AFTER end_date");
+    }
+    schemaMarkReady('term_windows_time_v1');
+}
+
+/**
+ * Normalize a time input ("15:00", "15:00:00", "") to 'H:i:s' or null.
+ */
+function gh_normalizeTermTime($t) {
+    $t = trim((string) $t);
+    if ($t === '') return null;
+    if (preg_match('/^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/', $t, $m)) {
+        return sprintf('%02d:%02d:%02d', $m[1], $m[2], isset($m[3]) ? $m[3] : 0);
+    }
+    return null;
+}
+
+/**
+ * Exact moment a term window starts (Unix timestamp), or null if no Start Date.
+ * No start_time = 12:00 AM of the Start Date (old behavior).
+ */
+function gh_termWindowStartTs($window) {
+    if (empty($window['start_date'])) return null;
+    $time = !empty($window['start_time']) ? $window['start_time'] : '00:00:00';
+    $ts = strtotime(substr($window['start_date'], 0, 10) . ' ' . $time);
+    return $ts === false ? null : $ts;
+}
+
+/**
+ * Exact moment a term window ends (Unix timestamp, inclusive), or null if no
+ * End Date. No end_time = 11:59:59 PM of the End Date (old behavior).
+ */
+function gh_termWindowEndTs($window) {
+    if (empty($window['end_date'])) return null;
+    $time = !empty($window['end_time']) ? $window['end_time'] : '23:59:59';
+    $ts = strtotime(substr($window['end_date'], 0, 10) . ' ' . $time);
+    return $ts === false ? null : $ts;
+}
+
+/**
+ * "Oct 2, 2026" or "Oct 2, 2026 3:00 PM" when a time is set.
+ */
+function gh_formatTermPoint($date, $time = null, $format = 'M j, Y') {
+    if (empty($date)) return '';
+    $out = date($format, strtotime($date));
+    if (!empty($time)) $out .= ' ' . date('g:i A', strtotime('2000-01-01 ' . $time));
+    return $out;
+}
+
+/**
+ * Display text for a term window's range, including times when set.
+ * Returns $empty when either date is missing.
+ */
+function gh_termWindowRangeText($window, $empty = 'Dates not set', $startFormat = 'M d, Y', $endFormat = 'M d, Y') {
+    if (!$window || empty($window['start_date']) || empty($window['end_date'])) return $empty;
+    return gh_formatTermPoint($window['start_date'], $window['start_time'] ?? null, $startFormat)
+        . ' – ' . gh_formatTermPoint($window['end_date'], $window['end_time'] ?? null, $endFormat);
 }
 
 /**
@@ -2817,19 +2900,34 @@ function gh_ensureTermWindowsTable() {
  *              so the caller can tell the administrator instead of
  *              claiming the dates were saved.
  */
-function gh_setTermWindow($sy_id, $term, $start_date, $end_date, $updated_by) {
+function gh_setTermWindow($sy_id, $term, $start_date, $end_date, $updated_by, $start_time = false, $end_time = false) {
+    // $start_time / $end_time: false = keep whatever time is already saved
+    // (used by Manage Assessment Items, which only edits dates); null/'' =
+    // clear the time (whole day); 'HH:MM' = set it.
     global $db;
     $GLOBALS['gh_term_window_error'] = '';
     gh_ensureTermWindowsTable();
     try {
+        $cols = 'school_year_id, term, start_date, end_date, updated_by';
+        $vals = '?, ?, ?, ?, ?';
+        $upd  = 'start_date = VALUES(start_date), end_date = VALUES(end_date),
+                updated_by = VALUES(updated_by), updated_at = CURRENT_TIMESTAMP';
+        $params = [$sy_id, $term, $start_date ?: null, $end_date ?: null, $updated_by];
+        if ($start_time !== false) {
+            $cols .= ', start_time'; $vals .= ', ?'; $upd .= ', start_time = VALUES(start_time)';
+            $params[] = gh_normalizeTermTime($start_time);
+        }
+        if ($end_time !== false) {
+            $cols .= ', end_time'; $vals .= ', ?'; $upd .= ', end_time = VALUES(end_time)';
+            $params[] = gh_normalizeTermTime($end_time);
+        }
         $stmt = $db->prepare(
-            "INSERT INTO term_windows (school_year_id, term, start_date, end_date, updated_by)
-             VALUES (?, ?, ?, ?, ?)
+            "INSERT INTO term_windows ($cols)
+             VALUES ($vals)
              ON DUPLICATE KEY UPDATE
-                start_date = VALUES(start_date), end_date = VALUES(end_date),
-                updated_by = VALUES(updated_by), updated_at = CURRENT_TIMESTAMP"
+                $upd"
         );
-        $stmt->execute([$sy_id, $term, $start_date ?: null, $end_date ?: null, $updated_by]);
+        $stmt->execute($params);
         return true;
     } catch (PDOException $e) {
         error_log('gh_setTermWindow failed: ' . $e->getMessage());
@@ -2858,38 +2956,58 @@ function gh_termWindowStatus($window) {
         return ['status' => 'not_set', 'label' => 'Dates not set', 'days_remaining' => null, 'badge' => 'secondary'];
     }
 
+    // Day counts stay calendar-based (as before); the Upcoming / Ongoing /
+    // Ended switch itself uses the exact moment, so an optional Start/End
+    // Time (temporary, for testing) takes effect at that time of day. With
+    // no time set the result is identical to the old date-only logic.
+    $now = time();
+    $start_ts = gh_termWindowStartTs($window);
+    $end_ts = gh_termWindowEndTs($window);
+    $start_time = !empty($window['start_time']) ? date('g:i A', strtotime('2000-01-01 ' . $window['start_time'])) : null;
+    $end_time = !empty($window['end_time']) ? date('g:i A', strtotime('2000-01-01 ' . $window['end_time'])) : null;
+
     $today = new DateTime('today');
     $start_dt = DateTime::createFromFormat('Y-m-d', substr($start, 0, 10)) ?: new DateTime($start);
     $end_dt = DateTime::createFromFormat('Y-m-d', substr($end, 0, 10)) ?: new DateTime($end);
     $start_dt->setTime(0, 0, 0);
     $end_dt->setTime(0, 0, 0);
 
-    if ($today < $start_dt) {
+    if ($now < $start_ts) {
         $days = (int) $today->diff($start_dt)->days;
+        if ($days === 0) {
+            $label = 'Upcoming — starts today' . ($start_time ? ' at ' . $start_time : '');
+        } else {
+            $label = 'Upcoming — starts in ' . $days . ' day' . ($days === 1 ? '' : 's');
+        }
         return [
             'status' => 'upcoming',
-            'label' => 'Upcoming — starts in ' . $days . ' day' . ($days === 1 ? '' : 's'),
+            'label' => $label,
             'days_remaining' => null,
             'badge' => 'info',
         ];
     }
 
-    if ($today > $end_dt) {
-        $days_over = (int) $end_dt->diff($today)->days;
+    if ($now > $end_ts) {
+        $days_over = ($today > $end_dt) ? (int) $end_dt->diff($today)->days : 0;
+        if ($days_over > 0) {
+            $ago = ' ' . $days_over . ' day' . ($days_over === 1 ? '' : 's') . ' ago';
+        } else {
+            $ago = $end_time ? ' today at ' . $end_time : '';
+        }
         return [
             'status' => 'ended',
-            'label' => 'Ended' . ($days_over > 0 ? ' ' . $days_over . ' day' . ($days_over === 1 ? '' : 's') . ' ago' : '') . ' — Ready for Finalization',
+            'label' => 'Ended' . $ago . ' — Ready for Finalization',
             'days_remaining' => 0,
             'badge' => 'warning',
         ];
     }
 
-    $days_remaining = (int) $today->diff($end_dt)->days;
+    $days_remaining = ($end_dt > $today) ? (int) $today->diff($end_dt)->days : 0;
     return [
         'status' => 'ongoing',
         'label' => $days_remaining === 0
-            ? 'Ongoing — ends today'
-            : 'Ongoing — ' . $days_remaining . ' day' . ($days_remaining === 1 ? '' : 's') . ' remaining',
+            ? 'Ongoing — ends today' . ($end_time ? ' at ' . $end_time : '')
+            : 'Ongoing — ' . $days_remaining . ' day' . ($days_remaining === 1 ? '' : 's') . ' remaining' . ($end_time ? ' (ends ' . $end_time . ')' : ''),
         'days_remaining' => $days_remaining,
         'badge' => 'success',
     ];
@@ -3120,6 +3238,40 @@ function gh_syncSectionTerms($section_id, $sy_id, $user_id = null) {
         $stored[$r['term']] = $r['completed_at'];
     }
 
+    // Terms open strictly in order: a saved "Completed" counts only when every
+    // earlier term is Completed too and the term's End Date has passed. Any
+    // other saved row (e.g. Term 2/3 marked Completed while Term 1 is still
+    // running, left over from testing) is removed, so Term 2 and Term 3 stay
+    // Locked until Term 1 is really done. Grades themselves are not touched.
+    $removed = [];
+    $prev_ok = true;
+    foreach (gh_threeTerms() as $t) {
+        if (!isset($stored[$t])) { $prev_ok = false; continue; }
+        $t_win = gh_getTermWindow($sy_id, $t);
+        $t_end_ts = ($t_win && !empty($t_win['end_date'])) ? gh_termWindowEndTs($t_win) : null;
+        $ended = ($t_end_ts !== null && time() > $t_end_ts);
+        if (!$prev_ok || !$ended) {
+            executeQuery(
+                "DELETE FROM section_term_status WHERE section_id = ? AND school_year_id = ? AND term = ?",
+                [$section_id, $sy_id, $t]
+            );
+            unset($stored[$t]);
+            $removed[] = $t;
+            $prev_ok = false;
+        }
+    }
+    if ($removed) {
+        // A year result saved from a wrong "Term 3 Completed" is not valid either.
+        if (in_array('Term 3', $removed, true)) {
+            gh_ensureStudentYearStatusTable();
+            executeQuery("DELETE FROM student_year_status WHERE section_id = ? AND school_year_id = ?", [$section_id, $sy_id]);
+        }
+        logActivity(
+            $user_id ?: null, 'grading', 'Term status corrected',
+            "Section $section_id: " . implode(', ', $removed) . ' set back (earlier term not Completed yet or End Date not reached)'
+        );
+    }
+
     $completed = [];
     $completed_at = [];
     $newly = [];
@@ -3138,11 +3290,14 @@ function gh_syncSectionTerms($section_id, $sy_id, $user_id = null) {
         // does not end it; with no End Date set it does not end at all.
         $t_win = gh_getTermWindow($sy_id, $t);
         $t_end = ($t_win && !empty($t_win['end_date'])) ? $t_win['end_date'] : null;
-        $t_ended = ($t_end !== null && date('Y-m-d') > $t_end);
+        // Exact end moment: End Date + End Time if one is set (temporary,
+        // for testing), otherwise the end of the End Date -- same as before.
+        $t_end_ts = $t_end !== null ? gh_termWindowEndTs($t_win) : null;
+        $t_ended = ($t_end_ts !== null && time() > $t_end_ts);
         if (!$t_ended) {
             $p['ready'] = false;
             $p['reasons'][] = $t_end !== null
-                ? $t . ' ends on ' . date('M j, Y', strtotime($t_end)) . ' (the End Date set by the administrator); the class moves on after that date.'
+                ? $t . ' ends on ' . gh_formatTermPoint($t_end, $t_win['end_time'] ?? null) . ' (the End Date set by the administrator); the class moves on after that ' . (!empty($t_win['end_time']) ? 'time.' : 'date.')
                 : $t . ' has no End Date set yet; the class moves on only after the administrator sets one and that date has passed.';
         }
         if ($p['ready']) {

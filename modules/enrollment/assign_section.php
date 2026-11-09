@@ -45,6 +45,12 @@ if (!$section) {
     exit;
 }
 
+if (strtoupper(trim((string)($section['strand'] ?? ''))) === 'HUMSS') {
+    $_SESSION['error_message'] = 'HUMSS sections are no longer offered. Please choose an ASSH or GAS section.';
+    header('Location: view.php?id=' . $enrollment_id);
+    exit;
+}
+
 $db->beginTransaction();
 
 try {

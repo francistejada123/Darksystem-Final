@@ -1,6 +1,6 @@
-<?php
+﻿<?php
 // modules/reports/index.php
-// Reports landing page — the Live Reports dashboard + the report
+// Reports landing page â€” the Live Reports dashboard + the report
 // generation form. Actual report output happens in generate.php
 // (opened in a new tab), so this page never has to render a full
 // report inline; it just stays the dashboard.
@@ -36,11 +36,37 @@ $sections = $rep_all
 // What each report is for -- shown under the Report Type box.
 $report_help = [
     'sf1' => ['DepEd Form', 'SF1 - School Register', 'Official list of the learners enrolled in a section this school year (males first, then females). Used at the start of the year and submitted to DepEd (LIS).', 'Section (or Grade Level)'],
-    'sf5' => ['DepEd Form', 'SF5 - Promotion & Level of Proficiency', 'End-of-year result per section: General Average, Promoted / Conditionally Promoted / Retained, with summary tables by sex. Submitted to the Division.', 'Section'],
-    'sf9' => ['DepEd Form', "SF9 - Learner's Report Card", 'Given to the parent every term and at year end: grades per term, Final Grade, General Average, and attendance per month.', 'Learner LRN'],
+    'sf5' => ['DepEd Form', 'SF5 - Promotion & Level of Proficiency', 'End-of-year result per section: General Average, descriptor, Completed / Promoted or Not Promoted status, with summary tables by sex. Submitted to the Division.', 'Section'],
+    'sf9' => ['DepEd Form', "SF9 - Learner's Report Card", 'Given to the parent every term and at year end: grades per term, Final Grade, General Average, and attendance per month.', 'Learner (Name of My Advisory Students)'],
     'grade_summary' => ['Monitoring', 'Grade Summary', 'Per-term check of a section: each learner\'s term averages and the subjects currently below passing, so the adviser/principal can act before the year ends.', 'Section (or Grade Level)'],
-    'at_risk_student' => ['Intervention', 'At-Risk Student Report', 'One learner\'s weak subjects this school year with recommended actions (conference, remedial classes, guidance, parent coordination).', 'Learner LRN'],
+    'at_risk_student' => ['Intervention', 'At-Risk Student Report', 'One learner\'s weak subjects this school year with recommended actions (conference, remedial classes, guidance, parent coordination).', 'Learner (Name of My Advisory Students)'],
 ];
+
+// Learners for the individual reports (SF9 / At-Risk Student).
+//   Teacher -> ONLY the students of the section they ADVISE:
+//              users -> sections.adviser_id -> enrollments (active SY, Approved) -> students.
+//              Subject-teacher classes (teacher_subjects) are never used here.
+//   Administrator / Registrar -> every enrolled learner this school year.
+// generate.php re-checks the same adviser rule (rpCanStudent) on the server.
+$rep_adv_section = null;
+$rep_students = [];
+if (!$rep_all) {
+    $rep_adv_section = getRecord(
+        "SELECT section_id, section_name, grade_level FROM sections WHERE adviser_id = ? AND is_active = 1 ORDER BY section_id LIMIT 1",
+        [(int)($_SESSION['user_id'] ?? 0)]) ?: null;
+}
+if (!empty($active_sy['sy_id']) && ($rep_all || $rep_adv_section)) {
+    $rep_students = getRecords(
+        "SELECT s.lrn, s.last_name, s.first_name, s.middle_name, e.grade_level, sec.section_name
+           FROM enrollments e
+           JOIN students s ON s.student_id = e.student_id AND s.is_active = 1
+           LEFT JOIN sections sec ON sec.section_id = e.section_id
+          WHERE e.school_year_id = ? AND e.enrollment_status = 'Approved'"
+          . ($rep_all ? '' : ' AND e.section_id = ?') . "
+          ORDER BY s.last_name, s.first_name",
+        $rep_all ? [(int)$active_sy['sy_id']] : [(int)$active_sy['sy_id'], (int)$rep_adv_section['section_id']]
+    ) ?: [];
+}
 
 // Get grade levels
 $grade_levels = ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
@@ -50,7 +76,7 @@ $grade_levels = ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade
 $report_type = isset($_GET['report_type']) ? sanitize($_GET['report_type']) : '';
 $section_id = isset($_GET['section_id']) ? intval($_GET['section_id']) : 0;
 $grade_level = isset($_GET['grade_level']) ? sanitize($_GET['grade_level']) : '';
-// Digit string, not intval()'d — may be an LRN, which can start with 0.
+// Digit string, not intval()'d â€” may be an LRN, which can start with 0.
 $student_id = isset($_GET['student_id']) ? preg_replace('/[^0-9]/', '', trim($_GET['student_id'])) : '';
 
 include '../../includes/header.php';
@@ -86,7 +112,7 @@ include '../../includes/header.php';
 
 /* Accordion headers get the same "soft muted surface" treatment as the
    filter panels, and the expanded body gets a slightly more elevated
-   surface than the page background — matches Section 30's "reduce white
+   surface than the page background â€” matches Section 30's "reduce white
    appearance" direction without touching any report-generation logic. */
 .rep-page .accordion-item { border: 1px solid var(--border-soft); border-radius: var(--radius); overflow: hidden; }
 .rep-page .accordion-button { font-size: 16px; font-weight: 600; background: var(--surface-muted); color: var(--ink); }
@@ -130,6 +156,15 @@ include '../../includes/header.php';
 .rep-page .sec-pick-opt:hover, .rep-page .sec-pick-opt.focus { background: var(--primary-soft, #EEF1FE); }
 .rep-page .sec-pick-opt.selected { background: var(--primary); color: #fff; }
 .rep-page #reportSection option { font-weight: 400; color: #1f2937; }
+/* Student picker: same field look as Section (.sec-pick), plus a search box. */
+.rep-page .stu-pick .sec-pick-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rep-page .stu-pick-search { padding: 4px 10px 8px; border-bottom: 1px solid var(--border-soft, #E3E9F2); position: sticky; top: -6px; background: var(--surface); z-index: 1; }
+.rep-page .stu-pick-search input { width: 100%; height: 40px; font-size: 15px; border-radius: 8px; }
+.rep-page .stu-opt { display: flex; flex-direction: column; gap: 2px; }
+.rep-page .stu-opt .stu-name { font-weight: 600; }
+.rep-page .stu-opt .stu-sub { font-size: 13.5px; color: var(--text-muted); font-weight: 400; }
+.rep-page .stu-opt.selected .stu-sub { color: rgba(255,255,255,.85); }
+.rep-page .stu-pick-empty { padding: 12px 14px; color: var(--text-muted); font-size: 15px; }
 </style>
 
 <div class="row mt-4 rep-page">
@@ -140,141 +175,21 @@ include '../../includes/header.php';
     </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- LIVE REPORTS -->
-<!-- ============================================================ -->
+<?php
+// Generate Report + Quick Reports (SF1, SF5, SF9, Grade Summary, At-Risk Student)
+// are for the CLASS ADVISER of a section. A teacher who advises no section does
+// not see them; generate.php refuses them on the server as well.
+$rep_can_generate = $rep_all || $rep_adv_section;
+?>
 <div class="rep-page">
+<?php
+if (!$rep_can_generate): ?>
 <div class="card border-0 shadow-sm" style="margin-bottom:16px;">
-    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2" style="background: var(--surface);border-bottom: 1px solid var(--border);padding:16px 18px;">
-        <h5 class="mb-0 rep-card-title">
-            Live Reports
-            <span class="badge rep-pill" style="background:#EAF7F1;color:#238863;margin-left:8px;" id="liveStatusBadge"></span>
-        </h5>
-        <div class="d-flex align-items-center gap-2">
-            <span class="badge rep-pill d-none align-items-center gap-1" id="gradeFilterPill" style="cursor:pointer;background:#EDF4FB;color: var(--ink);" title="Click to clear the grade filter">
-                <i class="fas fa-filter" style="font-size:13.5px;"></i> <span id="gradeFilterPillText"></span> <i class="fas fa-times ms-1" style="font-size:13.5px;"></i>
-            </span>
-            <span class="rep-updated" id="liveUpdatedAt">Loading...</span>
-        </div>
-    </div>
-    <div class="card-body">
-        <div class="accordion" id="liveReportsAccordion">
-
-            <!-- 1. Enrollment Status (+ Section Occupancy shown per grade, on click) -->
-            <div class="accordion-item">
-                <h2 class="accordion-header">
-                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEnrollment">
-                        <i class="fas fa-user-check text-primary me-2"></i>Enrollment Status (per Grade Level)
-                    </button>
-                </h2>
-                <div id="collapseEnrollment" class="accordion-collapse collapse show">
-                    <div class="accordion-body">
-                        <p class="text-muted mb-2" style="font-size:15px;">Click a grade level row to see its section occupancy.</p>
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0">
-                                <thead>
-                                    <tr>
-                                        <th>Grade Level</th>
-                                        <th class="text-center">Pending</th>
-                                        <th class="text-center">Approved</th>
-                                        <th class="text-center">Incomplete Requirements</th>
-                                        <th class="text-center">Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="liveEnrollmentStatusBody">
-                                    <tr><td colspan="5" class="text-center text-muted py-3">Loading...</td></tr>
-                                </tbody>
-                                <tfoot id="liveEnrollmentStatusFoot"></tfoot>
-                            </table>
-                        </div>
-
-                        <!-- Section Occupancy detail — filled in only when a grade row above is clicked -->
-                        <div id="gradeSectionDetail" class="mt-3" style="display:none;">
-                            <hr>
-                            <h6 class="text-primary mb-2">
-                                <i class="fas fa-chalkboard me-2"></i>Section Occupancy —
-                                <span id="gradeSectionDetailTitle"></span>
-                            </h6>
-                            <div class="table-responsive">
-                                <table class="table table-hover align-middle mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th>Section</th>
-                                            <th class="text-center">Capacity</th>
-                                            <th class="text-center">Approved</th>
-                                            <th class="text-center">Pending</th>
-                                            <th class="text-center">Remaining</th>
-                                            <th style="min-width:120px;">Occupancy</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="liveSectionOccupancyBody"></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 2. Grade Submission Tracker -->
-            <div class="accordion-item">
-                <h2 class="accordion-header">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGradeTracker">
-                        <i class="fas fa-tasks text-primary me-2"></i>Grade Submission Tracker
-                        <span class="text-muted ms-2 grade-scope-label" style="display:none;font-size:15px;"></span>
-                    </button>
-                </h2>
-                <div id="collapseGradeTracker" class="accordion-collapse collapse">
-                    <div class="accordion-body">
-                        <div class="d-flex justify-content-end mb-2">
-                            <select id="liveTermSelect" class="form-select rep-input" style="width:auto;">
-                                <option value="Term 1">Term 1</option>
-                                <option value="Term 2">Term 2</option>
-                                <option value="Term 3">Term 3</option>
-                            </select>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0">
-                                <thead>
-                                    <tr>
-                                        <th>Teacher</th>
-                                        <th>Subject</th>
-                                        <th>Section</th>
-                                        <th class="text-center">Graded / Expected</th>
-                                        <th class="text-center">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="liveGradeCompletionBody">
-                                    <tr><td colspan="5" class="text-center text-muted py-3">Loading...</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 3. At-Risk / Failing Students — summary only, full list moved to its own page -->
-            <div class="accordion-item">
-                <h2 class="accordion-header">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAtRisk">
-                        <i class="fas fa-exclamation-triangle text-primary me-2"></i>At-Risk &amp; Failing Students
-                        <span class="badge bg-warning text-dark ms-2" id="atRiskCountBadge">0</span>
-                        <span class="text-muted ms-2 grade-scope-label" style="display:none;font-size:15px;"></span>
-                    </button>
-                </h2>
-                <div id="collapseAtRisk" class="accordion-collapse collapse">
-                    <div class="accordion-body">
-                        <p class="mb-2" id="atRiskSummaryText">Loading...</p>
-                        <a href="at_risk.php" class="btn rep-btn" style="background:#B7791F;border-color:#B7791F;" id="viewAtRiskLink">
-                            <i class="fas fa-list me-1"></i>View At-Risk Students
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-        </div>
+    <div class="card-body" style="padding:18px;font-size:15px;color:var(--text-muted);">
+        <i class="fas fa-info-circle me-1"></i> Generate Report (SF1, SF5, SF9, Grade Summary and At-Risk Student Report) is available once you are assigned as a class adviser.
     </div>
 </div>
-
+<?php else: ?>
 <!-- Report Generation Form -->
 <div class="card border-0 shadow-sm" style="margin-bottom:16px;">
     <div class="card-body" style="padding:18px;">
@@ -319,11 +234,30 @@ include '../../includes/header.php';
                     <?php endforeach; if ($sec_group !== null) echo '</optgroup>'; ?>
                 </select>
             </div>
-            <div class="col-md-3">
-                <label class="rep-label">Student LRN / ID</label>
-                <input type="text" inputmode="numeric" pattern="[0-9]*" name="student_id" id="reportStudentId" class="form-control rep-input" placeholder="e.g. 110100100052"
-                       value="<?php echo htmlspecialchars($student_id); ?>">
-                <small class="rep-hint">For SF9 and At-Risk Student Report</small>
+            <div class="col-md-3" id="repStudentWrap">
+                <label class="rep-label" id="reportStudentLabel"><?php echo $rep_all ? 'Student' : 'Name of My Advisory Students'; ?></label>
+                <?php if (!$rep_all && !$rep_adv_section): ?>
+                    <select class="form-select rep-input" id="reportStudent" disabled>
+                        <option>No advisory class assigned.</option>
+                    </select>
+                    <small class="rep-hint">SF9 and the At-Risk Student Report are for advisers only.</small>
+                <?php else: ?>
+                    <!-- The value sent is the learner's LRN, which generate.php already accepts. -->
+                    <select name="student_id" id="reportStudent" class="form-select rep-input">
+                        <option value=""><?php echo $rep_all ? 'Select Student' : 'Select Advisory Student'; ?></option>
+                        <?php foreach ($rep_students as $rs): ?>
+                            <option value="<?php echo htmlspecialchars($rs['lrn']); ?>"
+                                    data-lrn="<?php echo htmlspecialchars($rs['lrn']); ?>"
+                                    data-sub="<?php echo htmlspecialchars(trim($rs['grade_level'] . ' - ' . ($rs['section_name'] ?? ''))); ?>"
+                                    <?php echo ($student_id !== '' && $student_id === (string)$rs['lrn']) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars(trim($rs['first_name'] . ' ' . (trim((string)$rs['middle_name']) !== '' ? mb_substr(trim($rs['middle_name']), 0, 1) . '. ' : '') . $rs['last_name'])); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <small class="rep-hint" id="reportStudentHint"><?php echo $rep_all
+                        ? 'Search by name or LRN'
+                        : htmlspecialchars($rep_adv_section['grade_level'] . ' - ' . $rep_adv_section['section_name']) . ' &middot; ' . count($rep_students) . ' student' . (count($rep_students) === 1 ? '' : 's'); ?></small>
+                <?php endif; ?>
             </div>
             <div class="col-12">
                 <div id="repHelp" class="rep-help" style="display:none"></div>
@@ -353,9 +287,11 @@ include '../../includes/header.php';
     show();
 })();
 </script>
+<?php endif; ?>
 
 <!-- Quick Reports -->
 <div class="row g-3">
+    <?php if ($rep_can_generate): ?>
     <div class="col-md-6">
         <div class="card border-0 shadow-sm">
             <div class="card-header" style="background: var(--surface);border-bottom: 1px solid var(--border);padding:14px 18px;">
@@ -379,7 +315,8 @@ include '../../includes/header.php';
             </div>
         </div>
     </div>
-    
+    <?php endif; ?>
+
     <div class="col-md-6">
         <div class="card border-0 shadow-sm">
             <div class="card-header" style="background: var(--surface);border-bottom: 1px solid var(--border);padding:14px 18px;">
@@ -426,248 +363,6 @@ function exportTable() {
     }
     window.location.href = 'export_pdf.php?' + params.toString();
 }
-</script>
-<script>
-// ============================================================
-// LIVE REPORTS DASHBOARD — fetches modules/reports/live_data.php,
-// renders it, then polls on an interval so the numbers stay connected
-// to the database without a full page reload.
-// ============================================================
-(function () {
-    var REFRESH_INTERVAL_MS = 20000; // 20s
-    var termSelect = document.getElementById('liveTermSelect');
-    var updatedAtEl = document.getElementById('liveUpdatedAt');
-    var statusBadge = document.getElementById('liveStatusBadge');
-    var gradeFilterPill = document.getElementById('gradeFilterPill');
-    var gradeFilterPillText = document.getElementById('gradeFilterPillText');
-    var pollTimer = null;
-    var latestSectionOccupancy = []; // kept in memory so clicking a grade row doesn't need another request
-    // Which grade is currently selected. Doubles as: (a) which grade's
-    // Section Occupancy detail is expanded, and (b) the ?grade_level=
-    // filter sent to live_data.php, which narrows Grade Submission
-    // Tracker, At-Risk & Failing Students, and Teacher Load down to
-    // just that grade. Clicking the same grade row again clears it.
-    var gradeFilter = null;
-
-    function escapeHtml(str) {
-        var div = document.createElement('div');
-        div.textContent = (str === null || str === undefined) ? '' : String(str);
-        return div.innerHTML;
-    }
-
-    // Reflects the current gradeFilter in the UI: the header pill, the
-    // "(Grade X)" hints on the three scoped accordion sections, the
-    // highlighted row in Enrollment Status, and the At-Risk page link.
-    function updateGradeFilterUI() {
-        if (gradeFilter) {
-            gradeFilterPill.classList.remove('d-none');
-            gradeFilterPill.classList.add('d-inline-flex');
-            gradeFilterPillText.textContent = gradeFilter;
-        } else {
-            gradeFilterPill.classList.add('d-none');
-            gradeFilterPill.classList.remove('d-inline-flex');
-        }
-
-        Array.prototype.forEach.call(document.querySelectorAll('.grade-scope-label'), function (el) {
-            if (gradeFilter) {
-                el.textContent = '(' + gradeFilter + ')';
-                el.style.display = '';
-            } else {
-                el.style.display = 'none';
-            }
-        });
-
-        Array.prototype.forEach.call(document.querySelectorAll('#liveEnrollmentStatusBody .grade-row'), function (r) {
-            r.classList.toggle('table-primary', !!gradeFilter && r.dataset.grade === gradeFilter);
-        });
-
-        var viewAtRiskLink = document.getElementById('viewAtRiskLink');
-        if (viewAtRiskLink) {
-            viewAtRiskLink.href = gradeFilter ? ('at_risk.php?grade_level=' + encodeURIComponent(gradeFilter)) : 'at_risk.php';
-        }
-    }
-
-    function setGradeFilter(grade) {
-        if (gradeFilter === grade) {
-            // Clicking the same grade again clears the filter.
-            gradeFilter = null;
-            document.getElementById('gradeSectionDetail').style.display = 'none';
-        } else {
-            gradeFilter = grade;
-            showGradeSections(grade);
-        }
-        updateGradeFilterUI();
-        loadLiveData();
-    }
-
-    if (gradeFilterPill) {
-        gradeFilterPill.addEventListener('click', function () {
-            setGradeFilter(gradeFilter); // same value in => toggles off
-        });
-    }
-
-    function renderEnrollmentStatus(rows, totals) {
-        var body = document.getElementById('liveEnrollmentStatusBody');
-        var foot = document.getElementById('liveEnrollmentStatusFoot');
-        if (!rows || rows.length === 0) {
-            body.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No enrollment data yet.</td></tr>';
-            foot.innerHTML = '';
-            return;
-        }
-        body.innerHTML = rows.map(function (r) {
-            return '<tr class="grade-row" data-grade="' + escapeHtml(r.grade_level) + '" style="cursor:pointer;" title="Click to view section occupancy">' +
-                '<td>' + escapeHtml(r.grade_level) + ' <i class="fas fa-chevron-right text-muted"></i></td>' +
-                '<td class="text-center"><span class="badge bg-warning text-dark">' + r.pending + '</span></td>' +
-                '<td class="text-center"><span class="badge bg-success">' + r.approved + '</span></td>' +
-                '<td class="text-center"><span class="badge bg-warning text-dark">' + r.rejected + '</span></td>' +
-                '<td class="text-center"><strong>' + r.total + '</strong></td>' +
-                '</tr>';
-        }).join('');
-        if (totals) {
-            foot.innerHTML = '<tr class="table-light">' +
-                '<td><strong>Overall</strong></td>' +
-                '<td class="text-center"><strong>' + (totals.pending || 0) + '</strong></td>' +
-                '<td class="text-center"><strong>' + (totals.approved || 0) + '</strong></td>' +
-                '<td class="text-center"><strong>' + (totals.rejected || 0) + '</strong></td>' +
-                '<td class="text-center"><strong>' + (totals.total || 0) + '</strong></td>' +
-                '</tr>';
-        }
-
-        // Wire up click-to-expand/filter on each grade row
-        Array.prototype.forEach.call(body.querySelectorAll('.grade-row'), function (row) {
-            row.addEventListener('click', function () {
-                setGradeFilter(row.dataset.grade);
-            });
-        });
-
-        // Keep the section-occupancy detail open (with fresh data) if a
-        // grade was already selected before this refresh, and re-apply
-        // highlighting/pill state since the rows were just rebuilt.
-        if (gradeFilter) {
-            showGradeSections(gradeFilter);
-        }
-        updateGradeFilterUI();
-    }
-
-    function showGradeSections(grade) {
-        var detail = document.getElementById('gradeSectionDetail');
-        var title = document.getElementById('gradeSectionDetailTitle');
-        var body = document.getElementById('liveSectionOccupancyBody');
-
-        var rows = latestSectionOccupancy.filter(function (s) { return s.grade_level === grade; });
-
-        title.textContent = grade;
-        detail.style.display = '';
-
-        if (rows.length === 0) {
-            body.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">No active sections for ' + escapeHtml(grade) + '.</td></tr>';
-            return;
-        }
-        body.innerHTML = rows.map(function (s) {
-            var barColor = s.percent_full >= 100 ? 'bg-danger' : (s.percent_full >= 80 ? 'bg-warning' : 'bg-success');
-            var label = escapeHtml(s.section_name) + (s.strand ? ' (' + escapeHtml(s.strand === 'ASSH' ? 'ASSH Cluster' : s.strand) + ')' : '');
-            return '<tr>' +
-                '<td>' + label + '</td>' +
-                '<td class="text-center">' + s.capacity + '</td>' +
-                '<td class="text-center"><span class="badge bg-success">' + s.approved + '</span></td>' +
-                '<td class="text-center"><span class="badge bg-warning text-dark">' + s.pending + '</span></td>' +
-                '<td class="text-center">' + (s.remaining <= 0 ? '<span class="badge bg-danger">Full</span>' : s.remaining) + '</td>' +
-                '<td>' +
-                    '<div class="progress" style="height:8px;">' +
-                        '<div class="progress-bar ' + barColor + '" style="width:' + s.percent_full + '%"></div>' +
-                    '</div>' +
-                    '<span class="text-muted" style="font-size:15px;">' + s.percent_full + '%</span>' +
-                '</td>' +
-                '</tr>';
-        }).join('');
-
-        detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-
-    function renderGradeCompletion(rows) {
-        var body = document.getElementById('liveGradeCompletionBody');
-        if (!rows || rows.length === 0) {
-            body.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No subject assignments for this school year.</td></tr>';
-            return;
-        }
-        body.innerHTML = rows.map(function (r) {
-            var statusBadgeHtml = r.complete
-                ? '<span class="badge bg-success">Complete</span>'
-                : '<span class="badge bg-warning text-dark">Incomplete</span>';
-            return '<tr>' +
-                '<td>' + escapeHtml(r.teacher_name) + '</td>' +
-                '<td>' + escapeHtml(r.subject_name) + '</td>' +
-                '<td>' + escapeHtml(r.section_name) + ' <small class="text-muted">(' + escapeHtml(r.grade_level) + ')</small></td>' +
-                '<td class="text-center">' + r.graded_students + ' / ' + r.expected_students + '</td>' +
-                '<td class="text-center">' + statusBadgeHtml + '</td>' +
-                '</tr>';
-        }).join('');
-    }
-
-    function renderAtRiskSummary(atRisk, failing) {
-        var countBadge = document.getElementById('atRiskCountBadge');
-        var summaryText = document.getElementById('atRiskSummaryText');
-        var atRiskCount = (atRisk || []).length;
-        var failingCount = (failing || []).length;
-        var total = atRiskCount + failingCount;
-
-        countBadge.textContent = total;
-        countBadge.className = 'badge ms-2 ' + (total > 0 ? 'bg-warning text-dark' : 'bg-secondary');
-
-        if (total === 0) {
-            summaryText.textContent = 'No at-risk or failing students right now.';
-        } else {
-            summaryText.textContent = failingCount + ' student(s) currently failing, ' + atRiskCount + ' student(s) at risk.';
-        }
-    }
-
-    function loadLiveData() {
-    var term = termSelect ? termSelect.value : 'Term 1';
-    statusBadge.classList.remove('bg-danger');
-        statusBadge.classList.add('bg-success');
-
-        var url = 'live_data.php?term=' + encodeURIComponent(term);
-        if (gradeFilter) {
-            url += '&grade_level=' + encodeURIComponent(gradeFilter);
-        }
-
-        fetch(url, { credentials: 'same-origin' })
-            .then(function (res) {
-                if (!res.ok) throw new Error('Request failed: ' + res.status);
-                return res.json();
-            })
-            .then(function (data) {
-                latestSectionOccupancy = data.section_occupancy || [];
-                renderEnrollmentStatus(data.enrollment_status, data.enrollment_totals);
-                renderGradeCompletion(data.grade_completion);
-                renderAtRiskSummary(data.at_risk, data.failing);
-                updatedAtEl.textContent = 'Updated ' + data.generated_at;
-            })
-            .catch(function (err) {
-                statusBadge.classList.remove('bg-success');
-                statusBadge.classList.add('bg-danger');
-                updatedAtEl.textContent = 'Failed to refresh — will retry';
-                console.error('Live report refresh failed:', err);
-            });
-    }
-
-    // No in-page refresh control: the browser's own reload is the refresh.
-    if (termSelect) termSelect.addEventListener('change', loadLiveData);
-
-    loadLiveData();
-    pollTimer = setInterval(loadLiveData, REFRESH_INTERVAL_MS);
-
-    // Stop polling if the tab is hidden, resume when visible again — avoids
-    // hammering the server with requests for tabs nobody's looking at.
-    document.addEventListener('visibilitychange', function () {
-        if (document.hidden) {
-            clearInterval(pollTimer);
-        } else {
-            loadLiveData();
-            pollTimer = setInterval(loadLiveData, REFRESH_INTERVAL_MS);
-        }
-    });
-})();
 </script>
 
 <script>
@@ -806,6 +501,108 @@ function exportTable() {
     if (gradeSelect) gradeSelect.addEventListener('change', function () { setTimeout(draw, 0); });
     draw();
 })();
+</script>
+
+<script>
+// "Name of My Advisory Students" picker. Same look as the Section picker
+// (.sec-pick); the real <select name="student_id"> stays in the form and
+// sends the learner's LRN. Search box filters by name or LRN.
+(function () {
+    var select = document.getElementById('reportStudent');
+    var typeSel = document.querySelector('select[name=report_type]');
+    var colWrap = document.getElementById('repStudentWrap');
+    if (!select || !typeSel || !colWrap) return;
+    var studentTypes = { sf9: 1, at_risk_student: 1 };
+    function layout() {
+        var t = typeSel.value;
+        // Only reports about ONE learner need a student; whole-class reports
+        // (Grade Summary, SF1, SF5) use the section instead.
+        colWrap.style.display = (t === '' || studentTypes[t]) ? '' : 'none';
+        if (!select.disabled) select.required = !!studentTypes[t];
+    }
+    typeSel.addEventListener('change', layout);
+    layout();
+    if (select.disabled) {
+        typeSel.form.addEventListener('submit', function (e) {
+            if (studentTypes[typeSel.value]) { e.preventDefault(); alertBox('No advisory class assigned.'); }
+        });
+        return;
+    }
+
+    var wrap = document.createElement('div');
+    wrap.className = 'sec-pick stu-pick';
+    select.parentNode.insertBefore(wrap, select);
+    wrap.appendChild(select);
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'form-select rep-input sec-pick-btn';
+    btn.setAttribute('aria-haspopup', 'listbox');
+    btn.setAttribute('aria-expanded', 'false');
+    btn.setAttribute('aria-labelledby', 'reportStudentLabel');
+    var list = document.createElement('div');
+    list.className = 'sec-pick-list';
+    list.innerHTML = '<div class="stu-pick-search"><input type="search" class="form-control" placeholder="Search name or LRN..." aria-label="Search student"></div><div class="stu-pick-opts" role="listbox"></div>';
+    wrap.appendChild(btn);
+    wrap.appendChild(list);
+    var search = list.querySelector('input'), box = list.querySelector('.stu-pick-opts');
+    var opts = Array.prototype.slice.call(select.options).filter(function (o) { return o.value !== ''; });
+
+    function esc(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+    function mask(l) { l = String(l || ''); return l.length > 4 ? '********' + l.slice(-4) : l; }
+    function drawBtn() {
+        var o = select.options[select.selectedIndex];
+        var txt = o && o.value ? o.text.trim() : select.options[0].text.trim();
+        btn.innerHTML = '<span' + (o && o.value ? '' : ' style="color:var(--text-muted)"') + '>' + esc(txt) + '</span><i class="fas fa-chevron-down" aria-hidden="true"></i>';
+    }
+    function drawList() {
+        var q = search.value.trim().toLowerCase(), html = '';
+        opts.forEach(function (o) {
+            var name = o.text.trim();
+            if (q && name.toLowerCase().indexOf(q) === -1 && String(o.dataset.lrn).indexOf(q) === -1) return;
+            html += '<button type="button" role="option" class="sec-pick-opt all stu-opt' + (o.selected ? ' selected' : '') + '" data-value="' + esc(o.value) + '">'
+                  + '<span class="stu-name">' + esc(name) + '</span><span class="stu-sub">LRN: ' + esc(mask(o.dataset.lrn)) + ' &middot; ' + esc(o.dataset.sub || '') + '</span></button>';
+        });
+        box.innerHTML = html || '<div class="stu-pick-empty">' + (opts.length ? 'No matching student.' : 'No enrolled students in this section yet.') + '</div>';
+    }
+    function open() {
+        wrap.classList.add('open'); btn.setAttribute('aria-expanded', 'true');
+        search.value = ''; drawList(); search.focus();
+        var r = list.getBoundingClientRect();
+        if (r.bottom > window.innerHeight - 8) window.scrollBy({ top: r.bottom - window.innerHeight + 16, behavior: 'smooth' });
+    }
+    function close() { wrap.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
+    function choose(v) { select.value = v; select.dispatchEvent(new Event('change', { bubbles: true })); close(); drawBtn(); btn.focus(); }
+    btn.addEventListener('click', function () { wrap.classList.contains('open') ? close() : open(); });
+    search.addEventListener('input', drawList);
+    box.addEventListener('click', function (e) { var o = e.target.closest('.sec-pick-opt'); if (o) choose(o.getAttribute('data-value')); });
+    document.addEventListener('click', function (e) { if (!wrap.contains(e.target)) close(); });
+    wrap.addEventListener('keydown', function (e) {
+        var items = Array.prototype.slice.call(box.querySelectorAll('.sec-pick-opt'));
+        var i = items.indexOf(box.querySelector('.sec-pick-opt.focus'));
+        if (e.key === 'Escape') { close(); btn.focus(); return; }
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (!wrap.classList.contains('open')) { open(); return; }
+            i = e.key === 'ArrowDown' ? Math.min(items.length - 1, i + 1) : Math.max(0, i - 1);
+            items.forEach(function (o) { o.classList.remove('focus'); });
+            if (items[i]) { items[i].classList.add('focus'); items[i].scrollIntoView({ block: 'nearest' }); }
+        } else if (e.key === 'Enter' && wrap.classList.contains('open')) {
+            e.preventDefault();
+            if (i < 0 && items.length === 1) i = 0;
+            if (items[i]) choose(items[i].getAttribute('data-value'));
+        }
+    });
+    // A hidden required <select> cannot show the browser's message, so check here.
+    typeSel.form.addEventListener('submit', function (e) {
+        if (studentTypes[typeSel.value] && !select.value) { e.preventDefault(); open(); alertBox('Please select a student.'); }
+        if (!studentTypes[typeSel.value]) select.value = '';
+    });
+    drawBtn();
+})();
+function alertBox(msg) {
+    var h = document.getElementById('reportStudentHint') || document.querySelector('#repStudentWrap .rep-hint');
+    if (h) { h.textContent = msg; h.style.color = '#C94A4A'; }
+}
 </script>
 
 <?php include '../../includes/footer.php'; ?>

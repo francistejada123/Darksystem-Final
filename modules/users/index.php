@@ -344,6 +344,10 @@ include '../../includes/header.php';
                                                     onclick="confirmToggle(<?php echo $user['user_id']; ?>, 1, '<?php echo htmlspecialchars(addslashes($full_name)); ?>')">
                                                     <i class="fas fa-user-check"></i>
                                                 </button>
+                                                <button type="button" class="btn btn-outline-danger" title="Delete account permanently"
+                                                    onclick="confirmDelete(<?php echo $user['user_id']; ?>, '<?php echo htmlspecialchars(addslashes($full_name)); ?>')">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
                                             <?php endif; ?>
                                         <?php else: ?>
                                             <button type="button" class="btn btn-outline-secondary" disabled title="This is your own account">
@@ -586,6 +590,20 @@ function confirmToggle(userId, activate, name) {
     if (confirm(message)) {
         window.location.href = 'toggle_status.php?id=' + userId + '&activate=' + activate;
     }
+}
+
+function confirmDelete(userId, name) {
+    if (!confirm('PERMANENTLY delete ' + name + '\'s account? This cannot be undone.\n\n(Accounts linked to grades, students, subjects or other records cannot be deleted and should stay deactivated.)')) return;
+    const f = document.createElement('form');
+    f.method = 'POST';
+    f.action = 'delete.php';
+    [['id', userId], ['csrf_token', <?php echo json_encode($csrf_token); ?>]].forEach(function (p) {
+        const i = document.createElement('input');
+        i.type = 'hidden'; i.name = p[0]; i.value = p[1];
+        f.appendChild(i);
+    });
+    document.body.appendChild(f);
+    f.submit();
 }
 </script>
 

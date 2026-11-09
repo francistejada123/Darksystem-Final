@@ -11,12 +11,19 @@
 
 session_start();
 require_once __DIR__ . '/../../../config/database.php';
+require_once '../../../includes/student_password.php';   // spwRequireChangedPassword()
 require_once __DIR__ . '/../../../includes/classwork_helpers.php';
 
 if (!isset($_SESSION['student_id']) || ($_SESSION['role'] ?? '') !== 'Student') {
     header('Location: ../../../student_login.php');
     exit;
 }
+
+// First login: the account still holds the temporary password issued when the
+// Admin approved the enrollment, so the portal may not be used until it is
+// changed (see includes/student_password.php).
+if (spwRequireChangedPassword()) exit;
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: dashboard.php');
     exit;
@@ -143,6 +150,21 @@ if ($action === 'turn_in') {
         error_log('Background classwork AI check failed (assignment ' . $assignment_id . ', student ' . $student_id . '): ' . $e->getMessage());
     }
     exit;
+}
+
+// "Check again": the AI could not finish the first time (e.g. Google busy). Same check, run now.
+if ($action === 'recheck') {
+    if (!$turnedIn || $graded) {
+        $go(['submit_error' => 'Nothing to check.']);
+    }
+    @set_time_limit(240);
+    try {
+        $rc = classworkAiCheck($assignment_id, $student_id);
+    } catch (\Throwable $e) {
+        error_log('Classwork AI re-check failed (assignment ' . $assignment_id . ', student ' . $student_id . '): ' . $e->getMessage());
+        $rc = ['success' => false, 'error' => 'The AI is busy right now. Please try again in a minute.'];
+    }
+    $go(!empty($rc['success']) ? ['cw_msg' => 'Checked! See your score below.'] : ['submit_error' => $rc['error'] ?? 'The AI could not check this yet. Try again in a minute.']);
 }
 
 if ($action === 'comment') {

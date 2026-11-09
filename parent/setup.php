@@ -16,6 +16,10 @@ require_once __DIR__ . '/_layout.php';
 
 header('X-Robots-Tag: noindex, nofollow');
 header('Referrer-Policy: no-referrer');
+// Never kept in the browser's Back/Forward cache: going Back always asks the
+// server again, so it shows the current step (code page / portal), not an old form.
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
 ppEnsureSchema();
 ppEmailEnsureSchema();
 
@@ -24,8 +28,38 @@ $c = $code !== '' ? ppFindCode($code) : null;
 $en = ppLang() === 'en';
 $error = '';
 $done = null;
-$v = ['mobile' => $c['mobile_hint'] ?? '', 'full_name' => '', 'relationship' => '', 'email' => ''];
+$v = ['mobile' => $c['mobile_hint'] ?? '', 'full_name' => '', 'relationship' => '', 'email' => '', 'birth_date' => ''];
 $info = '';
+$self = 'setup.php?c=' . rawurlencode($code);   // this step's clean address (never with &edit=1)
+
+/** Message shown once on the next page (after a redirect). */
+function ppSetupFlash($error, $info = '')
+{
+    $_SESSION['pp_setup_flash'] = ['error' => $error, 'info' => $info];
+}
+/** Remember what the parent typed (never the PIN itself, only its hash) so they never type it again. */
+function ppSetupKeep(array $p)
+{
+    $keep = [];
+    foreach (['code', 'mobile', 'full_name', 'relationship', 'email', 'birth_date', 'pin_hash'] as $k) $keep[$k] = $p[$k] ?? '';
+    $keep['until'] = time() + 30 * 60;
+    $_SESSION['pp_setup_draft'] = $keep;
+}
+
+// Back after finishing: the setup code is used up and the parent is signed in -> straight to the portal.
+if ($code !== '' && !$c && !empty($_SESSION['parent_id']) && ($_SESSION['role'] ?? '') === 'Parent'
+    && getRecord("SELECT 1 FROM parent_setup_codes WHERE code_hash = ? AND used_by_parent = ?", [hash('sha256', $code), (int) $_SESSION['parent_id']])) {
+    header('Location: index.php');
+    exit;
+}
+
+// What was typed before (after "Change email", or when the account could not be made).
+$draft = $_SESSION['pp_setup_draft'] ?? null;
+if ($draft && (!$c || $draft['code'] !== $code || $draft['until'] < time())) {
+    unset($_SESSION['pp_setup_draft']);
+    $draft = null;
+}
+if ($draft) foreach (['mobile', 'full_name', 'relationship', 'email', 'birth_date'] as $k) if ((string) $draft[$k] !== '') $v[$k] = $draft[$k];
 
 // A new account waiting for its email code (kept 30 minutes; the PIN only as a hash).
 $pending = $_SESSION['pp_setup'] ?? null;
@@ -33,12 +67,22 @@ if ($pending && (!$c || $pending['code'] !== $code || $pending['until'] < time()
     unset($_SESSION['pp_setup']);
     $pending = null;
 }
-if ($pending && isset($_GET['edit'])) {   // "Change email": back to the form, filled in (except the PIN)
-    foreach (['mobile', 'full_name', 'relationship', 'email'] as $k) $v[$k] = $pending[$k];
-    unset($_SESSION['pp_setup']);
-    $pending = null;
+if (isset($_GET['edit'])) {   // "Change email": back to the form, filled in (the PIN is kept as its hash)
+    if ($pending) {
+        ppSetupKeep($pending);
+        unset($_SESSION['pp_setup']);
+    }
+    // Clean address, so "&edit=1" is never sent again with the next form or code.
+    header('Location: ' . $self, true, 303);
+    exit;
 }
-if ($pending && $_SERVER['REQUEST_METHOD'] === 'POST' && in_array($_POST['action'] ?? '', ['verify_email', 'resend_email'], true)) {
+$isCodePost = $_SERVER['REQUEST_METHOD'] === 'POST' && in_array($_POST['action'] ?? '', ['verify_email', 'resend_email'], true);
+if ($isCodePost && !$pending) {
+    // The waiting account is gone (expired after 30 minutes or the session ended): say so instead of silently showing the form again.
+    $error = $en ? 'The waiting time ran out. Your details are still here: tap Finish again to get a new code.'
+                 : 'Naubos ang oras ng paghihintay. Nandito pa ang inyong mga detalye: pindutin ulit ang Tapusin para makakuha ng bagong code.';
+}
+if ($pending && $isCodePost) {
     if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
         $error = $en ? 'Your session expired. Please try again.' : 'Nag-expire ang session. Pakisubukan ulit.';
     } elseif (isStudentIpRateLimited()) {
@@ -48,7 +92,7 @@ if ($pending && $_SERVER['REQUEST_METHOD'] === 'POST' && in_array($_POST['action
         if ($r['ok']) $info = $en ? 'A new code was sent. The old one no longer works.' : 'Nagpadala ng bagong code. Hindi na gagana ang luma.';
         else $error = sprintf($en ? 'Please wait %d seconds before asking for another code.' : 'Maghintay ng %d segundo bago humingi ng bagong code.', $r['wait']);
     } else {
-        $vr = ppCodeVerify('setup', $pending['email'], preg_replace('/\D/', '', (string) ($_POST['code'] ?? '')));
+        $vr = ppCodeVerify('setup', $pending['email'], preg_replace('/\D/', '', (string) ($_POST['otp'] ?? $_POST['code'] ?? '')));
         if ($vr['ok']) {
             $r = ppRegister([
                 'code' => $pending['code'], 'birth_date' => $pending['birth_date'], 'mobile' => $pending['mobile'], 'pin_hash' => $pending['pin_hash'],
@@ -56,18 +100,32 @@ if ($pending && $_SERVER['REQUEST_METHOD'] === 'POST' && in_array($_POST['action
             ]);
             unset($_SESSION['pp_setup']);
             if ($r['success']) {
+                unset($_SESSION['pp_setup_draft']);
                 ppStartSession($r['parent']);
-                header('Location: index.php?welcome=' . ($r['existing'] ? 'added' : 'new'));
+                header('Location: index.php?welcome=' . ($r['existing'] ? 'added' : 'new'), true, 303);
                 exit;
             }
-            $pending = null;
-            $error = $r['error'];
+            // Could not finish: back to the form with everything still filled in, and the reason.
+            ppSetupKeep($pending);
+            ppSetupFlash($r['error']);
+            header('Location: ' . $self, true, 303);
+            exit;
         } elseif (!empty($vr['dead'])) {
             $error = $en ? 'This code no longer works (expired or too many wrong tries). Tap "Send a new code".' : 'Hindi na gumagana ang code (expired o maraming maling subok). Pindutin ang "Magpadala ng bagong code".';
         } else {
             $error = sprintf($en ? 'Wrong code. %d tries left.' : 'Mali ang code. %d subok na lang.', $vr['left']);
         }
     }
+    // Wrong code / new code sent: show it on a fresh GET, so Back or refresh never sends the code again.
+    ppSetupFlash($error, $info);
+    header('Location: ' . $self, true, 303);
+    exit;
+}
+// Message carried over a redirect.
+if (!empty($_SESSION['pp_setup_flash']) && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+    $error = $_SESSION['pp_setup_flash']['error'];
+    $info = $_SESSION['pp_setup_flash']['info'];
+    unset($_SESSION['pp_setup_flash']);
 }
 
 // Step 0 (no code yet): the parent types their number; when it is the guardian
@@ -118,7 +176,7 @@ if ($c && !$pending && $_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['e
     } elseif ($c['channel'] === 'reset') {
         // New PIN for a parent already linked to this child (code sent to their own number / given by the school).
         $mobile = smsNormalizeNumber($v['mobile']);
-        $p = $mobile ? getRecord("SELECT p.* FROM parents p JOIN parent_students ps ON ps.parent_id = p.parent_id AND ps.student_id = ? WHERE p.mobile = ?", [(int) $c['student_id'], $mobile]) : null;
+        $p = $mobile ? getRecord("SELECT p.* FROM parents p JOIN parent_students ps ON ps.parent_id = p.parent_id AND ps.student_id = ? WHERE p.mobile = ? AND p.is_active = 1", [(int) $c['student_id'], $mobile]) : null;
         $bd = trim((string) ($_POST['birth_date'] ?? ''));
         if (!$p || $bd === '' || date('Y-m-d', strtotime($bd)) !== date('Y-m-d', strtotime($c['birth_date']))) {
             logActivity(null, 'student', 'Failed login', 'Parent PIN reset did not match (student #' . $c['student_id'] . ')');
@@ -133,7 +191,7 @@ if ($c && !$pending && $_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['e
             unset($_SESSION['parent_id'], $_SESSION['pp_child']);
             session_regenerate_id(true);
             $_SESSION['pp_login_prefill'] = $mobile;
-            header('Location: login.php?pin_changed=1');
+            header('Location: ../student_login.php?as=parent&pin_changed=1');
             exit;
         }
     } else {
@@ -143,32 +201,67 @@ if ($c && !$pending && $_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['e
         $email = ppNormEmail($v['email']);
         $bd = trim((string) ($_POST['birth_date'] ?? ''));
         $r = null;
+        // PIN left blank after "Change email": use the PIN already chosen (kept only as a hash).
+        $keptPin = ($draft && !empty($draft['pin_hash']) && (string) ($_POST['pin'] ?? '') === '' && (string) ($_POST['confirm_pin'] ?? '') === '') ? $draft['pin_hash'] : '';
         if ($isNew && $email === '') {
             $error = $en ? 'Enter a valid email (for example name@gmail.com).' : 'Ilagay ang tamang email (halimbawa: pangalan@gmail.com).';
         } elseif ($isNew && ppEmailTaken($email)) {
             $error = $en ? 'This email is already used by another Parent Portal account.' : 'Ginagamit na ng ibang Parent Portal account ang email na ito.';
+        } elseif ($isNew && ppEmailVerificationSimulated() && ppMailReady()) {
+            // Email verification is SIMULATED for the capstone/demo, so there is
+            // no emailed code step: the address is treated as verified and the
+            // guardian registration is finished here. The PASSWORD is NOT set
+            // here (defer_password) -- it is created afterwards from the
+            // Enrollment Tracking page, which then activates the portal.
+            if ($bd === '' || strtotime($bd) === false || date('Y-m-d', strtotime($bd)) !== date('Y-m-d', strtotime($c['birth_date']))) {
+                logActivity(null, 'student', 'Failed login', 'Parent setup: wrong birthday for the setup code of student #' . $c['student_id']);
+                $error = $en ? "The child's birthday does not match our record." : 'Hindi tugma ang birthday ng anak sa record ng school.';
+            } else {
+                $r = ppRegister([
+                    'code' => $code, 'birth_date' => $bd, 'mobile' => $mobileN,
+                    'full_name' => $v['full_name'], 'relationship' => $v['relationship'],
+                    'email' => $email, 'email_verified' => 1, 'defer_password' => 1,
+                ]);
+            }
         } elseif ($isNew && ppMailReady()) {
             if ($bd === '' || strtotime($bd) === false || date('Y-m-d', strtotime($bd)) !== date('Y-m-d', strtotime($c['birth_date']))) {
                 logActivity(null, 'student', 'Failed login', 'Parent setup: wrong birthday for the setup code of student #' . $c['student_id']);
                 $error = $en ? "The child's birthday does not match our record." : 'Hindi tugma ang birthday ng anak sa record ng school.';
-            } elseif (($pe = ppPinProblem($_POST['pin'] ?? '', $_POST['confirm_pin'] ?? '')) !== '') {
+            } elseif ($keptPin === '' && ($pe = ppPinProblem($_POST['pin'] ?? '', $_POST['confirm_pin'] ?? '')) !== '') {
                 $error = $pe;
             } else {
                 $pending = ['code' => $code, 'birth_date' => $bd, 'mobile' => $mobileN, 'full_name' => $v['full_name'], 'relationship' => $v['relationship'],
-                            'email' => $email, 'pin_hash' => password_hash($_POST['pin'], PASSWORD_DEFAULT), 'until' => time() + 30 * 60];
+                            'email' => $email, 'pin_hash' => $keptPin !== '' ? $keptPin : password_hash($_POST['pin'], PASSWORD_DEFAULT), 'until' => time() + 30 * 60];
                 $_SESSION['pp_setup'] = $pending;
+                unset($_SESSION['pp_setup_draft']);
                 $sr = ppCodeSend('setup', $email, $email);
                 if (!$sr['ok']) $info = sprintf($en ? 'A code was sent a moment ago. You can ask for a new one in %d seconds.' : 'May code nang naipadala kanina. Puwedeng humingi ng bago pagkalipas ng %d segundo.', $sr['wait']);
+                // Show the code page on a fresh GET: Back / refresh never sends the form (or a new email) again.
+                ppSetupFlash('', $info);
+                header('Location: ' . $self, true, 303);
+                exit;
             }
         } else {
             $r = ppRegister([
                 'code' => $code, 'birth_date' => $_POST['birth_date'] ?? '', 'mobile' => $v['mobile'], 'pin' => $_POST['pin'] ?? '',
                 'confirm_pin' => $_POST['confirm_pin'] ?? '', 'full_name' => $v['full_name'], 'relationship' => $v['relationship'], 'email' => $isNew ? $email : '',
+                // Simulated verification: still defer the password, so the portal
+                // is only ever activated by the Create Password step afterwards.
+                'defer_password' => ppEmailVerificationSimulated() ? 1 : 0,
             ]);
         }
         if ($r && $r['success']) {
+            unset($_SESSION['pp_setup_draft']);
+            if (ppEmailVerificationSimulated()) {
+                // Registration done, password still to be created: send the
+                // guardian BACK to the tracking page, which shows the
+                // "Create Password" step now that registration is complete.
+                session_regenerate_id(true);
+                header('Location: ../enrollment_status.php?ref=' . urlencode($_SESSION['oe_submitted_ref'] ?? ''), true, 303);
+                exit;
+            }
             ppStartSession($r['parent']);
-            header('Location: index.php?welcome=' . ($r['existing'] ? 'added' : 'new'));
+            header('Location: index.php?welcome=' . ($r['existing'] ? 'added' : 'new'), true, 303);
             exit;
         }
         if ($r) {
@@ -190,8 +283,10 @@ if ($pending) {
     ppSteps(2, 2);
     if ($error) echo '<div class="pp-alert t-bad"><i class="fas fa-circle-exclamation me-1"></i>' . htmlspecialchars($error) . '</div>';
     if ($info) echo '<div class="pp-alert t-ok"><i class="fas fa-circle-check me-1"></i>' . htmlspecialchars($info) . '</div>';
-    ppCodeForm($csrf, 'verify_email', 'resend_email', ppCodeWait($pending['email']), 'setup.php?c=' . rawurlencode($code) . '&edit=1', $en ? 'Change email' : 'Palitan ang email', $en ? 'Confirm and finish' : 'Kumpirmahin at tapusin');
-    ppAuthEnd('<i class="fas fa-shield-halved me-1"></i>' . ($en ? 'The school never asks for money, a code or your PIN.' : 'Hindi humihingi ng pera, code o PIN ang school.'));
+    ppCodeForm($csrf, 'verify_email', 'resend_email', ppCodeWait($pending['email']), $self . '&edit=1', $en ? 'Change email' : 'Palitan ang email', $en ? 'Confirm and finish' : 'Kumpirmahin at tapusin', $self, 'otp');
+    // Restored from the Back/Forward cache anyway (some phones): ask the server for the current step.
+    ppAuthEnd('<i class="fas fa-shield-halved me-1"></i>' . ($en ? 'The school never asks for money, a code or your PIN.' : 'Hindi humihingi ng pera, code o PIN ang school.'),
+        '<script>window.addEventListener("pageshow",function(e){if(e.persisted)location.reload();});</script>');
     exit;
 }
 if (!$c && $found) {
@@ -231,7 +326,7 @@ if (!$c && $found) {
     <p class="pp-note" style="text-align:left"><?php echo sprintf($en ? 'The code works once and expires in %d days. Next you confirm your child\'s birthday and your email.' : 'Isang beses lang magagamit ang code at mag-e-expire sa loob ng %d araw. Susunod: kumpirmahin ang birthday ng anak at ang inyong email.', PP_CODE_DAYS); ?></p>
 <?php elseif (!$c && !$have_code): ?>
     <?php if ($has_account): ?>
-        <div class="pp-alert t-info"><i class="fas fa-circle-info me-1"></i><?php echo $en ? 'This number already has a Parent Portal account.' : 'May Parent Portal account na ang number na ito.'; ?> <a href="login.php"><b><?php echo ppT('login'); ?> →</b></a></div>
+        <div class="pp-alert t-info"><i class="fas fa-circle-info me-1"></i><?php echo $en ? 'This number already has a Parent Portal account.' : 'May Parent Portal account na ang number na ito.'; ?> <a href="../student_login.php?as=parent"><b><?php echo ppT('login'); ?> →</b></a></div>
     <?php endif; ?>
     <?php if ($error): ?><div class="pp-alert t-bad"><i class="fas fa-circle-exclamation me-1"></i><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
     <form method="POST" autocomplete="off">
@@ -255,11 +350,12 @@ if (!$c && $found) {
     <p class="pp-note mt-3" style="text-align:left"><a href="setup.php"><i class="fas fa-arrow-left me-1"></i><?php echo $en ? 'No code? Use your mobile number instead' : 'Walang code? Gamitin ang cellphone number'; ?></a></p>
 <?php else: ?>
     <?php if ($error): ?><div class="pp-alert t-bad"><i class="fas fa-circle-exclamation me-1"></i><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
-    <form method="POST" autocomplete="off">
+    <?php if ($info): ?><div class="pp-alert t-ok"><i class="fas fa-circle-check me-1"></i><?php echo htmlspecialchars($info); ?></div><?php endif; ?>
+    <form method="POST" autocomplete="off" action="<?php echo htmlspecialchars($self); ?>" id="suForm" data-key="<?php echo htmlspecialchars('pp_setup_' . $code); ?>">
         <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
         <input type="hidden" name="code" value="<?php echo htmlspecialchars($code); ?>">
         <div class="step"><span>1</span><?php echo $en ? "Your child's birthday" : 'Birthday ng inyong anak'; ?></div>
-        <div class="pp-field"><i class="fas fa-cake-candles"></i><input type="date" class="form-control" name="birth_date" required max="<?php echo date('Y-m-d'); ?>"></div>
+        <div class="pp-field"><i class="fas fa-cake-candles"></i><input type="date" class="form-control" name="birth_date" required max="<?php echo date('Y-m-d'); ?>" value="<?php echo htmlspecialchars($v['birth_date']); ?>"></div>
         <div class="step"><span>2</span><?php $new_acc = $c['channel'] !== 'reset' && !$existing && empty($v['existing']); echo $new_acc ? ($en ? 'Your mobile number and email' : 'Inyong cellphone number at email') : ($en ? 'Your mobile number' : 'Inyong cellphone number'); ?></div>
         <div class="pp-field"><i class="fas fa-mobile-screen-button"></i><input type="tel" class="form-control" name="mobile" inputmode="numeric" maxlength="11" pattern="09[0-9]{9}" title="<?php echo htmlspecialchars(ppMobileFormatError()); ?>" placeholder="09XXXXXXXXX" value="<?php echo htmlspecialchars($v['mobile']); ?>" required></div>
         <?php if ($c['channel'] !== 'reset' && !$existing && empty($v['existing'])): ?>
@@ -275,19 +371,59 @@ if (!$c && $found) {
             </div>
         <?php endif; ?>
         <div class="step"><span>3</span><?php
+            $simulated = ppEmailVerificationSimulated();
             if ($c['channel'] === 'reset') echo $en ? 'New 6-digit PIN' : 'Bagong 6-digit PIN';
+            elseif ($simulated && $c['channel'] !== 'reset' && !$existing && empty($v['existing'])) echo $en ? 'Finish (your password comes next)' : 'Tapusin (password ang susunod)';
             elseif ($existing || !empty($v['existing'])) echo $en ? 'This number already has an account: enter its PIN' : 'May account na ang number na ito: ilagay ang PIN';
             else echo $en ? 'Create a 6-digit PIN' : 'Gumawa ng 6-digit PIN';
         ?></div>
-        <?php ppPinField('pin', '••••••', 'new-password'); ?>
-        <?php if ($c['channel'] === 'reset' || (!$existing && empty($v['existing']))): ?>
-            <div class="mt-2"><?php ppPinField('confirm_pin', $en ? 'Repeat PIN' : 'Ulitin ang PIN', 'new-password'); ?></div>
-            <p class="pp-note" style="text-align:left"><?php echo $en ? 'Only you know this PIN. The school cannot see it. Avoid 123456 or 111111.' : 'Kayo lang ang nakakaalam ng PIN. Hindi ito nakikita ng school. Iwasan ang 123456 o 111111.'; ?></p>
+        <?php
+        // In the simulated flow the password is NOT chosen here -- it is created on the
+        // Enrollment Tracking page afterwards, which is what activates the portal.
+        $hidePin = $simulated && $c['channel'] !== 'reset' && !$existing && empty($v['existing']);
+        $pinKept = !$hidePin && $new_acc && $draft && !empty($draft['pin_hash']);
+        ?>
+        <?php if ($hidePin): ?>
+            <div class="pp-alert t-info" style="text-align:left"><i class="fas fa-circle-info me-1"></i><?php echo $en
+                ? 'Submitting finishes your guardian registration. You will then create your password on the Enrollment Tracking page, which activates the Parent Portal.'
+                : 'Sa pag-submit, tapos na ang pagpaparehistro. Pagkatapos ay gagawa kayo ng password sa Enrollment Tracking page, at doon ma-aactivate ang Parent Portal.'; ?></div>
+        <?php endif; ?>
+        <?php if ($pinKept): ?>
+            <div class="pp-alert t-ok" style="text-align:left"><i class="fas fa-circle-check me-1"></i><?php echo $en ? 'Your PIN is saved. Leave these blank to keep it, or type a new one.' : 'Naka-save na ang inyong PIN. Iwanang blangko para gamitin ito, o mag-type ng bago.'; ?></div>
+        <?php endif; ?>
+        <?php if (!$hidePin): ?>
+            <?php ppPinField('pin', '••••••', 'new-password', '', !$pinKept); ?>
+            <?php if ($c['channel'] === 'reset' || (!$existing && empty($v['existing']))): ?>
+                <div class="mt-2"><?php ppPinField('confirm_pin', $en ? 'Repeat PIN' : 'Ulitin ang PIN', 'new-password', '', !$pinKept); ?></div>
+                <p class="pp-note" style="text-align:left"><?php echo $en ? 'Only you know this PIN. The school cannot see it. Avoid 123456 or 111111.' : 'Kayo lang ang nakakaalam ng PIN. Hindi ito nakikita ng school. Iwasan ang 123456 o 111111.'; ?></p>
+            <?php endif; ?>
         <?php endif; ?>
         <button type="submit" class="btn btn-primary w-100 btn-go mt-3"><i class="fas fa-check me-1"></i> <?php echo $en ? 'Finish' : 'Tapusin'; ?></button>
     </form>
 <?php endif; ?>
 </div>
 <div class="divider"></div>
-<p class="foot mb-0"><?php echo $en ? 'Already have an account?' : 'May account na?'; ?> <a href="login.php"><?php echo ppT('login'); ?></a></p>
-<?php ppAuthEnd('<i class="fas fa-shield-halved me-1"></i>' . ($en ? 'The school never asks for money or an OTP.' : 'Hindi humihingi ng pera o OTP ang school.'));
+<p class="foot mb-0"><?php echo $en ? 'Already have an account?' : 'May account na?'; ?> <a href="../student_login.php?as=parent"><?php echo ppT('login'); ?></a></p>
+<?php ob_start(); ?>
+<script>
+// Typed details (never the PIN) are kept in this browser tab, so a reload or Back never empties the form.
+(function () {
+    window.addEventListener('pageshow', function (e) { if (e.persisted) location.reload(); });
+    var f = document.getElementById('suForm');
+    if (!f) return;
+    var key = f.getAttribute('data-key'), names = ['birth_date', 'mobile', 'email', 'full_name', 'relationship'], saved = {};
+    try { saved = JSON.parse(sessionStorage.getItem(key) || '{}') || {}; } catch (e) {}
+    names.forEach(function (n) {
+        var el = f.elements[n];
+        if (!el) return;
+        if (!el.value && saved[n]) el.value = saved[n];
+        el.addEventListener('input', save); el.addEventListener('change', save);
+    });
+    function save() {
+        var o = {};
+        names.forEach(function (n) { if (f.elements[n]) o[n] = f.elements[n].value; });
+        try { sessionStorage.setItem(key, JSON.stringify(o)); } catch (e) {}
+    }
+})();
+</script>
+<?php ppAuthEnd('<i class="fas fa-shield-halved me-1"></i>' . ($en ? 'The school never asks for money or an OTP.' : 'Hindi humihingi ng pera o OTP ang school.'), ob_get_clean());

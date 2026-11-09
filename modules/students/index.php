@@ -68,9 +68,35 @@ $all_sections = getRecords("
     ORDER BY CAST(REPLACE(s.grade_level, 'Grade ', '') AS UNSIGNED), s.section_name
 ");
 
-// Legacy 'HUMSS' sections belong to the ASSH Cluster (see normalizeStrandKey).
+// HUMSS is a retired label: its sections are no longer offered, so they are not
+// listed, counted or selectable here and are NOT re-labelled as ASSH sections
+// (that made old HUMSS sections show up under the ASSH Cluster). Nothing is
+// deleted -- the rows stay on file for historical records.
+$all_sections = array_values(array_filter($all_sections, function ($sec) {
+    return strtoupper(trim((string)($sec['strand'] ?? ''))) !== 'HUMSS';
+}));
+
+// Grade 11/12: one source of truth for what a section holds = the learner's
+// enrollment in the active school year that is assigned to that section
+// (Approved, or Pending = assigned and awaiting approval). The roster below and
+// Recent Enrollment Activity use the same rule, so the x/capacity badge matches.
+$shs_live_counts = [];
+foreach (getRecords("
+    SELECT e.section_id, COUNT(DISTINCT e.student_id) AS cnt
+    FROM enrollments e
+    JOIN students st ON st.student_id = e.student_id AND st.is_active = 1
+    WHERE e.school_year_id = ? AND e.section_id IS NOT NULL
+      AND e.enrollment_status IN ('Approved', 'Pending')
+    GROUP BY e.section_id
+", [$school_year_id]) as $lc) {
+    $shs_live_counts[(int)$lc['section_id']] = (int)$lc['cnt'];
+}
+
 foreach ($all_sections as &$sec) {
     $sec['strand'] = normalizeStrandKey($sec['strand']);
+    if ($sec['grade_level'] === 'Grade 11' || $sec['grade_level'] === 'Grade 12') {
+        $sec['current_enrollment'] = $shs_live_counts[(int)$sec['section_id']] ?? 0;
+    }
 }
 unset($sec);
 
@@ -121,8 +147,14 @@ if ($selected_section > 0) {
         FROM sections sec
         LEFT JOIN users adv ON sec.adviser_id = adv.user_id
         WHERE sec.section_id = ?
+          AND UPPER(COALESCE(sec.strand, '')) <> 'HUMSS'
     ", [$selected_section]);
     if ($section_info) {
+        // Grade 11/12 rosters also list learners assigned to the section whose
+        // enrollment is still Pending, so they match the section count and Recent
+        // Enrollment Activity. Grade 7-10 keep listing Approved enrollments only.
+        $roster_is_shs = in_array($section_info['grade_level'], ['Grade 11', 'Grade 12'], true);
+        $roster_statuses = $roster_is_shs ? "'Approved', 'Pending'" : "'Approved'";
         $section_students = getRecords("
             SELECT s.student_id, s.lrn, s.first_name, s.last_name, s.middle_name,
                    s.grade_level, s.strand, s.enrollment_status, s.email, s.contact_number,
@@ -131,7 +163,7 @@ if ($selected_section > 0) {
             JOIN enrollments e ON s.student_id = e.student_id
             WHERE e.section_id = ? 
             AND e.school_year_id = ?
-            AND e.enrollment_status = 'Approved'
+            AND e.enrollment_status IN ($roster_statuses)
             AND s.is_active = 1
             ORDER BY s.last_name, s.first_name
         ", [$selected_section, $school_year_id]);
@@ -196,6 +228,7 @@ if (!$selected_grade) {
     $recent_enrollments = getRecords("
         SELECT s.student_id, s.lrn, s.first_name, s.last_name, s.grade_level,
                e.enrollment_status, e.enrollment_date, sec.section_name,
+               sec.is_active AS sec_is_active, sec.strand AS sec_strand, s.is_active AS stu_is_active,
                ys.status AS year_status, ys.general_average AS year_average
         FROM enrollments e
         JOIN students s ON s.student_id = e.student_id
@@ -207,6 +240,20 @@ if (!$selected_grade) {
         ORDER BY e.enrollment_date DESC, e.enrollment_id DESC
         LIMIT 8
     ", [$school_year_id]);
+
+    // Grade 11/12: show a section here only if the Student Management roster
+    // for that section would list the learner (same rule as the roster/count:
+    // active learner, active non-HUMSS section, Approved or Pending enrollment).
+    foreach ($recent_enrollments as &$rec) {
+        if (in_array($rec['grade_level'], ['Grade 11', 'Grade 12'], true) && !empty($rec['section_name'])) {
+            $recognized = !empty($rec['stu_is_active'])
+                && !empty($rec['sec_is_active'])
+                && strtoupper(trim((string)$rec['sec_strand'])) !== 'HUMSS'
+                && in_array($rec['enrollment_status'], ['Approved', 'Pending'], true);
+            if (!$recognized) { $rec['section_name'] = null; }
+        }
+    }
+    unset($rec);
 
     $has_search_filters = ($search_q !== '' || $filter_grade !== '' || $filter_section_id > 0 || $filter_status !== '');
     if ($has_search_filters) {
@@ -764,7 +811,11 @@ include '../../includes/header.php';
                                     <?php if ($st === 'Approved' && !empty($r['year_status'])): ?>
                                         <span class="badge bg-success" title="<?php echo $r['year_average'] !== null ? 'General Average ' . htmlspecialchars(number_format((float)$r['year_average'], 2)) : 'Completed all 3 terms'; ?>"><i class="fas fa-graduation-cap me-1"></i><?php echo htmlspecialchars($r['year_status']); ?></span>
                                     <?php else: ?>
+                                    <?php if (in_array($st, ['Incomplete Requirements', 'Rejected'], true)): ?>
+                                    <span class="badge" style="background:#FFF4E5;color:#B45309;border:1px solid #F5C58A;" title="Requirements still to follow. The enrollment stays active."><i class="fas fa-file-circle-exclamation me-1"></i>Incomplete Requirements</span>
+                                    <?php else: ?>
                                     <span class="badge bg-<?php echo $st === 'Approved' ? 'success' : ($st === 'Pending' ? 'warning' : 'secondary'); ?>"><?php echo htmlspecialchars($st); ?></span>
+                                    <?php endif; ?>
                                     <?php endif; ?>
                                 </td>
                                 <td class="text-muted" style="white-space:nowrap;"><?php echo $r['enrollment_date'] ? date('M d, Y', strtotime($r['enrollment_date'])) : '-'; ?></td>

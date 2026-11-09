@@ -384,6 +384,19 @@ if (!$is_embedded) {
             </div>
         </div>
 
+        <?php
+        // Enrollment vs Requirements status (separate): Admin / Registrar can update a pending requirement here.
+        if (hasAnyRole(['Administrator', 'Registrar'])) {
+            require_once __DIR__ . '/../../includes/enrollment_helpers_online.php';
+            $rp_app = getRecord("SELECT application_id, application_type, status FROM online_applications WHERE student_id = ? AND status = 'Approved' AND deleted_at IS NULL ORDER BY application_id DESC LIMIT 1", [$student_id]);
+            if ($rp_app) {
+                $rp_csrf = generateCSRFToken();
+                $rp_student_id = $student_id;
+                include __DIR__ . '/../enrollment/_requirements_panel.php';
+            }
+        }
+        ?>
+
         <?php if ($can_see_history): ?>
         <!-- Enrollment History -->
         <div class="card shadow-sm rounded-3 mt-3 student-grades-card">

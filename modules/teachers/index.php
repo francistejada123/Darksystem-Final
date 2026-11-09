@@ -5,6 +5,8 @@
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/grading_helpers.php';
+require_once __DIR__ . '/../../includes/teacher_department.php';
+require_once __DIR__ . '/../../includes/fixed_timetable.php';
 
 if (!defined('BASE_URL')) {
     define('BASE_URL', '/watdahel/');
@@ -59,8 +61,8 @@ $selected_term = gh_getCurrentTerm($school_year_id) ?? '';
 
 $all_sections = getRecords("
     SELECT section_id, section_name, grade_level, strand, capacity, current_enrollment
-    FROM sections 
-    WHERE is_active = 1 
+    FROM sections
+    WHERE is_active = 1
     ORDER BY grade_level, section_name
 ");
 
@@ -102,18 +104,18 @@ if ($selected_section > 0) {
             $current_adviser = getRecord("SELECT user_id, first_name, last_name FROM users WHERE user_id = ?", [$section_info['adviser_id']]);
         }
 
-        $sql = "SELECT s.*, 
+        $sql = "SELECT s.*,
                        ts.ts_id,
                        ts.teacher_id,
                        u.first_name as teacher_first,
                        u.last_name as teacher_last,
                        u.specialization
                 FROM subjects s
-                LEFT JOIN teacher_subjects ts ON s.subject_code = ts.subject_code 
-                    AND ts.section_id = ? 
+                LEFT JOIN teacher_subjects ts ON s.subject_code = ts.subject_code
+                    AND ts.section_id = ?
                     AND ts.school_year_id = ?
                 LEFT JOIN users u ON ts.teacher_id = u.user_id
-                WHERE s.is_active = 1 
+                WHERE s.is_active = 1
                 AND s.grade_level = ?";
         $params = [$selected_section, $school_year_id, $section_info['grade_level']];
 
@@ -139,6 +141,23 @@ if ($selected_section > 0) {
 
         $sql .= " ORDER BY s.subject_name";
         $section_subjects = getRecords($sql, $params);
+
+        // Class schedule (day/s + time) of each assignment in this section, by ts_id.
+        $section_schedule_map = [];
+        // Subject codes in list order -- the fixed timetable assigns alternate
+        // days/periods by this exact order, so display and auto-attach agree.
+        $ft_codes = array_column($section_subjects ?? [], 'subject_code');
+        foreach (getRecords(
+            "SELECT ts.ts_id, tcs.day_of_week, TIME_FORMAT(tcs.start_time, '%H:%i') AS start_time, TIME_FORMAT(tcs.end_time, '%H:%i') AS end_time
+               FROM teacher_subjects ts
+               JOIN teacher_class_schedule tcs ON tcs.teacher_id = ts.teacher_id AND tcs.subject_code = ts.subject_code
+                AND tcs.section_id = ts.section_id AND tcs.school_year_id = ts.school_year_id AND tcs.is_active = 1
+              WHERE ts.section_id = ? AND ts.school_year_id = ?
+              ORDER BY tcs.day_of_week, tcs.start_time",
+            [$selected_section, $school_year_id]
+        ) ?: [] as $sr) {
+            $section_schedule_map[(int) $sr['ts_id']][] = $sr;
+        }
     }
 }
 
@@ -151,13 +170,13 @@ if ($selected_grade) {
     if (!empty($grade_section_ids)) {
         $placeholders = implode(',', array_fill(0, count($grade_section_ids), '?'));
         $teachers = getRecords("
-            SELECT DISTINCT u.user_id, u.username, u.email, u.first_name, u.last_name, 
+            SELECT DISTINCT u.user_id, u.username, u.email, u.first_name, u.last_name,
                    u.specialization, u.is_active, u.prc_license_number, u.years_experience,
                    u.qualification_status, r.role_name
             FROM users u
             JOIN teacher_subjects ts ON u.user_id = ts.teacher_id
             JOIN roles r ON u.role_id = r.role_id
-            WHERE u.role_id = 3 
+            WHERE u.role_id = 3
             AND u.is_active = 1
             AND ts.section_id IN ($placeholders)
             AND ts.school_year_id = ?
@@ -244,11 +263,16 @@ function spec_badge_color($specialization, $palette) {
 }
 
 $all_teachers = getRecords("
-    SELECT user_id, first_name, last_name, specialization 
-    FROM users 
-    WHERE role_id = 3 AND is_active = 1 
+    SELECT user_id, first_name, last_name, specialization, department_level
+    FROM users
+    WHERE role_id = 3 AND is_active = 1
     ORDER BY last_name, first_name
 ");
+
+// Existing assignments that fall outside the teacher's own Department / Level.
+// These are NEVER removed here -- they are surfaced so an Admin can correct
+// them. Only the active school year is inspected.
+$department_conflicts = tdConflictingAssignments();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'assign_subject') {
     if (!verifyCSRFToken($_POST['csrf_token'] ?? '')) {
@@ -267,13 +291,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         if (empty($teacher_id) || empty($subject_codes) || empty($section_id)) {
             $_SESSION['error_message'] = 'Please select a teacher and at least one subject.';
         } else {
-            $teacher = getRecord("SELECT first_name, last_name FROM users WHERE user_id = ?", [$teacher_id]);
-            $sec = getRecord("SELECT section_name FROM sections WHERE section_id = ?", [$section_id]);
+            $teacher = getRecord("SELECT first_name, last_name, department_level FROM users WHERE user_id = ?", [$teacher_id]);
+            $sec = getRecord("SELECT section_name, grade_level FROM sections WHERE section_id = ?", [$section_id]);
+
+            // Department / Level saved at registration is the source of truth.
+            // A JHS teacher may only take Grade 7-10, an SHS teacher only
+            // Grade 11-12 -- enforced here as well as in the dropdown below,
+            // so a hand-edited POST cannot assign across departments.
+            $dept_check = tdCheckAssignment($teacher['department_level'] ?? '', $sec['grade_level'] ?? '');
+            if (!$dept_check['ok']) {
+                $_SESSION['error_message'] = $dept_check['message'];
+            }
 
             $assigned_names = [];
             $skipped = [];
+            $auto_notes = [];
 
-            foreach ($subject_codes as $subject_code) {
+            foreach ($dept_check['ok'] ? $subject_codes : [] as $subject_code) {
                 // One teacher per subject per section. This used to check for
                 // the SAME teacher only, so a second teacher could be added to
                 // a subject that already had one — which then showed the
@@ -290,6 +324,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     continue;
                 }
 
+                // JHS Grade 7-10 only: auto-attach the fixed timetable slot
+                // (alternate days, 45-min period inside the shift window).
+                // Occupied = day/time overlap (never subject name). When the
+                // slot is taken, the teacher is still assigned but the schedule
+                // is left for the Schedule button. SHS keeps existing behaviour.
+                $auto_slot = (in_array($sec['grade_level'] ?? '', ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'], true))
+                    ? ftSlotFor($ft_codes ?? [], $subject_code, $sec['grade_level']) : null;
+                $auto_blocked = '';
+                if ($auto_slot) {
+                    foreach ($auto_slot['days'] as $auto_day) {
+                        $auto_tconf = getRecord(
+                            "SELECT sub.subject_name, sec2.section_name, sec2.grade_level
+                             FROM teacher_class_schedule tcs
+                             JOIN subjects sub ON sub.subject_code = tcs.subject_code
+                             JOIN sections sec2 ON sec2.section_id = tcs.section_id
+                             WHERE tcs.school_year_id = ? AND tcs.day_of_week = ? AND tcs.is_active = 1 AND tcs.teacher_id = ?
+                             AND NOT (tcs.subject_code = ? AND tcs.section_id = ?)
+                             AND ? < tcs.end_time AND ? > tcs.start_time LIMIT 1",
+                            [$school_year_id, $auto_day, $teacher_id, $subject_code, $section_id, $auto_slot['start'], $auto_slot['end']]
+                        );
+                        if ($auto_tconf) {
+                            $auto_blocked = 'teacher has ' . $auto_tconf['subject_name'] . ' (' . $auto_tconf['grade_level'] . '-' . $auto_tconf['section_name'] . ') at that time';
+                            break;
+                        }
+                        $auto_sconf = getRecord(
+                            "SELECT sub.subject_name FROM teacher_class_schedule tcs
+                             JOIN subjects sub ON sub.subject_code = tcs.subject_code
+                             WHERE tcs.school_year_id = ? AND tcs.day_of_week = ? AND tcs.is_active = 1 AND tcs.section_id = ?
+                             AND NOT (tcs.subject_code = ? AND tcs.section_id = ?)
+                             AND ? < tcs.end_time AND ? > tcs.start_time LIMIT 1",
+                            [$school_year_id, $auto_day, $section_id, $subject_code, $section_id, $auto_slot['start'], $auto_slot['end']]
+                        );
+                        if ($auto_sconf) {
+                            $auto_blocked = 'section already has ' . $auto_sconf['subject_name'] . ' at that time';
+                            break;
+                        }
+                    }
+                }
+
                 $result = executeQuery(
                     "INSERT INTO teacher_subjects (teacher_id, subject_code, section_id, school_year_id)
                      VALUES (?, ?, ?, ?)",
@@ -299,6 +372,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 if ($result) {
                     $subj = getRecord("SELECT subject_name FROM subjects WHERE subject_code = ?", [$subject_code]);
                     $assigned_names[] = $subj['subject_name'] ?? $subject_code;
+                    if ($auto_slot && $auto_blocked === '') {
+                        executeQuery(
+                            "DELETE FROM teacher_class_schedule WHERE teacher_id = ? AND subject_code = ? AND section_id = ? AND school_year_id = ?",
+                            [$teacher_id, $subject_code, $section_id, $school_year_id]
+                        );
+                        foreach ($auto_slot['days'] as $auto_day) {
+                            $auto_ok = executeQuery(
+                                "INSERT INTO teacher_class_schedule (teacher_id, subject_code, section_id, school_year_id, day_of_week, start_time, end_time, shift_type, shift, is_active)
+                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
+                                [$teacher_id, $subject_code, $section_id, $school_year_id, $auto_day, $auto_slot['start'], $auto_slot['end'], $auto_slot['shift_type'], $auto_slot['shift']]
+                            );
+                            if (!$auto_ok) { $auto_blocked = 'could not save the fixed slot'; break; }
+                        }
+                        if ($auto_blocked === '') $assigned_names[count($assigned_names) - 1] .= ' (' . $auto_slot['summary'] . ')';
+                    }
+                    if ($auto_slot && $auto_blocked !== '') {
+                        $auto_notes[] = $subject_code . ' (no auto-schedule: ' . $auto_blocked . ')';
+                    }
                 } else {
                     $skipped[] = $subject_code . ' (failed to save)';
                 }
@@ -331,8 +422,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             }
 
             if (!empty($skipped)) {
-                $_SESSION['error_message'] = 'Skipped (already handled): ' . implode(', ', $skipped)
-                    . '. Unassign the current teacher first to change them.';
+                $_SESSION['error_message'] = 'This subject is already assigned to another teacher for this section and school year: '
+                    . implode(', ', $skipped) . '. Unassign the current teacher first to change them.';
+            }
+            if (!empty($auto_notes)) {
+                $_SESSION['success_message'] = trim(($_SESSION['success_message'] ?? '') . ' Note: ' . implode('; ', $auto_notes) . ' — set via Schedule.');
             }
         }
     }
@@ -506,20 +600,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $td_term = (string) ($_POST['term'] ?? '');
     $td_start = trim((string) ($_POST['start'] ?? ''));
     $td_end = trim((string) ($_POST['end'] ?? ''));
+    // Optional Start/End Time (temporary, for testing). Blank = whole day.
+    $td_start_time_raw = trim((string) ($_POST['start_time'] ?? ''));
+    $td_end_time_raw = trim((string) ($_POST['end_time'] ?? ''));
+    $td_start_time = gh_normalizeTermTime($td_start_time_raw);
+    $td_end_time = gh_normalizeTermTime($td_end_time_raw);
     if (!in_array($td_term, $valid_terms, true)) $td_reply(false, 'Unknown term.');
     if (!DateTime::createFromFormat('Y-m-d', $td_start) || !DateTime::createFromFormat('Y-m-d', $td_end)) $td_reply(false, 'Please enter a valid start and end date.');
-    if ($td_start > $td_end) $td_reply(false, 'Start date must be on or before the end date.');
+    if (($td_start_time_raw !== '' && $td_start_time === null) || ($td_end_time_raw !== '' && $td_end_time === null)) $td_reply(false, 'Please enter a valid time.');
+    $td_win = ['start_date' => $td_start, 'start_time' => $td_start_time, 'end_date' => $td_end, 'end_time' => $td_end_time];
+    if (gh_termWindowStartTs($td_win) > gh_termWindowEndTs($td_win)) $td_reply(false, 'Start must be on or before the end (date and time).');
     foreach ($valid_terms as $other) {
         if ($other === $td_term) continue;
         $ow = gh_getTermWindow($school_year_id, $other);
-        if ($ow && !empty($ow['start_date']) && !empty($ow['end_date']) && $td_start <= $ow['end_date'] && $ow['start_date'] <= $td_end) {
-            $td_reply(false, 'Overlaps with ' . $other . ' (' . date('M j, Y', strtotime($ow['start_date'])) . ' – ' . date('M j, Y', strtotime($ow['end_date'])) . '). Term dates cannot overlap.');
+        if ($ow && !empty($ow['start_date']) && !empty($ow['end_date'])
+            && gh_termWindowStartTs($td_win) <= gh_termWindowEndTs($ow) && gh_termWindowStartTs($ow) <= gh_termWindowEndTs($td_win)) {
+            $td_reply(false, 'Overlaps with ' . $other . ' (' . gh_termWindowRangeText($ow, '', 'M j, Y', 'M j, Y') . '). Term dates cannot overlap.');
         }
     }
-    if (!gh_setTermWindow($school_year_id, $td_term, $td_start, $td_end, $_SESSION['user_id'])) {
+    if (!gh_setTermWindow($school_year_id, $td_term, $td_start, $td_end, $_SESSION['user_id'], $td_start_time, $td_end_time)) {
         $td_reply(false, 'Could not save: ' . ($GLOBALS['gh_term_window_error'] ?: 'database error') . '');
     }
-    logActivity($_SESSION['user_id'], 'teachers', 'Updated term dates', "Auto-saved $td_term: $td_start to $td_end (" . ($active_sy['sy_name'] ?? $school_year_id) . ')');
+    $td_log_range = gh_formatTermPoint($td_start, $td_start_time, 'Y-m-d') . ' to ' . gh_formatTermPoint($td_end, $td_end_time, 'Y-m-d');
+    logActivity($_SESSION['user_id'], 'teachers', 'Updated term dates', "Auto-saved $td_term: $td_log_range (" . ($active_sy['sy_name'] ?? $school_year_id) . ')');
     $td_status = gh_termWindowStatus(gh_getTermWindow($school_year_id, $td_term));
     $td_reply(true, 'Saved', ['term' => $td_term, 'start' => $td_start, 'end' => $td_end, 'status' => $td_status['label']]);
 }
@@ -532,6 +635,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     } else {
         $starts = $_POST['term_start'] ?? [];
         $ends = $_POST['term_end'] ?? [];
+        $start_times = $_POST['term_start_time'] ?? [];
+        $end_times = $_POST['term_end_time'] ?? [];
         $errors = [];
         $to_save = [];
 
@@ -553,11 +658,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $errors[] = "$t: invalid date.";
                 continue;
             }
-            if ($start > $end) {
-                $errors[] = "$t: start date must be on or before the end date.";
+            // Optional Start/End Time (temporary, for testing). Blank = whole day.
+            $st_raw = trim($start_times[$t] ?? '');
+            $et_raw = trim($end_times[$t] ?? '');
+            $st = gh_normalizeTermTime($st_raw);
+            $et = gh_normalizeTermTime($et_raw);
+            if (($st_raw !== '' && $st === null) || ($et_raw !== '' && $et === null)) {
+                $errors[] = "$t: invalid time.";
                 continue;
             }
-            $to_save[$t] = ['start' => $start, 'end' => $end];
+            $win = ['start_date' => $start, 'start_time' => $st, 'end_date' => $end, 'end_time' => $et];
+            if (gh_termWindowStartTs($win) > gh_termWindowEndTs($win)) {
+                $errors[] = "$t: start must be on or before the end (date and time).";
+                continue;
+            }
+            $to_save[$t] = ['start' => $start, 'end' => $end, 'start_time' => $st, 'end_time' => $et,
+                'start_ts' => gh_termWindowStartTs($win), 'end_ts' => gh_termWindowEndTs($win)];
         }
 
         if (empty($errors) && empty($to_save)) {
@@ -571,7 +687,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $ranges = array_values($to_save);
             for ($i = 0; $i < count($ranges); $i++) {
                 for ($j = $i + 1; $j < count($ranges); $j++) {
-                    if ($ranges[$i]['start'] <= $ranges[$j]['end'] && $ranges[$j]['start'] <= $ranges[$i]['end']) {
+                    if ($ranges[$i]['start_ts'] <= $ranges[$j]['end_ts'] && $ranges[$j]['start_ts'] <= $ranges[$i]['end_ts']) {
                         $errors[] = 'Term date ranges cannot overlap.';
                         break 2;
                     }
@@ -586,7 +702,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             // uses, so a date set from either place shows up in both.
             $save_failed = '';
             foreach ($to_save as $t => $range) {
-                if (!gh_setTermWindow($school_year_id, $t, $range['start'], $range['end'], $_SESSION['user_id'])) {
+                if (!gh_setTermWindow($school_year_id, $t, $range['start'], $range['end'], $_SESSION['user_id'], $range['start_time'], $range['end_time'])) {
                     $save_failed = "$t: " . ($GLOBALS['gh_term_window_error'] ?: 'database error');
                     break;
                 }
@@ -1544,6 +1660,27 @@ include '../../includes/header.php';
                 </div>
                 <?php unset($_SESSION['success_message']); ?>
             <?php endif; ?>
+            <?php if (!empty($department_conflicts)): ?>
+                <div style="padding: 14px 20px; background: #FFF4E5; color: #B45309; font-size: 14.5px; border-bottom: 1px solid var(--border-soft);">
+                    <i class="fas fa-triangle-exclamation" style="margin-right: 4px;"></i>
+                    <strong>Department / Level mismatches:</strong>
+                    <?php echo count($department_conflicts); ?> existing assignment<?php echo count($department_conflicts) === 1 ? '' : 's'; ?>
+                    in the current school year sits outside the assigned teacher's registered Department / Level.
+                    Nothing has been deleted &mdash; please correct them below (unassign the subject, or change the
+                    teacher's Department / Level on their Edit page).
+                    <ul style="margin: 8px 0 0; padding-left: 20px;">
+                        <?php foreach ($department_conflicts as $dc): ?>
+                            <li>
+                                <strong><?php echo htmlspecialchars($dc['teacher_name']); ?></strong>
+                                (<?php echo htmlspecialchars($dc['department']); ?>) &rarr;
+                                <?php echo htmlspecialchars($dc['subject_name']); ?> &middot;
+                                <?php echo htmlspecialchars($dc['section_name']); ?>
+                                (<?php echo htmlspecialchars($dc['grade_level']); ?>)
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+            <?php endif; ?>
             <?php if (isset($_SESSION['error_message'])): ?>
                 <div
                     style="padding: 12px 20px; background: #FDEEEE; color: #C94A4A; font-size: 14.5px; border-bottom: 1px solid var(--border-soft);">
@@ -1606,7 +1743,7 @@ include '../../includes/header.php';
                             <i class="fas fa-calendar-check"></i> Now showing: <?php echo htmlspecialchars($selected_term); ?>
                         </span>
                         <span style="font-size: 13.5px; color: var(--text-muted);">
-                            (<?php echo formatDate($term_windows_by_term[$selected_term]['start_date']); ?> &ndash; <?php echo formatDate($term_windows_by_term[$selected_term]['end_date']); ?>) &mdash; switches automatically
+                            (<?php echo str_replace(' – ', ' &ndash; ', htmlspecialchars(gh_termWindowRangeText($term_windows_by_term[$selected_term], ''))); ?>) &mdash; switches automatically
                         </span>
                     <?php else: ?>
                         <span style="display:inline-flex; align-items:center; gap:6px; padding: 6px 14px; border-radius: 8px; background:#FDECEA; color:#B3261E; font-weight:600; font-size: 14.5px;">
@@ -1648,6 +1785,18 @@ include '../../includes/header.php';
                                             <i class="fas <?php echo $has_teacher ? 'fa-user-check' : 'fa-user-times'; ?>"></i>
                                             <?php echo htmlspecialchars($teacher_name); ?>
                                         </span>
+                                        <?php $saved_schedule = $has_teacher ? ($section_schedule_map[(int) $subject['ts_id']] ?? []) : []; ?>
+                                        <?php $fixed_slot = (!$saved_schedule && in_array($section_info['grade_level'] ?? '', ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'], true)) ? ftSlotFor($ft_codes ?? [], $subject['subject_code'], $section_info['grade_level']) : null; ?>
+                                        <?php if ($saved_schedule): $tm_days = [1 => 'Mon', 2 => 'Tue', 3 => 'Wed', 4 => 'Thu', 5 => 'Fri', 6 => 'Sat', 7 => 'Sun']; ?>
+                                            <div style="font-size:13.5px;color:var(--text-muted);margin-top:4px;">
+                                                <i class="fas fa-clock me-1"></i><?php echo htmlspecialchars(implode('-', array_map(function ($r) use ($tm_days) { return $tm_days[(int) $r['day_of_week']] ?? ''; }, $saved_schedule))); ?>
+                                                &middot; <?php echo date('g:i A', strtotime($saved_schedule[0]['start_time'])); ?>&ndash;<?php echo date('g:i A', strtotime($saved_schedule[0]['end_time'])); ?>
+                                            </div>
+                                        <?php elseif ($fixed_slot): ?>
+                                            <div style="font-size:13.5px;color:var(--text-muted);margin-top:4px;"><i class="fas fa-clock me-1"></i><?php echo htmlspecialchars($fixed_slot['summary']); ?></div>
+                                        <?php elseif ($has_teacher): ?>
+                                            <div style="font-size:13.5px;color:var(--text-muted);margin-top:4px;"><i class="fas fa-clock me-1"></i>No class schedule yet</div>
+                                        <?php endif; ?>
                                     </td>
                                     <td>
                                         <?php if ($has_teacher && $specialization != 'N/A'): ?>
@@ -1671,6 +1820,19 @@ include '../../includes/header.php';
                                                     . $subject['subject_name'] . ' in ' . $section_info['section_name']
                                                     . '? The subject will have no teacher until you assign one.';
                                                 ?>
+                                                <button type="button" class="btn-assign-sm js-class-schedule"
+                                                    data-bs-toggle="modal" data-bs-target="#classScheduleModal"
+                                                    data-ts-id="<?php echo (int) $subject['ts_id']; ?>"
+                                                    data-teacher-id="<?php echo (int) $subject['teacher_id']; ?>"
+                                                    data-teacher-name="<?php echo htmlspecialchars($teacher_name); ?>"
+                                                    data-subject-code="<?php echo htmlspecialchars($subject['subject_code']); ?>"
+                                                    data-subject-name="<?php echo htmlspecialchars($subject['subject_name']); ?>"
+                                                    data-section-id="<?php echo (int) $selected_section; ?>"
+                                                    data-grade-level="<?php echo htmlspecialchars($section_info['grade_level']); ?>"
+                                                    data-schedule="<?php echo htmlspecialchars(json_encode($saved_schedule)); ?>"
+                                                    aria-label="Set the class schedule of <?php echo htmlspecialchars($subject['subject_name']); ?>">
+                                                    <i class="fas fa-calendar-alt"></i> Schedule
+                                                </button>
                                                 <form method="POST" style="display:inline;">
                                                     <input type="hidden" name="csrf_token" value="<?php echo generateCSRFToken(); ?>">
                                                     <input type="hidden" name="action" value="unassign_subject">
@@ -1798,15 +1960,30 @@ include '../../includes/header.php';
                         <?php $counter = ($page - 1) * $per_page + 1; ?>
                         <?php foreach ($teachers_page as $teacher): ?>
                             <?php
-                            $assigned_sections = getRecords("
-                                SELECT DISTINCT s.section_name, s.grade_level, s.strand
-                                FROM teacher_subjects ts
-                                JOIN sections s ON ts.section_id = s.section_id
-                                WHERE ts.teacher_id = ?
-                                AND ts.school_year_id = ?
-                                AND s.grade_level = ?
-                                ORDER BY s.section_name
-                            ", [$teacher['user_id'], $school_year_id, $selected_grade ?: 'Grade 7']);
+                            // All Teachers view (no grade selected): show ALL of the teacher's
+                            // sections for the active SY. Previously this fell back to
+                            // 'Grade 7', so every G8-G12-only teacher wrongly showed
+                            // "No sections". Grade-filtered views keep the grade scope.
+                            if (!empty($selected_grade)) {
+                                $assigned_sections = getRecords("
+                                    SELECT DISTINCT s.section_name, s.grade_level, s.strand
+                                    FROM teacher_subjects ts
+                                    JOIN sections s ON ts.section_id = s.section_id
+                                    WHERE ts.teacher_id = ?
+                                    AND ts.school_year_id = ?
+                                    AND s.grade_level = ?
+                                    ORDER BY s.section_name
+                                ", [$teacher['user_id'], $school_year_id, $selected_grade]);
+                            } else {
+                                $assigned_sections = getRecords("
+                                    SELECT DISTINCT s.section_name, s.grade_level, s.strand
+                                    FROM teacher_subjects ts
+                                    JOIN sections s ON ts.section_id = s.section_id
+                                    WHERE ts.teacher_id = ?
+                                    AND ts.school_year_id = ?
+                                    ORDER BY s.grade_level, s.section_name
+                                ", [$teacher['user_id'], $school_year_id]);
+                            }
 
                             $section_names = [];
                             foreach ($assigned_sections as $sec) {
@@ -1918,6 +2095,10 @@ include '../../includes/header.php';
                         <i class="fas fa-bolt" style="color:#0F7B4E;"></i> Dates save automatically as soon as a term's start and end are both filled in,
                         and they show up right away in Encode Grades and Manage Assessment Items for teachers.
                     </p>
+                    <p style="font-size: 13.5px; color: var(--text-muted); margin-top: -12px; margin-bottom: 20px;">
+                        <i class="fas fa-clock" style="color:#B54708;"></i> Time is optional (temporary, for testing). Leave it blank and the term
+                        runs the whole day as before; set an End Time and the term ends at exactly that time on the End Date.
+                    </p>
                     <?php foreach ($valid_terms as $t): $ts = $term_windows_by_term[$t] ?? null; ?>
                         <div style="margin-bottom: 18px;">
                             <label style="display:block; font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 8px;"><?php echo htmlspecialchars($t); ?></label>
@@ -1925,6 +2106,13 @@ include '../../includes/header.php';
                                 <input type="date" name="term_start[<?php echo htmlspecialchars($t); ?>]" data-term="<?php echo htmlspecialchars($t); ?>" class="form-control td-date" style="font-size: 15px; max-width: 170px;" value="<?php echo htmlspecialchars($ts['start_date'] ?? ''); ?>">
                                 <span style="color: var(--text-muted);">to</span>
                                 <input type="date" name="term_end[<?php echo htmlspecialchars($t); ?>]" data-term="<?php echo htmlspecialchars($t); ?>" class="form-control td-date" style="font-size: 15px; max-width: 170px;" value="<?php echo htmlspecialchars($ts['end_date'] ?? ''); ?>">
+                            </div>
+                            <?php /* TEMPORARY (testing): optional Start/End Time. Blank = whole day (old behavior). */ ?>
+                            <div style="display:flex; gap: 10px; align-items:center; flex-wrap: wrap; margin-top: 6px;">
+                                <input type="time" name="term_start_time[<?php echo htmlspecialchars($t); ?>]" data-term="<?php echo htmlspecialchars($t); ?>" class="form-control td-date" style="font-size: 14px; max-width: 170px;" title="Optional start time" value="<?php echo htmlspecialchars(!empty($ts['start_time']) ? substr($ts['start_time'], 0, 5) : ''); ?>">
+                                <span style="color: var(--text-muted);">to</span>
+                                <input type="time" name="term_end_time[<?php echo htmlspecialchars($t); ?>]" data-term="<?php echo htmlspecialchars($t); ?>" class="form-control td-date" style="font-size: 14px; max-width: 170px;" title="Optional end time" value="<?php echo htmlspecialchars(!empty($ts['end_time']) ? substr($ts['end_time'], 0, 5) : ''); ?>">
+                                <span style="font-size: 12.5px; color: var(--text-muted);">Time (optional)</span>
                             </div>
                             <div class="td-status" data-term="<?php echo htmlspecialchars($t); ?>" role="status" aria-live="polite"></div>
                         </div>
@@ -1963,9 +2151,12 @@ include '../../includes/header.php';
     function autosave(term) {
         var s = modal.querySelector('input[name="term_start[' + term + ']"]').value;
         var e = modal.querySelector('input[name="term_end[' + term + ']"]').value;
+        var stEl = modal.querySelector('input[name="term_start_time[' + term + ']"]');
+        var etEl = modal.querySelector('input[name="term_end_time[' + term + ']"]');
+        var st = stEl ? stEl.value : '', et = etEl ? etEl.value : '';
         if (!s && !e) { setStatus(term, '', ''); return; }
         if (!s || !e) { setStatus(term, 'hint', 'Pick both the start and end date to save this term.'); return; }
-        if (s > e) { setStatus(term, 'err', 'Start date must be on or before the end date.'); return; }
+        if ((s + ' ' + (st || '00:00')) > (e + ' ' + (et || '23:59'))) { setStatus(term, 'err', 'Start must be on or before the end (date and time).'); return; }
         var id = seq[term] = (seq[term] || 0) + 1;
         setStatus(term, 'busy', 'Saving\u2026');
         var fd = new FormData();
@@ -1974,6 +2165,8 @@ include '../../includes/header.php';
         fd.append('term', term);
         fd.append('start', s);
         fd.append('end', e);
+        fd.append('start_time', st);
+        fd.append('end_time', et);
         fetch(window.location.href.split('#')[0], { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
             .then(function (r) { return r.json(); })
             .then(function (j) {
@@ -2019,7 +2212,16 @@ include '../../includes/header.php';
                             style="font-size: 15px; padding: 10px 12px;" required>
                             <option value="">-- Select Teacher --</option>
                             <?php foreach ($all_teachers as $teacher): ?>
-                                <option value="<?php echo $teacher['user_id']; ?>">
+                                <?php
+                                // Teachers whose Department / Level does not
+                                // match this section's grade level are hidden:
+                                // JHS (Grade 7-10) teachers never appear on a
+                                // Grade 11-12 section and vice versa.
+                                $t_dept = tdNormalize($teacher['department_level'] ?? '');
+                                if (!tdGradeAllowed($t_dept, $selected_grade)) continue;
+                                ?>
+                                <option value="<?php echo $teacher['user_id']; ?>"
+                                        data-dept="<?php echo htmlspecialchars($t_dept); ?>">
                                     <?php echo htmlspecialchars($teacher['last_name'] . ', ' . $teacher['first_name']); ?>
                                     <?php if (!empty($teacher['specialization'])): ?>
                                         (<?php echo htmlspecialchars($teacher['specialization']); ?>)
@@ -2027,6 +2229,11 @@ include '../../includes/header.php';
                                 </option>
                             <?php endforeach; ?>
                         </select>
+                        <small class="text-muted">
+                            Only teachers registered under
+                            <?php echo htmlspecialchars($selected_grade === 'Grade 11' || $selected_grade === 'Grade 12' ? 'SHS' : 'JHS'); ?>
+                            are listed for <?php echo htmlspecialchars($selected_grade ?: 'this grade level'); ?>.
+                        </small>
                     </div>
 
                     <?php
@@ -2167,5 +2374,268 @@ include '../../includes/header.php';
         refresh();
     })();
 </script>
+
+<?php if ($selected_section > 0 && $section_info): ?>
+<!-- Class Schedule (day/s + time) of an existing assignment. Teacher assignment
+     and schedules are managed ONLY here, in Teacher Management. Saved through
+     ../subjects/assignment_api.php (action=edit, same teacher), which checks
+     the shift window and teacher / section time conflicts. -->
+<style>
+    #classScheduleModal .slot-picker { margin-bottom: 12px; }
+    #classScheduleModal .slot-picker-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px; margin-bottom: 6px; }
+    #classScheduleModal .slot-picker-title { font-size: 14.5px; font-weight: 600; color: var(--text); }
+    #classScheduleModal .slot-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12.5px; color: var(--text-muted); }
+    #classScheduleModal .slot-legend span::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; border: 1px solid var(--border); background: #fff; }
+    #classScheduleModal .slot-legend .lg-free::before { border-color: #9AD5BC; background: var(--success-tint); }
+    #classScheduleModal .slot-legend .lg-sel::before { border-color: var(--primary); background: var(--primary); }
+    #classScheduleModal .slot-legend .lg-occ::before { border-color: #E4B4B4; background: var(--danger-tint); }
+    #classScheduleModal .slot-view { display: inline-flex; gap: 4px; margin-bottom: 6px; }
+    #classScheduleModal .slot-view button { font-size: 13.5px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--border); background: #fff; color: var(--text-muted); }
+    #classScheduleModal .slot-view button.active { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); font-weight: 600; }
+    #classScheduleModal .slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+    #classScheduleModal .slot-btn { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; text-align: left; padding: 6px 9px; line-height: 1.25;
+        border: 1px solid #9AD5BC; background: var(--success-tint); color: var(--text); border-radius: var(--radius-sm); cursor: pointer; transition: box-shadow .12s, background .12s; }
+    #classScheduleModal .slot-btn .slot-time { font-size: 14px; font-weight: 600; }
+    #classScheduleModal .slot-btn .slot-state { font-size: 12.5px; color: var(--success); font-weight: 500; }
+    #classScheduleModal .slot-btn:hover { box-shadow: 0 0 0 2px rgba(91,95,239,0.18); }
+    #classScheduleModal .slot-btn.is-selected { background: var(--primary); border-color: var(--primary); color: #fff; }
+    #classScheduleModal .slot-btn.is-selected .slot-state { color: #fff; }
+    #classScheduleModal .slot-btn.is-occupied, #classScheduleModal .slot-btn.is-section { background: var(--danger-tint); border-color: #E4B4B4; color: var(--text-muted); cursor: not-allowed; }
+    #classScheduleModal .slot-btn.is-occupied .slot-time, #classScheduleModal .slot-btn.is-section .slot-time { text-decoration: line-through; font-weight: 500; }
+    #classScheduleModal .slot-btn.is-occupied .slot-state, #classScheduleModal .slot-btn.is-section .slot-state { color: var(--danger); font-weight: 600; }
+    #classScheduleModal .slot-btn.is-section { background: var(--warning-tint); border-color: #E8CF9B; }
+    #classScheduleModal .slot-btn.is-section .slot-state { color: var(--warning); }
+    #classScheduleModal .slot-btn.is-break, #classScheduleModal .slot-btn.is-idle { background: var(--surface-muted); border-color: var(--border); color: var(--text-muted); cursor: not-allowed; }
+    #classScheduleModal .slot-btn.is-break .slot-state, #classScheduleModal .slot-btn.is-idle .slot-state { color: var(--text-muted); font-weight: 400; }
+    #classScheduleModal .slot-btn.is-occupied:hover, #classScheduleModal .slot-btn.is-section:hover, #classScheduleModal .slot-btn.is-break:hover, #classScheduleModal .slot-btn.is-idle:hover { box-shadow: none; }
+    #classScheduleModal .slot-msg { font-size: 13.5px; color: var(--text-muted); margin-top: 6px; }
+    #classScheduleModal .slot-msg.is-warn { color: var(--danger); }
+
+</style>
+<div class="modal fade" id="classScheduleModal" tabindex="-1" aria-labelledby="classScheduleLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form id="classScheduleForm">
+                <input type="hidden" name="csrf_token" value="<?php echo generateCSRFToken(); ?>">
+                <input type="hidden" id="cs_ts_id" value="0">
+                <input type="hidden" id="cs_teacher_id" value="">
+                <input type="hidden" id="cs_subject_code" value="">
+                <input type="hidden" id="cs_section_id" value="">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="classScheduleLabel"><i class="fas fa-calendar-alt me-2"></i>Class Schedule</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3"><strong id="cs_subject_display"></strong><br><span class="text-muted" id="cs_teacher_display"></span></p>
+                    <label class="form-label mb-1">Select Day/s</label>
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        <?php foreach ([1 => 'Monday', 2 => 'Tuesday', 3 => 'Wednesday', 4 => 'Thursday', 5 => 'Friday'] as $dn => $dl): ?>
+                            <label class="btn btn-outline-secondary btn-sm"><input type="checkbox" class="form-check-input me-1 cs-day" value="<?php echo $dn; ?>"> <?php echo $dl; ?></label>
+                        <?php endforeach; ?>
+                        <label class="btn btn-outline-primary btn-sm"><input type="checkbox" class="form-check-input me-1" id="cs_weekdays"> Mon–Fri</label>
+                    </div>
+                    <div class="slot-picker" id="cs_slot_picker">
+                        <div class="slot-picker-head">
+                            <span class="slot-picker-title"><i class="fas fa-clock me-1"></i>Available time slots</span>
+                            <span class="slot-legend"><span class="lg-free">Free</span><span class="lg-sel">Selected</span><span class="lg-occ">Occupied</span></span>
+                        </div>
+                        <div class="slot-view d-none"></div>
+                        <div class="slot-grid"></div>
+                        <div class="slot-msg"></div>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-md-4"><label class="form-label mb-1" for="cs_start_time">Start Time</label><input type="time" class="form-control" id="cs_start_time" required></div>
+                        <div class="col-md-4"><label class="form-label mb-1" for="cs_end_time">End Time</label><input type="time" class="form-control" id="cs_end_time" required></div>
+                        <div class="col-md-4"><label class="form-label mb-1" for="cs_shift">Shift</label><input type="text" class="form-control" id="cs_shift" readonly></div>
+                    </div>
+                    <div class="form-text">Grades 7–10 use 45-minute class periods. End time is suggested automatically and remains editable.</div>
+                    <div id="cs_validation" class="alert d-none mt-3 mb-0 py-2"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="cs_save_btn"><i class="fas fa-save me-1"></i> Save Schedule</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var modal = document.getElementById('classScheduleModal');
+    if (!modal) return;
+    function createSlotPicker(cfg) {
+        var root = cfg.root;
+        if (!root) return { refresh: function () {}, sync: function () {}, reset: function () {} };
+        var grid = root.querySelector('.slot-grid'), msg = root.querySelector('.slot-msg'), viewBox = root.querySelector('.slot-view');
+        var slots = [], ready = false, seq = 0, timer = null, viewShift = '', shiftName = '';
+        var SHIFT_LABEL = { AM: 'AM Shift', PM: 'PM Shift', SHS: 'SHS hours' };
+
+        function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+        function toMin(hm) { if (!hm) return null; var p = String(hm).split(':'); return parseInt(p[0], 10) * 60 + parseInt(p[1] || '0', 10); }
+        function fmt12(hm) { var m = toMin(hm), h = Math.floor(m / 60), mm = m % 60; return ((h % 12) || 12) + ':' + String(mm).padStart(2, '0') + ' ' + (h < 12 ? 'AM' : 'PM'); }
+        function rangeLabel(a, b) { var x = fmt12(a), y = fmt12(b); if (x.slice(-2) === y.slice(-2)) x = x.slice(0, -3); return x + ' – ' + y; }
+        function setMsg(text, warn) { msg.textContent = text || ''; msg.className = 'slot-msg' + (warn ? ' is-warn' : ''); }
+        function freeSlot(i) { return slots[i] && slots[i].status === 'free'; }
+
+        function overlapping() {
+            var s = toMin(cfg.startEl.value), e = toMin(cfg.endEl.value), out = [];
+            if (s === null || e === null || e <= s) return out;
+            slots.forEach(function (sl, i) { if (sl.status !== 'break' && toMin(sl.start) < e && toMin(sl.end) > s) out.push(i); });
+            return out;
+        }
+        function sync() {
+            var cur = ready ? overlapping() : [], clash = [];
+            var buttons = grid.querySelectorAll('.slot-btn');
+            buttons.forEach(function (b, i) { b.classList.toggle('is-selected', cur.indexOf(i) >= 0 && freeSlot(i)); });
+            cur.forEach(function (i) { if (!freeSlot(i)) clash.push(i); });
+            if (!slots.length) return;
+            if (!ready) { setMsg('Select a teacher and at least one day to see which time slots are free.'); return; }
+            if (clash.length) { setMsg('The selected time overlaps an occupied slot (' + clash.map(function (i) { return slots[i].label; }).join(', ') + '). Choose a free slot.', true); return; }
+            if (cur.length) { setMsg('Selected: ' + rangeLabel(cfg.startEl.value, cfg.endEl.value)); return; }
+            if (!slots.some(function (sl) { return sl.status === 'free'; })) { setMsg('No free time slots left for this teacher on the selected day/s' + (shiftName ? ' in the ' + (SHIFT_LABEL[shiftName] || shiftName) : '') + '.', true); return; }
+            setMsg('Click a free slot to set the time. Click the next free slot to make a longer class period.');
+        }
+        function render(data) {
+            slots = data.slots || []; ready = !!data.ready; shiftName = data.shift || '';
+            if (cfg.viewToggle && (data.shifts || []).length > 1) {
+                viewShift = data.shift;
+                viewBox.innerHTML = data.shifts.map(function (sh) { return '<button type="button" data-shift="' + sh + '" class="' + (sh === data.shift ? 'active' : '') + '">' + esc(SHIFT_LABEL[sh] || sh) + '</button>'; }).join('');
+                viewBox.classList.remove('d-none');
+            } else { viewBox.classList.add('d-none'); viewBox.innerHTML = ''; }
+            grid.innerHTML = slots.map(function (sl, i) {
+                var cls = '', state = 'Free', title = sl.detail || '';
+                if (sl.status === 'break') { cls = 'is-break'; state = 'Break'; }
+                else if (!ready) { cls = 'is-idle'; state = '—'; title = 'Select a teacher and day/s first'; }
+                else if (sl.status === 'occupied') { cls = 'is-occupied'; state = 'Occupied'; }
+                else if (sl.status === 'section') { cls = 'is-section'; state = 'Section busy'; }
+                return '<button type="button" class="slot-btn ' + cls + '" data-i="' + i + '" title="' + esc(title) + '" aria-disabled="' + (cls ? 'true' : 'false') + '">'
+                    + '<span class="slot-time">' + esc(sl.label) + '</span><span class="slot-state">' + state + '</span></button>';
+            }).join('');
+            sync();
+        }
+        function refresh() {
+            clearTimeout(timer);
+            timer = setTimeout(function () {
+                var st = cfg.getState();
+                if (!st || !st.sectionId) { grid.innerHTML = ''; viewBox.classList.add('d-none'); setMsg(''); slots = []; return; }
+                var mine = ++seq;
+                var url = '../subjects/schedule_api.php?action=availability&teacher_id=' + encodeURIComponent(st.teacherId || '') + '&section_id=' + encodeURIComponent(st.sectionId)
+                    + '&ts_id=' + encodeURIComponent(st.tsId || '0') + '&days=' + encodeURIComponent((st.days || []).join(',')) + '&shift=' + encodeURIComponent(st.shift || '');
+                fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) { if (mine !== seq) return; if (!data.ok) { grid.innerHTML = ''; setMsg(data.message || 'Could not load time slots.', true); return; } render(data); })
+                    .catch(function () { if (mine !== seq) return; setMsg('Could not load available time slots. You can still type the time; saving is validated on the server.', true); });
+            }, 120);
+        }
+        function reset() { slots = []; ready = false; viewShift = ''; grid.innerHTML = ''; viewBox.classList.add('d-none'); viewBox.innerHTML = ''; setMsg(''); }
+        function fire(el) { el.dispatchEvent(new Event('change', { bubbles: true })); }
+        function setRange(a, b) { cfg.startEl.value = slots[a].start; cfg.endEl.value = slots[b].end; fire(cfg.startEl); fire(cfg.endEl); }
+
+        grid.addEventListener('click', function (ev) {
+            var b = ev.target.closest('.slot-btn');
+            if (!b || !ready) return;
+            var i = parseInt(b.getAttribute('data-i'), 10);
+            if (!freeSlot(i)) return;                       // Occupied / Section busy / Break: not selectable
+            var cur = overlapping();
+            var curFree = cur.length && cur.every(freeSlot);
+            if (curFree) {
+                var first = cur[0], last = cur[cur.length - 1];
+                if (cur.length === 1 && first === i) { cfg.startEl.value = ''; cfg.endEl.value = ''; fire(cfg.startEl); fire(cfg.endEl); return; }
+                if (slots[i].start === slots[last].end) { setRange(first, i); return; }      // extend after
+                if (slots[i].end === slots[first].start) { setRange(i, last); return; }      // extend before
+            }
+            setRange(i, i);
+        });
+        viewBox.addEventListener('click', function (ev) {
+            var b = ev.target.closest('button[data-shift]');
+            if (!b) return;
+            viewShift = b.getAttribute('data-shift');
+            cfg.startEl.value = ''; cfg.endEl.value = ''; fire(cfg.startEl); fire(cfg.endEl);
+            refresh();
+        });
+        [cfg.startEl, cfg.endEl].forEach(function (el) { if (el) el.addEventListener('change', sync); });
+        return { refresh: refresh, sync: sync, reset: reset, getViewShift: function () { return viewShift; } };
+    }
+
+
+    var form = document.getElementById('classScheduleForm');
+    var startEl = document.getElementById('cs_start_time');
+    var endEl = document.getElementById('cs_end_time');
+    var dayEls = modal.querySelectorAll('.cs-day');
+    var weekdays = document.getElementById('cs_weekdays');
+    var msgEl = document.getElementById('cs_validation');
+    var timer;
+    function days() { return Array.from(dayEls).filter(function (d) { return d.checked; }).map(function (d) { return d.value; }); }
+    var slots = createSlotPicker({
+        root: document.getElementById('cs_slot_picker'), startEl: startEl, endEl: endEl, viewToggle: true,
+        getState: function () {
+            return { teacherId: document.getElementById('cs_teacher_id').value, sectionId: document.getElementById('cs_section_id').value,
+                     tsId: document.getElementById('cs_ts_id').value, days: days(), shift: slots.getViewShift() };
+        }
+    });
+    function payload(validateOnly) {
+        return {
+            csrf_token: form.querySelector('[name="csrf_token"]').value, action: 'edit',
+            ts_id: document.getElementById('cs_ts_id').value, teacher_id: document.getElementById('cs_teacher_id').value,
+            subject_code: document.getElementById('cs_subject_code').value, section_id: document.getElementById('cs_section_id').value,
+            days: days(), start_time: startEl.value, end_time: endEl.value, validate_only: validateOnly ? 1 : 0
+        };
+    }
+    function show(type, text) { msgEl.className = 'alert alert-' + type + ' mt-3 mb-0 py-2'; msgEl.textContent = text; msgEl.classList.remove('d-none'); }
+    function post(p) {
+        return fetch('../subjects/assignment_api.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) })
+            .then(function (r) { return r.json().then(function (d) { return { ok: r.ok && d.ok, data: d }; }); });
+    }
+    function validate() {
+        var p = payload(true);
+        if (!p.days.length || !p.start_time || !p.end_time) { msgEl.classList.add('d-none'); return; }
+        post(p).then(function (res) { show(res.ok ? 'success' : 'danger', res.data.message || (res.ok ? 'No schedule conflict detected.' : 'Schedule conflict.')); })
+               .catch(function () { show('warning', 'Unable to validate right now. The server checks again before saving.'); });
+    }
+    function queue() { clearTimeout(timer); timer = setTimeout(validate, 250); }
+
+    modal.addEventListener('show.bs.modal', function (ev) {
+        var b = ev.relatedTarget;
+        if (!b) return;
+        var grade = b.getAttribute('data-grade-level') || '';
+        document.getElementById('cs_ts_id').value = b.getAttribute('data-ts-id') || '0';
+        document.getElementById('cs_teacher_id').value = b.getAttribute('data-teacher-id') || '';
+        document.getElementById('cs_subject_code').value = b.getAttribute('data-subject-code') || '';
+        document.getElementById('cs_section_id').value = b.getAttribute('data-section-id') || '';
+        document.getElementById('cs_subject_display').textContent = (b.getAttribute('data-subject-name') || '') + ' (' + (b.getAttribute('data-subject-code') || '') + ')';
+        document.getElementById('cs_teacher_display').textContent = 'Teacher: ' + (b.getAttribute('data-teacher-name') || '');
+        document.getElementById('cs_shift').value = ['Grade 7', 'Grade 8'].indexOf(grade) >= 0 ? 'AM Shift' : (['Grade 9', 'Grade 10'].indexOf(grade) >= 0 ? 'PM Shift' : 'SHS');
+        var saved = [];
+        try { saved = JSON.parse(b.getAttribute('data-schedule') || '[]') || []; } catch (e) { saved = []; }
+        dayEls.forEach(function (d) { d.checked = saved.some(function (r) { return String(r.day_of_week) === d.value; }); });
+        weekdays.checked = saved.length === 5;
+        startEl.value = saved.length ? saved[0].start_time : '';
+        endEl.value = saved.length ? saved[0].end_time : '';
+        msgEl.classList.add('d-none');
+        slots.reset();
+        slots.refresh();
+    });
+    dayEls.forEach(function (d) { d.addEventListener('change', function () { queue(); slots.refresh(); }); });
+    weekdays.addEventListener('change', function () { dayEls.forEach(function (d) { d.checked = weekdays.checked; }); queue(); slots.refresh(); });
+    startEl.addEventListener('change', function () {
+        if (startEl.value && !endEl.value) {
+            var p = startEl.value.split(':'), m = parseInt(p[0], 10) * 60 + parseInt(p[1], 10) + 45;
+            endEl.value = String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+        }
+        queue();
+    });
+    endEl.addEventListener('change', queue);
+    form.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var p = payload(false), btn = document.getElementById('cs_save_btn');
+        if (!p.days.length || !p.start_time || !p.end_time) { show('danger', 'Select at least one day, a start time and an end time.'); return; }
+        btn.disabled = true;
+        post(p).then(function (res) { if (!res.ok) { show('danger', res.data.message || 'Unable to save the schedule.'); return; } window.location.reload(); })
+               .catch(function () { show('danger', 'Could not save the schedule. Please try again.'); })
+               .finally(function () { btn.disabled = false; });
+    });
+});
+</script>
+<?php endif; ?>
 
 <?php include '../../includes/footer.php'; ?>
